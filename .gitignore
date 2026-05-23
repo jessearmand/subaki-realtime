@@ -10,8 +10,19 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# logs
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# testing / coverage
 /coverage
+*.lcov
+.nyc_output
 
 # next.js
 /.next/
@@ -19,16 +30,7 @@
 
 # production
 /build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+dist
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -39,3 +41,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# editor / tooling caches
+.eslintcache
+.stylelintcache
+.cache
+*.tgz
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+*.icloud
+
+# misc
+*.pem
+**/*.backup.*
+**/*.back.*

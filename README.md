@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PERSONA·PLEX — realtime voice console
 
-## Getting Started
+A brutalist/editorial realtime voice console, recreated from a Claude Design
+handoff and built on **ElevenLabs UI** primitives. Four screens — Sessions
+(call), Personas, Providers, Settings — with a full call lifecycle
+(idle → connecting → listening → speaking → interrupted → ended).
 
-First, run the development server:
+Multi-provider by design: the UI binds to a provider-agnostic session adapter.
+Every provider row runs the mocked lifecycle except **ElevenLabs**, which is
+wired to a real agent via `@elevenlabs/react`.
+
+## Stack
+
+- **Next.js** (App Router) · **React 19** · **Tailwind v4**
+- **bun** package manager · **oxlint** + **oxfmt** (lint/format)
+- **ElevenLabs UI** (shadcn-style, copied into `components/ui/`): `Orb` (WebGL,
+  gradient style), `BarVisualizer` (soundbars), `MicSelector` (device picker)
+- Hybrid orb: ElevenLabs WebGL orb for `gradient`; ported CSS/SVG orb for
+  `mono` / `particles`
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Other scripts:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun run lint       # oxlint
+bun run fmt        # oxfmt (write)
+bun run build      # production build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Wiring the real ElevenLabs provider
 
-## Learn More
+Create `.env.local` (gitignored):
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Public agent: ID is enough. Private agents need a signed-URL token route.
+NEXT_PUBLIC_ELEVENLABS_AGENT_ID=your-agent-id
+ELEVENLABS_API_KEY=your-api-key
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Then pick the **ELEVENLABS** row under Providers and press CALL — it grants the
+mic, streams a live transcript, and drives the orb/bars from real audio.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture
 
-## Deploy on Vercel
+```
+app/                       layout (fonts), globals.css (brutalist + orb styles), page (ConversationProvider)
+components/ui/             ElevenLabs + shadcn components (copied, editable)
+components/persona-plex/   app-shell (client boundary), top-bar, nav, the four views,
+                           orb-visualizer (hybrid), custom-orb, bars, tools-button,
+                           transcript-drawer, scroll-area, primitives, glyphs, tweaks-panel
+hooks/                     use-tweaks (localStorage), use-media-query
+lib/data.ts                personas, providers, tools, mock transcript
+lib/realtime/              types (CallState, SessionApi), use-realtime-session (mock + ElevenLabs)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The `useRealtimeSession` hook owns the call state machine. It always calls
+`useConversation` (rules of hooks) but only lets it drive state when the active
+provider is ElevenLabs; otherwise the mocked timers own the lifecycle.

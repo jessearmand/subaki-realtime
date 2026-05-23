@@ -1,0 +1,188 @@
+// Sample data ported from the design bundle (screens.jsx).
+// Single source of truth for personas, providers, tools and the mock transcript.
+
+export interface Persona {
+  id: string;
+  name: string;
+  accent: string;
+  traits: string[];
+  voice: string;
+  desc: string;
+  wpm: number;
+}
+
+export interface Provider {
+  id: string;
+  name: string;
+  model: string;
+  latency: number;
+  status: "ready" | "beta";
+  region: string;
+  note: string;
+}
+
+export interface Tool {
+  name: string;
+  label: string;
+  on: boolean;
+}
+
+export interface TranscriptTurn {
+  who: "agent" | "user";
+  text: string;
+}
+
+export const PERSONAS: Persona[] = [
+  {
+    id: "aria",
+    name: "ARIA",
+    accent: "AMER · F · 32",
+    traits: ["WARM", "CALM", "MEASURED"],
+    voice: "Mezzo · 220–340 Hz",
+    desc: "A patient, low-tempo contralto. Tuned for long form support conversations and onboarding.",
+    wpm: 142,
+  },
+  {
+    id: "onyx",
+    name: "ONYX",
+    accent: "BRIT · M · 48",
+    traits: ["DEEP", "DRY", "LACONIC"],
+    voice: "Bass · 95–180 Hz",
+    desc: "A gravelly broadcast baritone. Reads numbers and proper nouns like he means it.",
+    wpm: 128,
+  },
+  {
+    id: "sage",
+    name: "SAGE",
+    accent: "NEUTRAL · NB · 29",
+    traits: ["CLEAR", "NEUTRAL", "FAST"],
+    voice: "Alto · 200–290 Hz",
+    desc: "Professional-default. Even pacing, minimal affect, near-zero hallucinated emotion.",
+    wpm: 168,
+  },
+  {
+    id: "nova",
+    name: "NOVA",
+    accent: "AUS · F · 26",
+    traits: ["BRIGHT", "UPBEAT", "ENERGETIC"],
+    voice: "Soprano · 240–400 Hz",
+    desc: "High-energy presenter. Best for pitches, demos and walkthroughs.",
+    wpm: 175,
+  },
+  {
+    id: "echo",
+    name: "ECHO",
+    accent: "IRISH · M · 35",
+    traits: ["SOFT", "INTIMATE", "CLOSE-MIC"],
+    voice: "Tenor · 130–230 Hz",
+    desc: "Whispered, near-field tenor. Recorded as if speaking 6 inches from the listener.",
+    wpm: 122,
+  },
+  {
+    id: "cipher",
+    name: "CIPHER",
+    accent: "SYNTH · — · —",
+    traits: ["ROBOTIC", "METALLIC", "UNCANNY"],
+    voice: "Detuned · 60–600 Hz",
+    desc: "Pure synthesis, no human reference. For agents that should not pretend to be people.",
+    wpm: 156,
+  },
+];
+
+export const PROVIDERS: Provider[] = [
+  {
+    id: "openai",
+    name: "OPENAI",
+    model: "gpt-realtime-2",
+    latency: 220,
+    status: "ready",
+    region: "US-EAST",
+    note: "Default. Best general performance.",
+  },
+  {
+    id: "elevenlabs",
+    name: "ELEVENLABS",
+    model: "eleven-agents-v3",
+    latency: 310,
+    status: "ready",
+    region: "EU-WEST",
+    note: "Best voice fidelity. ElevenLabs UI native.",
+  },
+  {
+    id: "gemini",
+    name: "GOOGLE",
+    model: "gemini-live-2.5",
+    latency: 195,
+    status: "ready",
+    region: "US-CENTRAL",
+    note: "Lowest first-token latency. Video input.",
+  },
+  {
+    id: "grok",
+    name: "XAI",
+    model: "grok-voice-1",
+    latency: 280,
+    status: "beta",
+    region: "US-WEST",
+    note: "Unfiltered. No-nonsense response style.",
+  },
+  {
+    id: "mistral",
+    name: "MISTRAL",
+    model: "voxtral-mini",
+    latency: 410,
+    status: "ready",
+    region: "EU-FR",
+    note: "EU-resident. Best multilingual coverage.",
+  },
+  {
+    id: "fal",
+    name: "FAL.AI",
+    model: "personaplex-rt",
+    latency: 240,
+    status: "ready",
+    region: "US-WEST",
+    note: "Cheapest tokens. Self-host alternative.",
+  },
+];
+
+export const TOOLS_DEFAULT: Tool[] = [
+  { name: "search.web", label: "Web search · Tavily", on: true },
+  { name: "screen.capture", label: "Screenshot · screen grab", on: true },
+  { name: "shell.exec", label: "Shell exec · sandboxed", on: false },
+  { name: "memory.recall", label: "Long-term memory · vector", on: true },
+];
+
+export const TRANSCRIPT_SCRIPT: TranscriptTurn[] = [
+  { who: "agent", text: "Persona-plex online. How can I help you today?" },
+  { who: "user", text: "Walk me through what you can do." },
+  {
+    who: "agent",
+    text: "I can run a realtime voice session against six providers — OpenAI, ElevenLabs, Google, xAI, Mistral and fal.ai. Mid-call I can interrupt, swap voices, and call tools. Where do you want to start?",
+  },
+  { who: "user", text: "Show me the persona library." },
+  {
+    who: "agent",
+    text: "Opening it. You'll see six built-in voices and a slot to clone your own from a 30-second sample. Each voice carries its own pitch range, pacing, and accent — selection persists across providers, so swapping the backend mid-call doesn't change who the agent sounds like.",
+  },
+  { who: "user", text: "What's the difference between ARIA and SAGE?" },
+  {
+    who: "agent",
+    text: "ARIA is a warmer contralto, around 220 to 340 Hertz, paced for support conversations. SAGE is a flatter, faster alto — closer to a professional default. For onboarding I'd start with ARIA; for short transactional flows, SAGE.",
+  },
+  { who: "user", text: "Can I use my own voice?" },
+  {
+    who: "agent",
+    text: "Yes — drop a 30-second clean sample into the empty slot. We run a consent prompt end-to-end before cloning, and the resulting voice stays scoped to your workspace unless you publish it.",
+  },
+  { who: "user", text: "How does interruption work across providers?" },
+  {
+    who: "agent",
+    text: "Every provider exposes a different shape for it. OpenAI gives us cancel events on the response stream. ElevenLabs uses a server-side VAD that stops generation when your audio energy crosses threshold. We normalize all of that into a single 'interrupt' action — what you saw a moment ago.",
+  },
+  { who: "user", text: "Tell me about latency." },
+  {
+    who: "agent",
+    text: "Median first-token latency varies — Gemini Live is fastest at around 195 milliseconds, Mistral Voxtral is slowest at about 410, and OpenAI sits in the middle at 220. You can pin a latency budget under Settings; if a provider exceeds it we'll fail over to the next-best.",
+  },
+];

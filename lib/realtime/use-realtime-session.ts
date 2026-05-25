@@ -120,11 +120,12 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
     return () => clearInterval(t);
   }, [callState]);
 
-  // Push mute state into the real session.
+  // Push mute state into the real session — only once connected, since
+  // @elevenlabs/react throws "No active conversation" before startSession().
   useEffect(() => {
-    if (isReal) conversation.setMuted(muted);
+    if (isReal && status === "connected") conversation.setMuted(muted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [muted, isReal]);
+  }, [muted, isReal, status]);
 
   // Reset to the active engine's initial state when the provider changes.
   useEffect(() => {
@@ -203,7 +204,14 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
 
   // ── Volumes for the orb ───────────────────────────────────────────────────
   const getInputVolume = useCallback(() => {
-    if (isReal) return conversation.getInputVolume();
+    if (isReal) {
+      // Throws before startSession(); fall back to silence until connected.
+      try {
+        return conversation.getInputVolume();
+      } catch {
+        return 0;
+      }
+    }
     const s = stateRef.current;
     if (s === "listening" || s === "interrupted") {
       return 0.25 + 0.4 * Math.abs(Math.sin(performance.now() / 180));
@@ -212,7 +220,13 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
   }, [isReal, conversation]);
 
   const getOutputVolume = useCallback(() => {
-    if (isReal) return conversation.getOutputVolume();
+    if (isReal) {
+      try {
+        return conversation.getOutputVolume();
+      } catch {
+        return 0;
+      }
+    }
     const s = stateRef.current;
     if (s === "speaking") {
       return 0.4 + 0.45 * Math.abs(Math.sin(performance.now() / 140));

@@ -37,6 +37,9 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
+  "overrides": {
+    "livekit-client": "2.16.1"
+  },
   "ignoreScripts": [
     "sharp",
     "unrs-resolver"

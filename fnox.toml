@@ -1,0 +1,8 @@
+default_provider = "ElevenLabs"
+
+[providers.ElevenLabs]
+type = "keychain"
+service = "elevenlabs"
+
+[secrets]
+ELEVENLABS_API_KEY = { provider = "ElevenLabs", value = "ELEVENLABS_API_KEY" }

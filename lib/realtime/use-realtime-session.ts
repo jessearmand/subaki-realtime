@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { TRANSCRIPT_SCRIPT, type Provider } from "@/lib/data";
 import type { CallState, SessionApi, SessionTurn } from "./types";
+import { useXaiSession } from "./use-xai-session";
 
 const SCRIPT_TURNS: SessionTurn[] = TRANSCRIPT_SCRIPT.map((t, i) => ({
   id: `s${i}`,
@@ -31,16 +32,19 @@ function mockCaption(state: CallState): string {
 }
 
 /**
- * Unified realtime session. The selected provider decides the engine:
- * every non-ElevenLabs row runs the design's mock lifecycle; the ELEVENLABS
- * row runs a real conversation via `@elevenlabs/react`. Both expose the same
- * `SessionApi` so the UI is provider-agnostic.
+ * Unified realtime session. `provider.engine` selects the engine:
+ *   - undefined → the design's mock lifecycle (timers + TRANSCRIPT_SCRIPT)
+ *   - "elevenlabs" → real conversation via `@elevenlabs/react`
+ *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
+ * All expose the same `SessionApi` so the UI is provider-agnostic.
  *
- * `useConversation` is always called (rules of hooks) but only drives state
- * when the active provider is ElevenLabs; otherwise the mock timers own state.
+ * Both real-engine hooks (`useConversation`, `useXaiSession`) are called
+ * unconditionally (rules of hooks) and stay inert until their engine is
+ * selected and started.
  */
 export function useRealtimeSession({ provider }: { provider: Provider }): SessionApi {
-  const isReal = provider.id === "elevenlabs";
+  const engine = provider.engine;
+  const isReal = !!engine;
 
   const [callState, setCallState] = useState<CallState>(isReal ? "idle" : "listening");
   const [turns, setTurns] = useState<SessionTurn[]>(isReal ? [] : SCRIPT_TURNS);
@@ -78,9 +82,15 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
 
   const { status, mode, isSpeaking, startSession, endSession } = conversation;
 
-  // Derive real CallState from the conversation status/mode.
+  // ── xAI Grok real conversation (direct WebSocket) ─────────────────────────
+  const xai = useXaiSession(engine === "xai");
+
+  // The active call state comes from whichever engine owns the session.
+  const activeCallState: CallState = engine === "xai" ? xai.callState : callState;
+
+  // Derive real CallState from the conversation status/mode (ElevenLabs only).
   useEffect(() => {
-    if (!isReal || realPhase.current === "idle") return;
+    if (engine !== "elevenlabs" || realPhase.current === "idle") return;
     if (realPhase.current === "ended") {
       setCallState("ended");
       return;
@@ -92,7 +102,7 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
       setCallState(mode === "speaking" || isSpeaking ? "speaking" : "listening");
       setCaption((c) => (c === "establishing session…" ? "listening…" : c));
     }
-  }, [isReal, status, mode, isSpeaking]);
+  }, [engine, status, mode, isSpeaking]);
 
   // ── Mock lifecycle ──────────────────────────────────────────────────────────
   // First-load drift: listening → speaking after 5s (matches the prototype).
@@ -110,28 +120,37 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
     setCaption(mockCaption(callState));
   }, [isReal, callState]);
 
-  // Elapsed ticker (both engines).
+  // Elapsed ticker (all engines) — keyed off whichever engine owns the call.
   useEffect(() => {
-    if (callState === "idle" || callState === "ended") {
+    if (activeCallState === "idle" || activeCallState === "ended") {
       setElapsed(0);
       return;
     }
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
-  }, [callState]);
+  }, [activeCallState]);
 
-  // Push mute state into the real session — only once connected, since
-  // @elevenlabs/react throws "No active conversation" before startSession().
+  // Push mute into the active real engine. ElevenLabs only accepts setMuted once
+  // connected (it throws "No active conversation" before startSession()); xAI
+  // gates its own mic send, so it's always safe.
   useEffect(() => {
-    if (isReal && status === "connected") conversation.setMuted(muted);
+    if (engine === "elevenlabs" && status === "connected") conversation.setMuted(muted);
+    else if (engine === "xai") xai.setMuted(muted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [muted, isReal, status]);
+  }, [muted, engine, status]);
 
-  // Reset to the active engine's initial state when the provider changes.
+  // Reset to the active engine's initial state when the engine changes. End any
+  // live ElevenLabs session we're navigating away from (xAI tears itself down
+  // via its own `active` effect).
   useEffect(() => {
     clearTimers();
+    try {
+      if (realPhase.current === "active") endSession();
+    } catch {
+      // no active ElevenLabs session
+    }
+    realPhase.current = "idle";
     if (isReal) {
-      realPhase.current = "idle";
       setCallState("idle");
       setTurns([]);
       setCaption("press CALL to begin");
@@ -141,13 +160,17 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
       setCaption(mockCaption("listening"));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReal]);
+  }, [engine]);
 
   useEffect(() => () => clearTimers(), []);
 
   // ── Controls ────────────────────────────────────────────────────────────────
   const start = useCallback(() => {
-    if (isReal) {
+    if (engine === "xai") {
+      xai.start();
+      return;
+    }
+    if (engine === "elevenlabs") {
       if (callState === "idle" || callState === "ended") {
         const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
         if (!agentId) {
@@ -176,21 +199,29 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
     } else {
       setCallState("ended");
     }
-  }, [isReal, callState, startSession, endSession]);
+  }, [engine, xai, callState, startSession, endSession]);
 
   const hangup = useCallback(() => {
-    if (isReal) {
+    if (engine === "xai") {
+      xai.stop();
+      return;
+    }
+    if (engine === "elevenlabs") {
       realPhase.current = "ended";
       endSession();
     } else {
       clearTimers();
     }
     setCallState("ended");
-  }, [isReal, endSession]);
+  }, [engine, xai, endSession]);
 
   const interrupt = useCallback(() => {
+    if (engine === "xai") {
+      xai.interrupt();
+      return;
+    }
     if (stateRef.current !== "speaking") return;
-    if (isReal) {
+    if (engine === "elevenlabs") {
       conversation.sendUserActivity();
       setCallState("interrupted");
       return;
@@ -198,13 +229,13 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
     clearTimers();
     setCallState("interrupted");
     timers.current.push(setTimeout(() => setCallState("listening"), 900));
-  }, [isReal, conversation]);
+  }, [engine, xai, conversation]);
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
   // ── Volumes for the orb ───────────────────────────────────────────────────
   const getInputVolume = useCallback(() => {
-    if (isReal) {
+    if (engine === "elevenlabs") {
       // Throws before startSession(); fall back to silence until connected.
       try {
         return conversation.getInputVolume();
@@ -217,10 +248,10 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
       return 0.25 + 0.4 * Math.abs(Math.sin(performance.now() / 180));
     }
     return 0.04;
-  }, [isReal, conversation]);
+  }, [engine, conversation]);
 
   const getOutputVolume = useCallback(() => {
-    if (isReal) {
+    if (engine === "elevenlabs") {
       try {
         return conversation.getOutputVolume();
       } catch {
@@ -232,13 +263,15 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
       return 0.4 + 0.45 * Math.abs(Math.sin(performance.now() / 140));
     }
     return 0.04;
-  }, [isReal, conversation]);
+  }, [engine, conversation]);
+
+  const isXai = engine === "xai";
 
   return useMemo<SessionApi>(
     () => ({
-      callState,
-      turns,
-      caption,
+      callState: activeCallState,
+      turns: isXai ? xai.turns : turns,
+      caption: isXai ? xai.caption : caption,
       muted,
       elapsed,
       isReal,
@@ -246,11 +279,13 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
       start,
       hangup,
       interrupt,
-      getInputVolume,
-      getOutputVolume,
+      getInputVolume: isXai ? xai.getInputVolume : getInputVolume,
+      getOutputVolume: isXai ? xai.getOutputVolume : getOutputVolume,
     }),
     [
-      callState,
+      activeCallState,
+      isXai,
+      xai,
       turns,
       caption,
       muted,

@@ -19,6 +19,8 @@ export interface Provider {
   status: "ready" | "beta";
   region: string;
   note: string;
+  // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
+  engine?: "elevenlabs" | "xai";
 }
 
 export interface Tool {
@@ -107,6 +109,7 @@ export const PROVIDERS: Provider[] = [
     status: "ready",
     region: "EU-WEST",
     note: "Best voice fidelity. ElevenLabs UI native.",
+    engine: "elevenlabs",
   },
   {
     id: "gemini",
@@ -120,11 +123,12 @@ export const PROVIDERS: Provider[] = [
   {
     id: "grok",
     name: "XAI",
-    model: "grok-voice-1",
+    model: "grok-voice-latest",
     latency: 280,
     status: "beta",
     region: "US-WEST",
     note: "Unfiltered. No-nonsense response style.",
+    engine: "xai",
   },
   {
     id: "mistral",
@@ -154,7 +158,7 @@ export const TOOLS_DEFAULT: Tool[] = [
 ];
 
 export const TRANSCRIPT_SCRIPT: TranscriptTurn[] = [
-  { who: "agent", text: "Persona-plex online. How can I help you today?" },
+  { who: "agent", text: "Tsubaki online. How can I help you today?" },
   { who: "user", text: "Walk me through what you can do." },
   {
     who: "agent",

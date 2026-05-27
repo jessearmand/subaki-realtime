@@ -1,0 +1,425 @@
+"use client";
+
+// Real xAI Grok voice engine over a DIRECT browser→xAI WebSocket.
+//
+// Architecture (no relay server): mint an ephemeral client-secret at
+// /api/xai/token, then open `wss://api.x.ai/v1/realtime` carrying the token in
+// the subprotocol (browsers can't set WS headers). We own the whole audio
+// pipeline: mic → PCM16 → `input_audio_buffer.append`; inbound
+// `response.output_audio.delta` → PCM16 → AudioBuffer playback. Barge-in is
+// server-VAD driven (`input_audio_buffer.speech_started` → stop playback).
+//
+// Exposes a surface deliberately parallel to @elevenlabs/react's useConversation
+// so useRealtimeSession can dispatch to either engine uniformly. Must be called
+// unconditionally (rules of hooks); it stays inert until start().
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { CallState, SessionTurn } from "./types";
+import {
+  base64Pcm16ToFloat32,
+  calculateRms,
+  float32ToPcm16Base64,
+  PlaybackQueue,
+} from "./xai-audio";
+
+const REALTIME_BASE = "wss://api.x.ai/v1/realtime";
+const MODEL = process.env.NEXT_PUBLIC_XAI_MODEL ?? "grok-voice-latest";
+const VOICE = process.env.NEXT_PUBLIC_XAI_VOICE ?? "eve";
+const INSTRUCTIONS =
+  process.env.NEXT_PUBLIC_XAI_INSTRUCTIONS ??
+  "You are Tsubaki, a warm, concise realtime voice assistant. Keep replies short and conversational since they are spoken aloud.";
+const CHUNK_MS = 100;
+const VOL_GAIN = 3.5;
+
+export interface XaiSession {
+  callState: CallState;
+  turns: SessionTurn[];
+  caption: string;
+  start: () => void;
+  stop: () => void;
+  interrupt: () => void;
+  setMuted: (muted: boolean) => void;
+  getInputVolume: () => number;
+  getOutputVolume: () => number;
+}
+
+type XaiEvent = {
+  type: string;
+  delta?: string;
+  transcript?: string;
+  error?: { type?: string; code?: string; message?: string };
+  item?: { role?: string; content?: Array<{ type?: string; transcript?: string; text?: string }> };
+};
+
+function extractToken(data: unknown): string | null {
+  if (typeof data !== "object" || data === null) return null;
+  const d = data as Record<string, unknown>;
+  if (typeof d.value === "string") return d.value;
+  if (typeof d.token === "string") return d.token;
+  if (typeof d.secret === "string") return d.secret;
+  const cs = d.client_secret;
+  if (typeof cs === "string") return cs;
+  if (cs && typeof cs === "object" && typeof (cs as Record<string, unknown>).value === "string") {
+    return (cs as Record<string, unknown>).value as string;
+  }
+  return null;
+}
+
+export function useXaiSession(active: boolean): XaiSession {
+  const [callState, setCallState] = useState<CallState>("idle");
+  const [turns, setTurns] = useState<SessionTurn[]>([]);
+  const [caption, setCaption] = useState("press CALL to begin");
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const procRef = useRef<ScriptProcessorNode | null>(null);
+  const playbackRef = useRef<PlaybackQueue | null>(null);
+
+  const mutedRef = useRef(false);
+  const endedRef = useRef(false);
+  const configuredRef = useRef(false);
+  const inputRmsRef = useRef(0);
+  const turnSeqRef = useRef(0);
+  const agentTurnIdRef = useRef<string | null>(null);
+  const agentBufRef = useRef("");
+  const interruptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateRef = useRef<CallState>("idle");
+  stateRef.current = callState;
+
+  const teardown = useCallback(() => {
+    if (interruptTimerRef.current) {
+      clearTimeout(interruptTimerRef.current);
+      interruptTimerRef.current = null;
+    }
+    if (procRef.current) {
+      procRef.current.onaudioprocess = null;
+      procRef.current.disconnect();
+      procRef.current = null;
+    }
+    if (sourceRef.current) {
+      sourceRef.current.disconnect();
+      sourceRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (playbackRef.current) {
+      playbackRef.current.stop();
+      playbackRef.current = null;
+    }
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch {
+        // already closing
+      }
+      wsRef.current = null;
+    }
+    if (ctxRef.current) {
+      void ctxRef.current.close();
+      ctxRef.current = null;
+    }
+    configuredRef.current = false;
+    agentTurnIdRef.current = null;
+    agentBufRef.current = "";
+    inputRmsRef.current = 0;
+  }, []);
+
+  const send = useCallback((obj: unknown) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+  }, []);
+
+  const start = useCallback(() => {
+    if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
+    endedRef.current = false;
+    configuredRef.current = false;
+    setTurns([]);
+    setCallState("connecting");
+    setCaption("establishing session…");
+
+    const fail = (msg: string) => {
+      endedRef.current = true;
+      teardown();
+      setCallState("ended");
+      setCaption(msg);
+    };
+
+    void (async () => {
+      // 1) Mint the ephemeral client-secret server-side.
+      let token: string | null = null;
+      try {
+        const res = await fetch("/api/xai/token", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) {
+          fail(`— ${typeof data?.error === "string" ? data.error : "token error"} —`);
+          return;
+        }
+        token = extractToken(data);
+      } catch {
+        fail("— could not reach token endpoint —");
+        return;
+      }
+      if (!token) {
+        fail("— no xAI token returned —");
+        return;
+      }
+      if (endedRef.current) return; // hung up during fetch
+
+      // 2) Audio context (native rate, advertised to xAI so no resampling).
+      const ctx = new AudioContext();
+      ctxRef.current = ctx;
+      const rate = ctx.sampleRate;
+      playbackRef.current = new PlaybackQueue(ctx);
+
+      // Local mutable capture buffers (live as long as the processor node).
+      let pending: Float32Array[] = [];
+      let total = 0;
+      const chunkSize = Math.floor((rate * CHUNK_MS) / 1000);
+
+      const startCapture = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              channelCount: 1,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+          streamRef.current = stream;
+          if (ctx.state === "suspended") await ctx.resume();
+          const source = ctx.createMediaStreamSource(stream);
+          sourceRef.current = source;
+          const proc = ctx.createScriptProcessor(4096, 1, 1);
+          procRef.current = proc;
+          proc.onaudioprocess = (e) => {
+            const input = e.inputBuffer.getChannelData(0);
+            inputRmsRef.current = mutedRef.current ? 0 : calculateRms(input);
+            if (mutedRef.current) return;
+            pending.push(new Float32Array(input));
+            total += input.length;
+            while (total >= chunkSize) {
+              const chunk = new Float32Array(chunkSize);
+              let offset = 0;
+              while (offset < chunkSize && pending.length > 0) {
+                const buf = pending[0];
+                const need = chunkSize - offset;
+                if (buf.length <= need) {
+                  chunk.set(buf, offset);
+                  offset += buf.length;
+                  total -= buf.length;
+                  pending.shift();
+                } else {
+                  chunk.set(buf.subarray(0, need), offset);
+                  pending[0] = buf.subarray(need);
+                  offset += need;
+                  total -= need;
+                }
+              }
+              send({ type: "input_audio_buffer.append", audio: float32ToPcm16Base64(chunk) });
+            }
+          };
+          source.connect(proc);
+          // Required in some browsers for the callback to fire; the processor
+          // writes no output, so this does not echo the mic to the speakers.
+          proc.connect(ctx.destination);
+        } catch {
+          fail("— microphone permission denied —");
+        }
+      };
+
+      // ── transcript helpers ──────────────────────────────────────────────
+      const pushAgentDelta = (delta: string) => {
+        agentBufRef.current += delta;
+        const text = agentBufRef.current;
+        setCaption(text);
+        setTurns((prev) => {
+          const id = agentTurnIdRef.current;
+          if (id) return prev.map((t) => (t.id === id ? { ...t, text } : t));
+          const newId = `x${turnSeqRef.current++}`;
+          agentTurnIdRef.current = newId;
+          return [...prev, { id: newId, who: "agent", text, live: true }];
+        });
+      };
+      const finalizeAgent = () => {
+        const id = agentTurnIdRef.current;
+        if (id) setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, live: false } : t)));
+        agentTurnIdRef.current = null;
+        agentBufRef.current = "";
+      };
+      const pushUser = (text: string) => {
+        if (!text) return;
+        setTurns((prev) => [...prev, { id: `x${turnSeqRef.current++}`, who: "user", text }]);
+        setCaption(text);
+      };
+
+      // 3) Open the WS with the token in the subprotocol.
+      const ws = new WebSocket(`${REALTIME_BASE}?model=${encodeURIComponent(MODEL)}`, [
+        `xai-client-secret.${token}`,
+      ]);
+      wsRef.current = ws;
+
+      const configure = () => {
+        if (configuredRef.current) return;
+        configuredRef.current = true;
+        send({
+          type: "session.update",
+          session: {
+            instructions: INSTRUCTIONS,
+            voice: VOICE,
+            audio: {
+              input: { format: { type: "audio/pcm", rate } },
+              output: { format: { type: "audio/pcm", rate } },
+            },
+            turn_detection: { type: "server_vad" },
+            tools: [{ type: "web_search" }],
+          },
+        });
+      };
+
+      ws.onmessage = (event) => {
+        let msg: XaiEvent;
+        try {
+          msg = JSON.parse(typeof event.data === "string" ? event.data : "") as XaiEvent;
+        } catch {
+          return;
+        }
+        switch (msg.type) {
+          case "conversation.created":
+          case "session.created":
+            configure();
+            break;
+          case "session.updated": {
+            void startCapture();
+            setCallState("listening");
+            setCaption("listening…");
+            // Prompt an opening line so the agent speaks first.
+            send({
+              type: "conversation.item.create",
+              item: {
+                type: "message",
+                role: "user",
+                content: [{ type: "input_text", text: "Greet me briefly." }],
+              },
+            });
+            send({ type: "response.create" });
+            break;
+          }
+          case "response.output_audio.delta":
+            if (msg.delta) {
+              playbackRef.current?.enqueue(base64Pcm16ToFloat32(msg.delta));
+              if (stateRef.current !== "interrupted") setCallState("speaking");
+            }
+            break;
+          case "response.output_audio_transcript.delta":
+            if (msg.delta) pushAgentDelta(msg.delta);
+            break;
+          case "response.done":
+            finalizeAgent();
+            if (stateRef.current === "speaking") setCallState("listening");
+            break;
+          case "input_audio_buffer.speech_started":
+            // Server VAD detected the user — barge-in: stop the agent audio.
+            playbackRef.current?.stop();
+            finalizeAgent();
+            setCallState("interrupted");
+            if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
+            interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
+            break;
+          case "input_audio_buffer.committed":
+          case "input_audio_buffer.speech_stopped":
+            if (stateRef.current === "interrupted") setCallState("listening");
+            break;
+          case "conversation.item.added":
+          case "conversation.item.created": {
+            const item = msg.item;
+            if (item?.role === "user") {
+              const t = item.content?.find((c) => c.transcript || c.text);
+              if (t) pushUser((t.transcript ?? t.text ?? "").trim());
+            }
+            break;
+          }
+          case "error":
+            // Surface but don't kill — a fatal error will also close the socket.
+            setCaption(`— ${msg.error?.message ?? "xAI error"} —`);
+            break;
+          default:
+            break;
+        }
+      };
+
+      ws.onerror = () => {
+        if (endedRef.current) return;
+        endedRef.current = true;
+        teardown();
+        setCallState("ended");
+        setCaption("— connection error —");
+      };
+
+      ws.onclose = () => {
+        if (endedRef.current) return;
+        endedRef.current = true;
+        teardown();
+        setCallState("ended");
+        setCaption("— call ended —");
+      };
+    })();
+  }, [send, teardown]);
+
+  const stop = useCallback(() => {
+    endedRef.current = true;
+    teardown();
+    setCallState("ended");
+    setCaption("— call ended —");
+  }, [teardown]);
+
+  const interrupt = useCallback(() => {
+    if (stateRef.current !== "speaking") return;
+    playbackRef.current?.stop();
+    setCallState("interrupted");
+    if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
+    interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
+  }, []);
+
+  const setMuted = useCallback((muted: boolean) => {
+    mutedRef.current = muted;
+    if (muted) inputRmsRef.current = 0;
+  }, []);
+
+  const getInputVolume = useCallback(() => Math.min(1, inputRmsRef.current * VOL_GAIN), []);
+  const getOutputVolume = useCallback(
+    () => Math.min(1, (playbackRef.current?.level ?? 0) * VOL_GAIN),
+    [],
+  );
+
+  // Hang up + reset if the provider is switched away from xAI mid-session.
+  useEffect(() => {
+    if (active) return;
+    if (stateRef.current !== "idle") {
+      endedRef.current = true;
+      teardown();
+      setCallState("idle");
+      setTurns([]);
+      setCaption("press CALL to begin");
+    }
+  }, [active, teardown]);
+
+  // Cleanup on unmount.
+  useEffect(() => () => teardown(), [teardown]);
+
+  return {
+    callState,
+    turns,
+    caption,
+    start,
+    stop,
+    interrupt,
+    setMuted,
+    getInputVolume,
+    getOutputVolume,
+  };
+}

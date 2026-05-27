@@ -15,15 +15,16 @@ export interface Tweaks {
 
 export const TWEAK_DEFAULTS: Tweaks = {
   dark: false,
-  accent: "#C2410C",
+  accent: "#B0122F",
   orbStyle: "gradient",
   transcript: "drawer",
   providerPreview: true,
 };
 
-export const ACCENTS = ["#C2410C", "#2563EB", "#16A34A", "#9333EA", "#0A0A09"];
+// Camellia crimson is the Tsubaki default; burnt orange (#C2410C) stays selectable.
+export const ACCENTS = ["#B0122F", "#C2410C", "#2563EB", "#16A34A", "#9333EA", "#0A0A09"];
 
-const KEY = "persona-plex.tweaks";
+const KEY = "tsubaki.tweaks";
 
 export function useTweaks(): [Tweaks, <K extends keyof Tweaks>(key: K, value: Tweaks[K]) => void] {
   const [tweaks, setTweaks] = useState<Tweaks>(TWEAK_DEFAULTS);

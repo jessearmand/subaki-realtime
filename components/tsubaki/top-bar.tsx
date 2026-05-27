@@ -18,13 +18,13 @@ export function TopBar({ compact, callState }: { compact?: boolean; callState: C
   const micLabel = live ? "ON" : "OFF";
 
   return (
-    <header className="pp-topbar">
-      <div className="pp-brand">
-        <span className="pp-brand-mark" />
-        <span className="pp-brand-name">PERSONA·PLEX</span>
-        {!compact && <span className="pp-brand-sub">v0.4.2 · realtime console</span>}
+    <header className="tb-topbar">
+      <div className="tb-brand">
+        <span className="tb-brand-mark" />
+        <span className="tb-brand-name">TSUBAKI</span>
+        {!compact && <span className="tb-brand-sub">v0.4.2 · realtime console</span>}
       </div>
-      <div className="pp-topbar-status">
+      <div className="tb-topbar-status">
         <span>
           SESSION <b style={{ color: "var(--ink)" }}>{sessionLabel}</b>
         </span>

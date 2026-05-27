@@ -12,7 +12,7 @@ function Segmented<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="pp-seg" role="radiogroup">
+    <div className="tb-seg" role="radiogroup">
       {options.map((o) => (
         <button
           key={o}
@@ -42,7 +42,7 @@ export function TweaksPanel({
     return (
       <button
         type="button"
-        className="pp-tweaks-toggle"
+        className="tb-tweaks-toggle"
         aria-label="Open tweaks"
         onClick={() => setOpen(true)}
       >
@@ -63,33 +63,33 @@ export function TweaksPanel({
   }
 
   return (
-    <div className="pp-tweaks">
-      <div className="pp-tweaks-hd">
+    <div className="tb-tweaks">
+      <div className="tb-tweaks-hd">
         <span>Tweaks</span>
         <button
           type="button"
-          className="pp-tweaks-x"
+          className="tb-tweaks-x"
           aria-label="Close tweaks"
           onClick={() => setOpen(false)}
         >
           ✕
         </button>
       </div>
-      <div className="pp-tweaks-body">
-        <div className="pp-tweaks-sect">Theme</div>
-        <div className="pp-tweaks-row">
+      <div className="tb-tweaks-body">
+        <div className="tb-tweaks-sect">Theme</div>
+        <div className="tb-tweaks-row">
           <span>Dark mode</span>
           <SwitchRow value={tweaks.dark} onChange={(v) => setTweak("dark", v)} />
         </div>
-        <div className="pp-tweaks-row">
+        <div className="tb-tweaks-row">
           <span>Accent</span>
-          <div className="pp-swatches">
+          <div className="tb-swatches">
             {ACCENTS.map((c) => (
               <button
                 key={c}
                 type="button"
                 aria-label={c}
-                className={`pp-swatch ${tweaks.accent.toLowerCase() === c.toLowerCase() ? "on" : ""}`}
+                className={`tb-swatch ${tweaks.accent.toLowerCase() === c.toLowerCase() ? "on" : ""}`}
                 style={{ background: c } as CSSProperties}
                 onClick={() => setTweak("accent", c)}
               />
@@ -97,22 +97,22 @@ export function TweaksPanel({
           </div>
         </div>
 
-        <div className="pp-tweaks-sect">Orb</div>
+        <div className="tb-tweaks-sect">Orb</div>
         <Segmented<OrbStyle>
           value={tweaks.orbStyle}
           options={["gradient", "mono", "particles"]}
           onChange={(v) => setTweak("orbStyle", v)}
         />
 
-        <div className="pp-tweaks-sect">Transcript</div>
+        <div className="tb-tweaks-sect">Transcript</div>
         <Segmented<TranscriptMode>
           value={tweaks.transcript}
           options={["caption", "drawer", "off"]}
           onChange={(v) => setTweak("transcript", v)}
         />
 
-        <div className="pp-tweaks-sect">Provider</div>
-        <div className="pp-tweaks-row">
+        <div className="tb-tweaks-sect">Provider</div>
+        <div className="tb-tweaks-row">
           <span>Show provider chip</span>
           <SwitchRow
             value={tweaks.providerPreview}

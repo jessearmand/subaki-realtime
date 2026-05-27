@@ -37,10 +37,10 @@ export function CallView({
   const ss = String(elapsed % 60).padStart(2, "0");
 
   return (
-    <div className="pp-call">
-      <div className="pp-call-stage">
-        <div className="pp-call-meta">
-          <div className="pp-call-meta-l">
+    <div className="tb-call">
+      <div className="tb-call-stage">
+        <div className="tb-call-meta">
+          <div className="tb-call-meta-l">
             <Tag mono dot>
               SESSION · {mm}:{ss}
             </Tag>
@@ -50,15 +50,15 @@ export function CallView({
               </Tag>
             )}
           </div>
-          <div className="pp-call-meta-r">
+          <div className="tb-call-meta-r">
             <Tag mono>PERSONA · {persona.name}</Tag>
           </div>
         </div>
 
         {/* 50/50 vertical split: orb half on top, caption half on bottom. */}
-        <div className="pp-call-body">
-          <div className="pp-orb-area">
-            <div className="pp-orb-fit">
+        <div className="tb-call-body">
+          <div className="tb-orb-area">
+            <div className="tb-orb-fit">
               <OrbVisualizer
                 orbStyle={tweaks.orbStyle}
                 callState={callState}
@@ -71,11 +71,11 @@ export function CallView({
             {(callState === "listening" || callState === "interrupted") && (
               <Bars callState={callState} count={10} />
             )}
-            <div className="pp-call-state">
-              <span className={`pp-call-state-dot pp-state-${callState}`} />
-              <span className="pp-call-state-l">{STATE_LABEL[callState]}</span>
+            <div className="tb-call-state">
+              <span className={`tb-call-state-dot tb-state-${callState}`} />
+              <span className="tb-call-state-l">{STATE_LABEL[callState]}</span>
               {live && (
-                <span className="pp-call-state-sub">
+                <span className="tb-call-state-sub">
                   — {persona.name.toLowerCase()} · {provider.name.toLowerCase()}
                 </span>
               )}
@@ -83,19 +83,19 @@ export function CallView({
           </div>
 
           {tweaks.transcript !== "off" && (
-            <div className="pp-caption-area">
-              <ScrollArea className="pp-caption-scroll" dark={tweaks.dark}>
-                <div className="pp-caption" key={caption}>
-                  <span className="pp-caption-q">“</span>
-                  <span className="pp-caption-t">{caption}</span>
-                  <span className="pp-caption-q">”</span>
+            <div className="tb-caption-area">
+              <ScrollArea className="tb-caption-scroll" dark={tweaks.dark}>
+                <div className="tb-caption" key={caption}>
+                  <span className="tb-caption-q">“</span>
+                  <span className="tb-caption-t">{caption}</span>
+                  <span className="tb-caption-q">”</span>
                 </div>
               </ScrollArea>
             </div>
           )}
         </div>
 
-        <div className="pp-controls">
+        <div className="tb-controls">
           <Btn
             small
             onClick={session.toggleMute}

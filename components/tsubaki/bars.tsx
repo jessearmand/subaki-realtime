@@ -6,7 +6,7 @@ import { toBarState, type CallState } from "@/lib/realtime/types";
 
 export function Bars({ callState, count = 10 }: { callState: CallState; count?: number }) {
   return (
-    <div className="pp-elbars" style={{ height: 28, color: "currentColor" }}>
+    <div className="tb-elbars" style={{ height: 28, color: "currentColor" }}>
       <BarVisualizer
         state={toBarState(callState)}
         barCount={count}

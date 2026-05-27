@@ -11,31 +11,31 @@ export function PersonasView({
   accent: string;
 }) {
   return (
-    <div className="pp-personas">
-      <div className="pp-page-hd">
+    <div className="tb-personas">
+      <div className="tb-page-hd">
         <div>
-          <div className="pp-h-eyebrow">001 / VOICE LIBRARY</div>
-          <h1 className="pp-h1">Personas.</h1>
-          <p className="pp-lede">
+          <div className="tb-h-eyebrow">001 / VOICE LIBRARY</div>
+          <h1 className="tb-h1">Personas.</h1>
+          <p className="tb-lede">
             Six built-in voices. Two clone slots. Selection persists across providers.
           </p>
         </div>
-        <div className="pp-page-hd-r">
+        <div className="tb-page-hd-r">
           <Btn small>+ CLONE NEW</Btn>
           <Btn small>IMPORT</Btn>
         </div>
       </div>
 
-      <div className="pp-grid">
+      <div className="tb-grid">
         {PERSONAS.map((p, i) => (
           <div
             key={p.id}
-            className={`pp-persona-card ${persona.id === p.id ? "on" : ""}`}
+            className={`tb-persona-card ${persona.id === p.id ? "on" : ""}`}
             onClick={() => setPersona(p)}
           >
-            <div className="pp-persona-top">
-              <div className="pp-persona-num">{String(i + 1).padStart(2, "0")}</div>
-              <div className="pp-persona-portrait">
+            <div className="tb-persona-top">
+              <div className="tb-persona-num">{String(i + 1).padStart(2, "0")}</div>
+              <div className="tb-persona-portrait">
                 <svg viewBox="0 0 60 60" preserveAspectRatio="none">
                   <defs>
                     <pattern
@@ -61,7 +61,7 @@ export function PersonasView({
                     x="50%"
                     y="55%"
                     textAnchor="middle"
-                    fontFamily="var(--pp-mono)"
+                    fontFamily="var(--tb-mono)"
                     fontSize="9"
                     fill="currentColor"
                     fillOpacity="0.7"
@@ -71,35 +71,35 @@ export function PersonasView({
                 </svg>
               </div>
             </div>
-            <div className="pp-persona-name">{p.name}</div>
-            <div className="pp-persona-accent">{p.accent}</div>
-            <div className="pp-persona-traits">
+            <div className="tb-persona-name">{p.name}</div>
+            <div className="tb-persona-accent">{p.accent}</div>
+            <div className="tb-persona-traits">
               {p.traits.map((t) => (
-                <span key={t} className="pp-trait">
+                <span key={t} className="tb-trait">
                   {t}
                 </span>
               ))}
             </div>
-            <p className="pp-persona-desc">{p.desc}</p>
-            <div className="pp-persona-foot">
-              <span className="pp-mono-num">{p.wpm} wpm</span>
-              <span className="pp-mono-num">{p.voice}</span>
+            <p className="tb-persona-desc">{p.desc}</p>
+            <div className="tb-persona-foot">
+              <span className="tb-mono-num">{p.wpm} wpm</span>
+              <span className="tb-mono-num">{p.voice}</span>
             </div>
             {persona.id === p.id && (
-              <div className="pp-persona-active" style={{ color: accent }}>
+              <div className="tb-persona-active" style={{ color: accent }}>
                 ◉ ACTIVE
               </div>
             )}
           </div>
         ))}
 
-        <div className="pp-persona-card pp-persona-empty">
-          <div className="pp-persona-num">+</div>
-          <div className="pp-persona-name">EMPTY SLOT</div>
-          <p className="pp-persona-desc">
+        <div className="tb-persona-card tb-persona-empty">
+          <div className="tb-persona-num">+</div>
+          <div className="tb-persona-name">EMPTY SLOT</div>
+          <p className="tb-persona-desc">
             Drop a 30-second voice sample to clone. Consent prompt is run end-to-end.
           </p>
-          <div className="pp-persona-drop">
+          <div className="tb-persona-drop">
             <span>DRAG · .wav · .mp3 · ≤ 30s</span>
           </div>
         </div>

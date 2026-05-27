@@ -15,7 +15,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "PERSONA·PLEX — realtime voice console",
+  title: "TSUBAKI — realtime voice console",
   description: "Brutalist editorial realtime voice console.",
 };
 

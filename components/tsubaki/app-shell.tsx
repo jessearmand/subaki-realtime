@@ -31,11 +31,11 @@ export function AppShell() {
   const session = useRealtimeSession({ provider });
 
   return (
-    <div className={`pp-app ${tweaks.dark ? "pp-dark" : ""} ${isMobile ? "pp-mobile" : ""}`}>
+    <div className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}>
       <TopBar callState={session.callState} compact={isMobile} />
-      <div className="pp-shell">
+      <div className="tb-shell">
         {!isMobile && <Sidebar nav={nav} setNav={setNav} persona={persona} provider={provider} />}
-        <main className="pp-main">
+        <main className="tb-main">
           {nav === "call" && (
             <CallView
               tweaks={tweaks}

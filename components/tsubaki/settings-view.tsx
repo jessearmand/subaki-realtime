@@ -29,17 +29,17 @@ export function SettingsView({
     setTools((prev) => prev.map((t) => (t.name === name ? { ...t, on: !t.on } : t)));
 
   return (
-    <div className="pp-settings">
-      <div className="pp-page-hd">
+    <div className="tb-settings">
+      <div className="tb-page-hd">
         <div>
-          <div className="pp-h-eyebrow">003 / CONFIGURATION</div>
-          <h1 className="pp-h1">Settings.</h1>
-          <p className="pp-lede">Local audio chain, model behaviour, tools and safety.</p>
+          <div className="tb-h-eyebrow">003 / CONFIGURATION</div>
+          <h1 className="tb-h1">Settings.</h1>
+          <p className="tb-lede">Local audio chain, model behaviour, tools and safety.</p>
         </div>
       </div>
 
-      <div className="pp-settings-grid">
-        <section className="pp-settings-sec">
+      <div className="tb-settings-grid">
+        <section className="tb-settings-sec">
           <Hr label="AUDIO IN" />
           <FieldRow label="INPUT DEVICE">
             <MicSelector
@@ -51,7 +51,7 @@ export function SettingsView({
             />
           </FieldRow>
           <FieldRow label="LEVEL">
-            <div className="pp-meter">
+            <div className="tb-meter">
               <span style={{ width: "58%", background: accent }} />
             </div>
           </FieldRow>
@@ -66,30 +66,30 @@ export function SettingsView({
               step="0.01"
               value={vad}
               onChange={(e) => setVad(parseFloat(e.target.value))}
-              className="pp-range"
+              className="tb-range"
               style={accentColor}
             />
           </FieldRow>
         </section>
 
-        <section className="pp-settings-sec">
+        <section className="tb-settings-sec">
           <Hr label="AUDIO OUT" />
           <FieldRow label="OUTPUT DEVICE">
-            <select className="pp-select" value={out} onChange={(e) => setOut(e.target.value)}>
+            <select className="tb-select" value={out} onChange={(e) => setOut(e.target.value)}>
               <option>AirPods Pro · Erik</option>
               <option>MacBook Pro Speakers</option>
               <option>Studio Monitors L/R</option>
             </select>
           </FieldRow>
           <FieldRow label="VOLUME">
-            <input type="range" defaultValue="70" className="pp-range" style={accentColor} />
+            <input type="range" defaultValue="70" className="tb-range" style={accentColor} />
           </FieldRow>
           <FieldRow label="SPATIAL">
             <SwitchRow value={false} onChange={() => {}} />
           </FieldRow>
         </section>
 
-        <section className="pp-settings-sec">
+        <section className="tb-settings-sec">
           <Hr label="BEHAVIOUR" />
           <FieldRow label="LATENCY BUDGET" hint={`${latency} ms · balanced`}>
             <input
@@ -99,10 +99,10 @@ export function SettingsView({
               step="10"
               value={latency}
               onChange={(e) => setLatency(parseInt(e.target.value))}
-              className="pp-range"
+              className="tb-range"
               style={accentColor}
             />
-            <div className="pp-range-scale">
+            <div className="tb-range-scale">
               <span>80</span>
               <span>240</span>
               <span>400</span>
@@ -117,7 +117,7 @@ export function SettingsView({
           </FieldRow>
         </section>
 
-        <section className="pp-settings-sec">
+        <section className="tb-settings-sec">
           <Hr label="TOOLS" />
           {tools.map((t) => (
             <ToolRow

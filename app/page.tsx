@@ -1,4 +1,4 @@
-import { Providers } from "@/components/persona-plex/providers";
+import { Providers } from "@/components/tsubaki/providers";
 
 export default function Home() {
   return <Providers />;

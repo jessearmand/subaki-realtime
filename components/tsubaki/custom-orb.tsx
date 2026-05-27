@@ -1,6 +1,6 @@
 // Custom CSS/SVG orb ported from the design bundle (orb.jsx). Covers the
 // brutalist 'mono' and 'particles' styles the ElevenLabs WebGL orb can't do.
-// Animations live in globals.css (.pp-orb*).
+// Animations live in globals.css (.tb-orb*).
 
 import type { CSSProperties } from "react";
 import type { CallState } from "@/lib/realtime/types";
@@ -44,7 +44,7 @@ export function CustomOrb({
   state = "idle",
   style = "mono",
   size = 320,
-  accent = "#C2410C",
+  accent = "#B0122F",
   dark = false,
 }: {
   state?: CallState;
@@ -54,24 +54,24 @@ export function CustomOrb({
   dark?: boolean;
 }) {
   const wrapStyle = {
-    "--pp-orb-size": typeof size === "number" ? `${size}px` : size,
-    "--pp-accent": accent,
+    "--tb-orb-size": typeof size === "number" ? `${size}px` : size,
+    "--tb-accent": accent,
     color: dark ? "#F4F2ED" : "#0A0A09",
   } as CSSProperties;
 
   let inner;
   if (style === "particles") {
     inner = (
-      <div className="pp-orb-particle">
+      <div className="tb-orb-particle">
         <svg viewBox="0 0 100 100">
           <defs>
-            <radialGradient id="pp-pgrad" cx="50%" cy="50%" r="50%">
+            <radialGradient id="tb-pgrad" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor={dark ? "#F4F2ED" : "#0A0A09"} stopOpacity="0.15" />
               <stop offset="55%" stopColor={accent} stopOpacity="0.55" />
               <stop offset="100%" stopColor={accent} stopOpacity="0" />
             </radialGradient>
           </defs>
-          <circle cx="50" cy="50" r="48" fill="url(#pp-pgrad)" />
+          <circle cx="50" cy="50" r="48" fill="url(#tb-pgrad)" />
           {PARTICLES.map((p, i) => (
             <circle
               key={i}
@@ -86,15 +86,15 @@ export function CustomOrb({
       </div>
     );
   } else {
-    inner = <div className="pp-orb-mono" />;
+    inner = <div className="tb-orb-mono" />;
   }
 
   return (
-    <div className={`pp-orb ${dark ? "dark" : ""}`} data-state={state} style={wrapStyle}>
-      <div className="pp-orb-core">{inner}</div>
-      <div className="pp-orb-ring pp-orb-ring-1" />
-      <div className="pp-orb-ring pp-orb-ring-2" />
-      <div className="pp-orb-ring pp-orb-ring-3" />
+    <div className={`tb-orb ${dark ? "dark" : ""}`} data-state={state} style={wrapStyle}>
+      <div className="tb-orb-core">{inner}</div>
+      <div className="tb-orb-ring tb-orb-ring-1" />
+      <div className="tb-orb-ring tb-orb-ring-2" />
+      <div className="tb-orb-ring tb-orb-ring-3" />
     </div>
   );
 }

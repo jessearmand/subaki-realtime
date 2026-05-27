@@ -21,19 +21,19 @@ export function Sidebar({
   provider: Provider;
 }) {
   return (
-    <nav className="pp-side">
-      <div className="pp-side-eyebrow">— SECTIONS</div>
+    <nav className="tb-side">
+      <div className="tb-side-eyebrow">— SECTIONS</div>
       {NAV.map((item) => (
         <button
           key={item.id}
-          className={`pp-nav-item ${nav === item.id ? "on" : ""}`}
+          className={`tb-nav-item ${nav === item.id ? "on" : ""}`}
           onClick={() => setNav(item.id)}
         >
           <span>{item.label}</span>
-          <span className="pp-nav-key">{item.key}</span>
+          <span className="tb-nav-key">{item.key}</span>
         </button>
       ))}
-      <div className="pp-side-foot">
+      <div className="tb-side-foot">
         <div>
           <b>{persona.name}</b>
           <br />
@@ -54,11 +54,11 @@ export function Sidebar({
 
 export function MobileTabs({ nav, setNav }: { nav: NavId; setNav: (id: NavId) => void }) {
   return (
-    <nav className="pp-mobile-tabs">
+    <nav className="tb-mobile-tabs">
       {NAV.map((item) => (
         <button
           key={item.id}
-          className={`pp-mobile-tab ${nav === item.id ? "on" : ""}`}
+          className={`tb-mobile-tab ${nav === item.id ? "on" : ""}`}
           onClick={() => setNav(item.id)}
         >
           {item.label}

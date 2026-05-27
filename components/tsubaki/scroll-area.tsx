@@ -83,12 +83,12 @@ export function ScrollArea({
   }, []);
 
   return (
-    <div className={`pp-scroll-wrap ${className}`} {...rest}>
-      <div className={`pp-scroll-area ${contentClassName}`} ref={scrollRef}>
+    <div className={`tb-scroll-wrap ${className}`} {...rest}>
+      <div className={`tb-scroll-area ${contentClassName}`} ref={scrollRef}>
         {children}
       </div>
       <div
-        className={`pp-scroll-indicator ${show ? "on" : ""} ${dark ? "dark" : ""}`}
+        className={`tb-scroll-indicator ${show ? "on" : ""} ${dark ? "dark" : ""}`}
         ref={indicatorRef}
       />
     </div>

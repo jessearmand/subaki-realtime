@@ -37,7 +37,7 @@ export function ToolsButton({
   }, [open, setOpen]);
 
   return (
-    <div className="pp-tools-wrap" ref={wrapRef}>
+    <div className="tb-tools-wrap" ref={wrapRef}>
       <Btn
         small
         onClick={() => !allOff && setOpen(!open)}
@@ -47,25 +47,25 @@ export function ToolsButton({
         aria-expanded={open}
       >
         <WrenchGlyph />
-        {!allOff && <span className="pp-btn-badge">{active.length}</span>}
+        {!allOff && <span className="tb-btn-badge">{active.length}</span>}
       </Btn>
       {open && !allOff && (
-        <div className="pp-tools-pop" role="dialog" aria-label="Active tools">
-          <div className="pp-tools-pop-hd">
+        <div className="tb-tools-pop" role="dialog" aria-label="Active tools">
+          <div className="tb-tools-pop-hd">
             <span>ACTIVE TOOLS</span>
-            <span className="pp-tools-pop-count">
+            <span className="tb-tools-pop-count">
               {active.length} / {total}
             </span>
           </div>
-          <div className="pp-tools-pop-body">
+          <div className="tb-tools-pop-body">
             {active.map((t) => (
-              <div key={t.name} className="pp-tools-pop-row">
-                <span className="pp-tools-pop-name">{t.name}</span>
-                <span className="pp-tools-pop-label">{t.label}</span>
+              <div key={t.name} className="tb-tools-pop-row">
+                <span className="tb-tools-pop-name">{t.name}</span>
+                <span className="tb-tools-pop-label">{t.label}</span>
               </div>
             ))}
           </div>
-          <div className="pp-tools-pop-foot">
+          <div className="tb-tools-pop-foot">
             <span>↳ CONFIGURE IN SETTINGS</span>
           </div>
         </div>

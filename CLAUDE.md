@@ -21,7 +21,7 @@ This is all a **dev environment — no production yet**. `ELEVENLABS_API_KEY` li
 
 - `components/ui/` — vendored ElevenLabs/shadcn (editable, but **excluded from oxlint**); don't hand-fix its lint warnings
 - `components/tsubaki/` — our components; `app-shell.tsx` is the single `"use client"` boundary
-- `lib/realtime/` — provider-agnostic `SessionApi`; UI never calls a provider directly. `provider.engine` selects the engine: mock (default) · `elevenlabs` (real, `@elevenlabs/react`) · `xai` (real Grok via direct WebSocket — `use-xai-session` + `xai-audio` + the `/api/xai/token` mint route). Both real-engine hooks mount unconditionally and stay inert until selected.
+- `lib/realtime/` — provider-agnostic `SessionApi`; UI never calls a provider directly. `provider.engine` selects the engine: mock (default) · `elevenlabs` (real, `@elevenlabs/react`) · `xai` (real Grok via direct WebSocket — `use-xai-session` + `xai-audio` + the `/api/xai/token` mint route; per-persona model/voice/prompt live in `lib/realtime/xai-agent.ts`, resolved from the selected persona — **not** env vars). Both real-engine hooks mount unconditionally and stay inert until selected.
 - `lib/data.ts` — personas/providers/tools/transcript · `hooks/` — `use-tweaks` (localStorage), `use-media-query`
 - Brutalist CSS lives in `app/globals.css` under `.tsubaki` (CSS vars `--bg/--ink/--accent`); fonts via next/font as `--tb-mono`/`--tb-serif`
 - Dark mode toggles `.dark` on `<html>` (shadcn) **and** `.tsubaki-dark` on `.tsubaki`

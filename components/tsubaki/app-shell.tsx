@@ -28,7 +28,7 @@ export function AppShell() {
   const [tools, setTools] = useState<Tool[]>(TOOLS_DEFAULT);
   const isMobile = useMediaQuery("(max-width: 760px)");
 
-  const session = useRealtimeSession({ provider });
+  const session = useRealtimeSession({ provider, persona });
 
   return (
     <div className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}>

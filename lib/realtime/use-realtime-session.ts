@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversation } from "@elevenlabs/react";
-import { TRANSCRIPT_SCRIPT, type Provider } from "@/lib/data";
+import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { CallState, SessionApi, SessionTurn } from "./types";
 import { useXaiSession } from "./use-xai-session";
 
@@ -42,7 +42,13 @@ function mockCaption(state: CallState): string {
  * unconditionally (rules of hooks) and stay inert until their engine is
  * selected and started.
  */
-export function useRealtimeSession({ provider }: { provider: Provider }): SessionApi {
+export function useRealtimeSession({
+  provider,
+  persona,
+}: {
+  provider: Provider;
+  persona?: Persona;
+}): SessionApi {
   const engine = provider.engine;
   const isReal = !!engine;
 
@@ -83,7 +89,7 @@ export function useRealtimeSession({ provider }: { provider: Provider }): Sessio
   const { status, mode, isSpeaking, startSession, endSession } = conversation;
 
   // ── xAI Grok real conversation (direct WebSocket) ─────────────────────────
-  const xai = useXaiSession(engine === "xai");
+  const xai = useXaiSession(engine === "xai", persona);
 
   // The active call state comes from whichever engine owns the session.
   const activeCallState: CallState = engine === "xai" ? xai.callState : callState;

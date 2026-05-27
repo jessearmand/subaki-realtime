@@ -14,7 +14,9 @@
 // unconditionally (rules of hooks); it stays inert until start().
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Persona } from "@/lib/data";
 import type { CallState, SessionTurn } from "./types";
+import { resolveXaiAgent } from "./xai-agent";
 import {
   base64Pcm16ToFloat32,
   calculateRms,
@@ -23,11 +25,6 @@ import {
 } from "./xai-audio";
 
 const REALTIME_BASE = "wss://api.x.ai/v1/realtime";
-const MODEL = process.env.NEXT_PUBLIC_XAI_MODEL ?? "grok-voice-latest";
-const VOICE = process.env.NEXT_PUBLIC_XAI_VOICE ?? "eve";
-const INSTRUCTIONS =
-  process.env.NEXT_PUBLIC_XAI_INSTRUCTIONS ??
-  "You are Tsubaki, a warm, concise realtime voice assistant. Keep replies short and conversational since they are spoken aloud.";
 const CHUNK_MS = 100;
 const VOL_GAIN = 3.5;
 
@@ -65,7 +62,7 @@ function extractToken(data: unknown): string | null {
   return null;
 }
 
-export function useXaiSession(active: boolean): XaiSession {
+export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
@@ -87,6 +84,9 @@ export function useXaiSession(active: boolean): XaiSession {
   const interruptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef<CallState>("idle");
   stateRef.current = callState;
+  // Latest selected persona, read at start() time (avoids stale closures).
+  const personaRef = useRef(persona);
+  personaRef.current = persona;
 
   const teardown = useCallback(() => {
     if (interruptTimerRef.current) {
@@ -257,8 +257,10 @@ export function useXaiSession(active: boolean): XaiSession {
         setCaption(text);
       };
 
-      // 3) Open the WS with the token in the subprotocol.
-      const ws = new WebSocket(`${REALTIME_BASE}?model=${encodeURIComponent(MODEL)}`, [
+      // 3) Resolve the active persona's agent config, then open the WS
+      //    (token rides the subprotocol since browsers can't set WS headers).
+      const agent = resolveXaiAgent(personaRef.current?.id);
+      const ws = new WebSocket(`${REALTIME_BASE}?model=${encodeURIComponent(agent.model)}`, [
         `xai-client-secret.${token}`,
       ]);
       wsRef.current = ws;
@@ -269,14 +271,14 @@ export function useXaiSession(active: boolean): XaiSession {
         send({
           type: "session.update",
           session: {
-            instructions: INSTRUCTIONS,
-            voice: VOICE,
+            instructions: agent.instructions,
+            voice: agent.voice,
             audio: {
               input: { format: { type: "audio/pcm", rate } },
               output: { format: { type: "audio/pcm", rate } },
             },
-            turn_detection: { type: "server_vad" },
-            tools: [{ type: "web_search" }],
+            turn_detection: agent.turnDetection,
+            tools: agent.tools,
           },
         });
       };
@@ -303,7 +305,7 @@ export function useXaiSession(active: boolean): XaiSession {
               item: {
                 type: "message",
                 role: "user",
-                content: [{ type: "input_text", text: "Greet me briefly." }],
+                content: [{ type: "input_text", text: agent.firstMessage }],
               },
             });
             send({ type: "response.create" });

@@ -53,24 +53,22 @@ connects directly to `wss://api.x.ai/v1/realtime`, authenticated by a short-live
 **ephemeral client-secret** minted server-side at `POST /api/xai/token` — the
 secret `XAI_API_KEY` never reaches the client.
 
-Required (server-side, dev only — keep it in **fnox**, run via `fnox exec -- bun run dev`):
+The only secret is the API key — keep it in **fnox** and run via
+`fnox exec -- bun run dev`. No `XAI_*` values live in `.env` files.
 
-```bash
-XAI_API_KEY=your-xai-api-key       # used only by the /api/xai/token route handler
-```
+Everything declarative (model, voice, multi-line instructions, opening line,
+tools) lives in a typed config module — **`lib/realtime/xai-agent.ts`** — the way
+ElevenLabs keeps each agent in `agent_configs/*.json`. It's a shared `BASE`
+(model/tools/turn-detection) plus a **per-persona** map: each app persona
+(`ARIA`/`ONYX`/`SAGE`/`NOVA`/`ECHO`/`CIPHER`) maps to a Grok voice + its own
+prompt + greeting. The selected persona drives the live session via
+`resolveXaiAgent(personaId)`. Edit that file to personalize — no env strings.
 
-Optional client config (in `.env.local`; all have sensible defaults):
-
-```bash
-NEXT_PUBLIC_XAI_MODEL=grok-voice-latest
-NEXT_PUBLIC_XAI_VOICE=eve                 # eve | ara | rex | sal | leo
-NEXT_PUBLIC_XAI_INSTRUCTIONS="You are Tsubaki, a warm, concise realtime voice assistant…"
-```
-
-Pick the **XAI** row under Providers and press CALL — it mints a token, opens the
-WebSocket, captures the mic as PCM16, plays the agent's audio, streams transcripts,
-and barges in on server-VAD speech detection. Without `XAI_API_KEY` set, CALL shows
-a clear "XAI_API_KEY is not set" caption instead of connecting.
+Pick the **XAI** row under Providers, choose a persona, and press CALL — it mints
+a token, opens the WebSocket, captures the mic as PCM16, plays the agent's audio,
+streams transcripts, and barges in on server-VAD speech detection. Without
+`XAI_API_KEY` set, CALL shows a clear "XAI_API_KEY is not set" caption instead of
+connecting.
 
 ## Architecture
 
@@ -84,7 +82,8 @@ components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
 hooks/                     use-tweaks (localStorage), use-media-query
 lib/data.ts                personas, providers (with engine discriminator), tools, mock transcript
 lib/realtime/              types (CallState, SessionApi), use-realtime-session (dispatcher),
-                           use-xai-session (Grok WS engine), xai-audio (PCM16 + playback)
+                           use-xai-session (Grok WS engine), xai-audio (PCM16 + playback),
+                           xai-agent (per-persona Grok config: voice + prompt + greeting)
 ```
 
 The `useRealtimeSession` hook owns the call state machine. It always calls

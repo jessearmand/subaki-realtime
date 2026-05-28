@@ -4,5 +4,10 @@ default_provider = "ElevenLabs"
 type = "keychain"
 service = "elevenlabs"
 
+[providers.xai]
+type = "keychain"
+service = "fnox"
+
 [secrets]
-ELEVENLABS_API_KEY = { provider = "ElevenLabs", value = "ELEVENLABS_API_KEY" }
+ELEVENLABS_API_KEY= { provider = "ElevenLabs", value = "ELEVENLABS_API_KEY" }
+XAI_API_KEY= { provider = "xai", value = "XAI_API_KEY" }

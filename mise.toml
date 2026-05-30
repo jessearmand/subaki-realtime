@@ -1,2 +1,23 @@
 [env]
 NEXT_PUBLIC_ELEVENLABS_AGENT_ID = "agent_0701ksfnj6kzfg2rq4gznfpjmfx4"
+
+# ── Tasks ─────────────────────────────────────────────────────────────────
+# Secrets (ELEVENLABS_API_KEY, XAI_API_KEY) live in fnox; `fnox exec -- …`
+# injects them for the wrapped command (the recommended fnox + mise pattern).
+# Run with `mise run dev` / `mise run stop`.
+
+[tasks.dev]
+description = "Start the Next.js dev server with fnox secrets loaded"
+run = "fnox exec -- bun run dev"
+
+[tasks.stop]
+description = "Stop the dev server listening on PORT (default 3000)"
+run = '''
+port="${PORT:-3000}"
+pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  kill $pids && echo "Stopped dev server on :$port (PID: $pids)"
+else
+  echo "No dev server running on :$port"
+fi
+'''

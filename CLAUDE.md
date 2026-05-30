@@ -15,6 +15,7 @@ Brutalist/editorial multi-provider voice console. Stack: **Next.js 16 (App Route
 This is all a **dev environment — no production yet**. `ELEVENLABS_API_KEY` lives in **fnox** (`fnox.toml`).
 
 - Run secret-needing commands with **`fnox exec -- <cmd>`** (e.g. `fnox exec -- elevenlabs agents list`). `fnox activate`'s shell hook auto-loads on `cd` but **doesn't fire in non-interactive shells** (the Bash tool), so always prefer `fnox exec`.
+- **Dev server via mise tasks** (`mise.toml`): `mise run dev` (= `fnox exec -- bun run dev`, secrets loaded) and `mise run stop` (kills whatever's bound to `PORT`, default 3000 — the reliable way to clear an orphaned server). `next dev` itself has no stop, so `stop` targets the port, not a tracked PID.
 - Agent IDs are **not secret** (public-widget embeddable). Pass `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` via your own `.env.local`, or inline for a quick test: `NEXT_PUBLIC_ELEVENLABS_AGENT_ID=<id> bun run dev`.
 
 ## Architecture map

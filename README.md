@@ -25,6 +25,13 @@ bun install
 bun run dev        # http://localhost:3000
 ```
 
+Or via **mise** tasks (load fnox secrets and give you a clean stop):
+
+```bash
+mise run dev       # = fnox exec -- bun run dev (ElevenLabs/xAI keys loaded)
+mise run stop      # stop the server on PORT (default 3000)
+```
+
 Other scripts:
 
 ```bash

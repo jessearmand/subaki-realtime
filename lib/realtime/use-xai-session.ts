@@ -20,6 +20,7 @@ import { resolveXaiAgent } from "./xai-agent";
 import {
   base64Pcm16ToFloat32,
   calculateRms,
+  EarlyAudioBuffer,
   float32ToPcm16Base64,
   PlaybackQueue,
 } from "./xai-audio";
@@ -73,6 +74,11 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const procRef = useRef<ScriptProcessorNode | null>(null);
   const playbackRef = useRef<PlaybackQueue | null>(null);
+  // Early mic audio captured before the session is configured (parallel init).
+  const earlyBufRef = useRef<EarlyAudioBuffer | null>(null);
+  // True once `session.updated` arrives: append chunks stream live; until then
+  // they accumulate in earlyBufRef.
+  const streamingRef = useRef(false);
 
   const mutedRef = useRef(false);
   const endedRef = useRef(false);
@@ -123,6 +129,8 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       ctxRef.current = null;
     }
     configuredRef.current = false;
+    streamingRef.current = false;
+    earlyBufRef.current = null;
     agentTurnIdRef.current = null;
     agentBufRef.current = "";
     inputRmsRef.current = 0;
@@ -137,6 +145,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
     configuredRef.current = false;
+    streamingRef.current = false;
     setTurns([]);
     setCallState("connecting");
     setCaption("establishing session…");
@@ -148,8 +157,87 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       setCaption(msg);
     };
 
+    // 1) Bring up audio + mic capture IMMEDIATELY, in parallel with the token
+    //    mint + WS connect (xAI "parallel initialization"). Native AudioContext
+    //    rate is advertised to xAI so no resampling is needed. Early PCM is
+    //    buffered (earlyBufRef) until `session.updated`, then flushed — so the
+    //    first words spoken right after CALL aren't lost.
+    const ctx = new AudioContext();
+    ctxRef.current = ctx;
+    const rate = ctx.sampleRate;
+    playbackRef.current = new PlaybackQueue(ctx);
+    earlyBufRef.current = new EarlyAudioBuffer();
+
+    // Local mutable capture buffers (live as long as the processor node).
+    let pending: Float32Array[] = [];
+    let total = 0;
+    const chunkSize = Math.floor((rate * CHUNK_MS) / 1000);
+
+    const startCapture = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        if (endedRef.current) {
+          // Hung up (or failed) while the mic prompt was open.
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (ctx.state === "suspended") await ctx.resume();
+        const source = ctx.createMediaStreamSource(stream);
+        sourceRef.current = source;
+        const proc = ctx.createScriptProcessor(4096, 1, 1);
+        procRef.current = proc;
+        proc.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0);
+          inputRmsRef.current = mutedRef.current ? 0 : calculateRms(input);
+          if (mutedRef.current) return;
+          pending.push(new Float32Array(input));
+          total += input.length;
+          while (total >= chunkSize) {
+            const chunk = new Float32Array(chunkSize);
+            let offset = 0;
+            while (offset < chunkSize && pending.length > 0) {
+              const buf = pending[0];
+              const need = chunkSize - offset;
+              if (buf.length <= need) {
+                chunk.set(buf, offset);
+                offset += buf.length;
+                total -= buf.length;
+                pending.shift();
+              } else {
+                chunk.set(buf.subarray(0, need), offset);
+                pending[0] = buf.subarray(need);
+                offset += need;
+                total -= need;
+              }
+            }
+            const audio = float32ToPcm16Base64(chunk);
+            // Stream live once configured; until then accumulate the early audio.
+            if (streamingRef.current) send({ type: "input_audio_buffer.append", audio });
+            else earlyBufRef.current?.push(audio);
+          }
+        };
+        source.connect(proc);
+        // Required in some browsers for the callback to fire; the processor
+        // writes no output, so this does not echo the mic to the speakers.
+        proc.connect(ctx.destination);
+      } catch {
+        fail("— microphone permission denied —");
+      }
+    };
+
+    // Kick capture off now — do not await it, and do not wait for the WS.
+    void startCapture();
+
     void (async () => {
-      // 1) Mint the ephemeral client-secret server-side.
+      // 2) Mint the ephemeral client-secret server-side (in parallel with capture).
       let token: string | null = null;
       try {
         const res = await fetch("/api/xai/token", { method: "POST" });
@@ -167,70 +255,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
         fail("— no xAI token returned —");
         return;
       }
-      if (endedRef.current) return; // hung up during fetch
-
-      // 2) Audio context (native rate, advertised to xAI so no resampling).
-      const ctx = new AudioContext();
-      ctxRef.current = ctx;
-      const rate = ctx.sampleRate;
-      playbackRef.current = new PlaybackQueue(ctx);
-
-      // Local mutable capture buffers (live as long as the processor node).
-      let pending: Float32Array[] = [];
-      let total = 0;
-      const chunkSize = Math.floor((rate * CHUNK_MS) / 1000);
-
-      const startCapture = async () => {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              channelCount: 1,
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            },
-          });
-          streamRef.current = stream;
-          if (ctx.state === "suspended") await ctx.resume();
-          const source = ctx.createMediaStreamSource(stream);
-          sourceRef.current = source;
-          const proc = ctx.createScriptProcessor(4096, 1, 1);
-          procRef.current = proc;
-          proc.onaudioprocess = (e) => {
-            const input = e.inputBuffer.getChannelData(0);
-            inputRmsRef.current = mutedRef.current ? 0 : calculateRms(input);
-            if (mutedRef.current) return;
-            pending.push(new Float32Array(input));
-            total += input.length;
-            while (total >= chunkSize) {
-              const chunk = new Float32Array(chunkSize);
-              let offset = 0;
-              while (offset < chunkSize && pending.length > 0) {
-                const buf = pending[0];
-                const need = chunkSize - offset;
-                if (buf.length <= need) {
-                  chunk.set(buf, offset);
-                  offset += buf.length;
-                  total -= buf.length;
-                  pending.shift();
-                } else {
-                  chunk.set(buf.subarray(0, need), offset);
-                  pending[0] = buf.subarray(need);
-                  offset += need;
-                  total -= need;
-                }
-              }
-              send({ type: "input_audio_buffer.append", audio: float32ToPcm16Base64(chunk) });
-            }
-          };
-          source.connect(proc);
-          // Required in some browsers for the callback to fire; the processor
-          // writes no output, so this does not echo the mic to the speakers.
-          proc.connect(ctx.destination);
-        } catch {
-          fail("— microphone permission denied —");
-        }
-      };
+      if (endedRef.current) return; // hung up (or mic denied) during fetch
 
       // ── transcript helpers ──────────────────────────────────────────────
       const pushAgentDelta = (delta: string) => {
@@ -284,6 +309,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       };
 
       ws.onmessage = (event) => {
+        if (endedRef.current) return; // ignore late events after teardown
         let msg: XaiEvent;
         try {
           msg = JSON.parse(typeof event.data === "string" ? event.data : "") as XaiEvent;
@@ -296,7 +322,14 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
             configure();
             break;
           case "session.updated": {
-            void startCapture();
+            // Session is configured: switch capture to live streaming and flush
+            // any audio the user already spoke during connect — in order, BEFORE
+            // the greeting bootstrap — so their opening words reach the model.
+            streamingRef.current = true;
+            const buffered = earlyBufRef.current?.drain() ?? [];
+            for (const audio of buffered) {
+              send({ type: "input_audio_buffer.append", audio });
+            }
             setCallState("listening");
             setCaption("listening…");
             // Prompt an opening line so the agent speaks first.

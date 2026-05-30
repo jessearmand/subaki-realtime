@@ -43,6 +43,47 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+/**
+ * Bounded FIFO of base64 PCM16 `input_audio_buffer.append` chunks captured
+ * BEFORE the xAI session is configured.
+ *
+ * xAI's "parallel initialization" guidance: open the mic immediately (in
+ * parallel with the token mint + WS connect), buffer the user's early speech
+ * client-side, then flush it the instant `session.updated` arrives — so the
+ * first words spoken right after pressing CALL aren't lost. Capacity-bounded so
+ * a stalled or failed configuration can't grow memory without limit (the oldest
+ * chunk is dropped past `maxChunks`).
+ */
+export class EarlyAudioBuffer {
+  private chunks: string[] = [];
+  private readonly maxChunks: number;
+
+  /** @param maxChunks default 50 ≈ 5 s at 100 ms/chunk. */
+  constructor(maxChunks = 50) {
+    this.maxChunks = maxChunks;
+  }
+
+  push(base64: string): void {
+    this.chunks.push(base64);
+    if (this.chunks.length > this.maxChunks) this.chunks.shift();
+  }
+
+  /** Return everything buffered (in order) and reset — flush on session ready. */
+  drain(): string[] {
+    const out = this.chunks;
+    this.chunks = [];
+    return out;
+  }
+
+  clear(): void {
+    this.chunks = [];
+  }
+
+  get size(): number {
+    return this.chunks.length;
+  }
+}
+
 /** Root-mean-square level of a frame, ~0..1. */
 export function calculateRms(float32: Float32Array): number {
   let sum = 0;

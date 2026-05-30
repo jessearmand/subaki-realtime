@@ -1,6 +1,7 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Hr, FieldRow, SwitchRow, ToolRow } from "./primitives";
 import { MicSelector } from "@/components/ui/mic-selector";
+import { useAudioOutputDevices } from "@/hooks/use-audio-output-devices";
 import type { Tool } from "@/lib/data";
 
 export function SettingsView({
@@ -17,12 +18,18 @@ export function SettingsView({
   onMutedChange: (m: boolean) => void;
 }) {
   const [device, setDevice] = useState("");
-  const [out, setOut] = useState("AirPods Pro · Erik");
+  const outputs = useAudioOutputDevices();
+  const [out, setOut] = useState("");
   const [latency, setLatency] = useState(220);
   const [vad, setVad] = useState(0.65);
   const [denoise, setDenoise] = useState(true);
   const [interruptions, setInterruptions] = useState(true);
   const [pushToTalk, setPushToTalk] = useState(false);
+
+  // Default the output selection to the first real device once enumerated.
+  useEffect(() => {
+    if (!out && outputs.length > 0) setOut(outputs[0].deviceId);
+  }, [out, outputs]);
 
   const accentColor = { accentColor: accent } as CSSProperties;
   const toggleTool = (name: string) =>
@@ -47,7 +54,7 @@ export function SettingsView({
               onValueChange={setDevice}
               muted={muted}
               onMutedChange={onMutedChange}
-              className="w-full"
+              className="w-full sm:w-full"
             />
           </FieldRow>
           <FieldRow label="LEVEL">
@@ -76,9 +83,15 @@ export function SettingsView({
           <Hr label="AUDIO OUT" />
           <FieldRow label="OUTPUT DEVICE">
             <select className="tb-select" value={out} onChange={(e) => setOut(e.target.value)}>
-              <option>AirPods Pro · Erik</option>
-              <option>MacBook Pro Speakers</option>
-              <option>Studio Monitors L/R</option>
+              {outputs.length === 0 ? (
+                <option value="">System default</option>
+              ) : (
+                outputs.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label}
+                  </option>
+                ))
+              )}
             </select>
           </FieldRow>
           <FieldRow label="VOLUME">

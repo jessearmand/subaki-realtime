@@ -35,41 +35,20 @@ export function PersonasView({
           >
             <div className="tb-persona-top">
               <div className="tb-persona-num">{String(i + 1).padStart(2, "0")}</div>
-              <div className="tb-persona-portrait">
-                <svg viewBox="0 0 60 60" preserveAspectRatio="none">
-                  <defs>
-                    <pattern
-                      id={`stripe-${p.id}`}
-                      width="4"
-                      height="4"
-                      patternUnits="userSpaceOnUse"
-                      patternTransform="rotate(45)"
-                    >
-                      <line
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="4"
-                        stroke="currentColor"
-                        strokeOpacity="0.35"
-                        strokeWidth="1"
-                      />
-                    </pattern>
-                  </defs>
-                  <rect width="60" height="60" fill={`url(#stripe-${p.id})`} />
-                  <text
-                    x="50%"
-                    y="55%"
-                    textAnchor="middle"
-                    fontFamily="var(--tb-mono)"
-                    fontSize="9"
-                    fill="currentColor"
-                    fillOpacity="0.7"
-                  >
-                    {p.name.slice(0, 3)}
-                  </text>
-                </svg>
-              </div>
+              <div
+                className="tb-persona-dot"
+                style={{
+                  background:
+                    persona.id === p.id ? accent : `color-mix(in srgb, ${accent} 26%, #000)`,
+                  boxShadow:
+                    persona.id === p.id
+                      ? `0 0 0 4px color-mix(in srgb, ${accent} 22%, transparent)`
+                      : "none",
+                }}
+                role="img"
+                aria-label={persona.id === p.id ? "Active persona" : "Inactive persona"}
+                title={persona.id === p.id ? "Active" : "Inactive"}
+              />
             </div>
             <div className="tb-persona-name">{p.name}</div>
             <div className="tb-persona-accent">{p.accent}</div>
@@ -85,11 +64,6 @@ export function PersonasView({
               <span className="tb-mono-num">{p.wpm} wpm</span>
               <span className="tb-mono-num">{p.voice}</span>
             </div>
-            {persona.id === p.id && (
-              <div className="tb-persona-active" style={{ color: accent }}>
-                ◉ ACTIVE
-              </div>
-            )}
           </div>
         ))}
 

@@ -1,5 +1,10 @@
 # TSUBAKI — realtime voice console
 
+[![Oxc](https://github.com/jessearmand/subaki-realtime/actions/workflows/oxc.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/oxc.yml)
+[![Build](https://github.com/jessearmand/subaki-realtime/actions/workflows/build.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/build.yml)
+[![CodeQL](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 A brutalist/editorial realtime voice console, recreated from a Claude Design
 handoff and built on **ElevenLabs UI** primitives. Four screens — Sessions
 (call), Personas, Providers, Settings — with a full call lifecycle

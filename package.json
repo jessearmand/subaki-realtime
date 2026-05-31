@@ -1,12 +1,14 @@
 {
   "name": "realtime-persona",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "oxlint",
+    "lint:github": "oxlint --format=github",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check ."
   },

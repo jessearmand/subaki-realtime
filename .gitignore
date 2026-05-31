@@ -69,3 +69,14 @@ Icon
 *.pem
 **/*.backup.*
 **/*.back.*
+
+# local agent/tool configs — MAY CONTAIN API KEYS, never publish
+.mcp.json
+.codex/
+.firecrawl/
+
+# ElevenLabs CLI working files (agent IDs / scratch config, not source)
+agent_configs/
+agents.json
+tools.json
+tests.json

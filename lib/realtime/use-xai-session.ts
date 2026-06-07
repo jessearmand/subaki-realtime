@@ -258,17 +258,23 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       if (endedRef.current) return; // hung up (or mic denied) during fetch
 
       // ── transcript helpers ──────────────────────────────────────────────
+      // The setTurns updaters must stay PURE (no ref mutation inside): React
+      // StrictMode double-invokes them, so any id/sequence mutation happens here
+      // once, before calling setTurns.
       const pushAgentDelta = (delta: string) => {
         agentBufRef.current += delta;
         const text = agentBufRef.current;
         setCaption(text);
-        setTurns((prev) => {
-          const id = agentTurnIdRef.current;
-          if (id) return prev.map((t) => (t.id === id ? { ...t, text } : t));
-          const newId = `x${turnSeqRef.current++}`;
-          agentTurnIdRef.current = newId;
-          return [...prev, { id: newId, who: "agent", text, live: true }];
-        });
+        let id = agentTurnIdRef.current;
+        if (id) {
+          const tid = id;
+          setTurns((prev) => prev.map((t) => (t.id === tid ? { ...t, text } : t)));
+        } else {
+          id = `x${turnSeqRef.current++}`;
+          agentTurnIdRef.current = id;
+          const tid = id;
+          setTurns((prev) => [...prev, { id: tid, who: "agent", text, live: true }]);
+        }
       };
       const finalizeAgent = () => {
         const id = agentTurnIdRef.current;
@@ -278,7 +284,8 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       };
       const pushUser = (text: string) => {
         if (!text) return;
-        setTurns((prev) => [...prev, { id: `x${turnSeqRef.current++}`, who: "user", text }]);
+        const tid = `x${turnSeqRef.current++}`;
+        setTurns((prev) => [...prev, { id: tid, who: "user", text }]);
         setCaption(text);
       };
 

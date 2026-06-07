@@ -5,6 +5,7 @@ import { useConversation } from "@elevenlabs/react";
 import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { CallState, SessionApi, SessionTurn } from "./types";
 import { useXaiSession } from "./use-xai-session";
+import { useOpenaiSession } from "./use-openai-session";
 
 const SCRIPT_TURNS: SessionTurn[] = TRANSCRIPT_SCRIPT.map((t, i) => ({
   id: `s${i}`,
@@ -36,11 +37,15 @@ function mockCaption(state: CallState): string {
  *   - undefined → the design's mock lifecycle (timers + TRANSCRIPT_SCRIPT)
  *   - "elevenlabs" → real conversation via `@elevenlabs/react`
  *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
+ *   - "openai" → real gpt-realtime-2 voice via WebRTC (useOpenaiSession)
  * All expose the same `SessionApi` so the UI is provider-agnostic.
  *
- * Both real-engine hooks (`useConversation`, `useXaiSession`) are called
- * unconditionally (rules of hooks) and stay inert until their engine is
- * selected and started.
+ * `useXaiSession` and `useOpenaiSession` share one interface, so the dispatcher
+ * picks whichever is active as `custom` and routes every control through it.
+ *
+ * All real-engine hooks (`useConversation`, `useXaiSession`, `useOpenaiSession`)
+ * are called unconditionally (rules of hooks) and stay inert until their engine
+ * is selected and started.
  */
 export function useRealtimeSession({
   provider,
@@ -88,11 +93,14 @@ export function useRealtimeSession({
 
   const { status, mode, isSpeaking, startSession, endSession } = conversation;
 
-  // ── xAI Grok real conversation (direct WebSocket) ─────────────────────────
+  // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
   const xai = useXaiSession(engine === "xai", persona);
+  const openai = useOpenaiSession(engine === "openai", persona);
+  // Whichever custom engine is active owns the session; null ⇒ ElevenLabs/mock.
+  const custom = engine === "xai" ? xai : engine === "openai" ? openai : null;
 
   // The active call state comes from whichever engine owns the session.
-  const activeCallState: CallState = engine === "xai" ? xai.callState : callState;
+  const activeCallState: CallState = custom ? custom.callState : callState;
 
   // Derive real CallState from the conversation status/mode (ElevenLabs only).
   useEffect(() => {
@@ -141,7 +149,7 @@ export function useRealtimeSession({
   // gates its own mic send, so it's always safe.
   useEffect(() => {
     if (engine === "elevenlabs" && status === "connected") conversation.setMuted(muted);
-    else if (engine === "xai") xai.setMuted(muted);
+    else if (custom) custom.setMuted(muted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [muted, engine, status]);
 
@@ -172,8 +180,8 @@ export function useRealtimeSession({
 
   // ── Controls ────────────────────────────────────────────────────────────────
   const start = useCallback(() => {
-    if (engine === "xai") {
-      xai.start();
+    if (custom) {
+      custom.start();
       return;
     }
     if (engine === "elevenlabs") {
@@ -205,11 +213,11 @@ export function useRealtimeSession({
     } else {
       setCallState("ended");
     }
-  }, [engine, xai, callState, startSession, endSession]);
+  }, [engine, custom, callState, startSession, endSession]);
 
   const hangup = useCallback(() => {
-    if (engine === "xai") {
-      xai.stop();
+    if (custom) {
+      custom.stop();
       return;
     }
     if (engine === "elevenlabs") {
@@ -219,11 +227,11 @@ export function useRealtimeSession({
       clearTimers();
     }
     setCallState("ended");
-  }, [engine, xai, endSession]);
+  }, [engine, custom, endSession]);
 
   const interrupt = useCallback(() => {
-    if (engine === "xai") {
-      xai.interrupt();
+    if (custom) {
+      custom.interrupt();
       return;
     }
     if (stateRef.current !== "speaking") return;
@@ -235,7 +243,7 @@ export function useRealtimeSession({
     clearTimers();
     setCallState("interrupted");
     timers.current.push(setTimeout(() => setCallState("listening"), 900));
-  }, [engine, xai, conversation]);
+  }, [engine, custom, conversation]);
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
@@ -271,13 +279,11 @@ export function useRealtimeSession({
     return 0.04;
   }, [engine, conversation]);
 
-  const isXai = engine === "xai";
-
   return useMemo<SessionApi>(
     () => ({
       callState: activeCallState,
-      turns: isXai ? xai.turns : turns,
-      caption: isXai ? xai.caption : caption,
+      turns: custom ? custom.turns : turns,
+      caption: custom ? custom.caption : caption,
       muted,
       elapsed,
       isReal,
@@ -285,13 +291,12 @@ export function useRealtimeSession({
       start,
       hangup,
       interrupt,
-      getInputVolume: isXai ? xai.getInputVolume : getInputVolume,
-      getOutputVolume: isXai ? xai.getOutputVolume : getOutputVolume,
+      getInputVolume: custom ? custom.getInputVolume : getInputVolume,
+      getOutputVolume: custom ? custom.getOutputVolume : getOutputVolume,
     }),
     [
       activeCallState,
-      isXai,
-      xai,
+      custom,
       turns,
       caption,
       muted,

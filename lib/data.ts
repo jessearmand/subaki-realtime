@@ -20,7 +20,7 @@ export interface Provider {
   region: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
-  engine?: "elevenlabs" | "xai";
+  engine?: "elevenlabs" | "xai" | "openai";
 }
 
 export interface Tool {
@@ -100,6 +100,7 @@ export const PROVIDERS: Provider[] = [
     status: "ready",
     region: "US-EAST",
     note: "Default. Best general performance.",
+    engine: "openai",
   },
   {
     id: "elevenlabs",

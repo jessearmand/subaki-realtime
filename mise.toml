@@ -2,7 +2,7 @@
 NEXT_PUBLIC_ELEVENLABS_AGENT_ID = "agent_0701ksfnj6kzfg2rq4gznfpjmfx4"
 
 # ── Tasks ─────────────────────────────────────────────────────────────────
-# Secrets (ELEVENLABS_API_KEY, XAI_API_KEY) live in fnox; `fnox exec -- …`
+# Secrets (ELEVENLABS_API_KEY, XAI_API_KEY, OPENAI_API_KEY) live in fnox; `fnox exec -- …`
 # injects them for the wrapped command (the recommended fnox + mise pattern).
 # Run with `mise run dev` / `mise run stop`.
 

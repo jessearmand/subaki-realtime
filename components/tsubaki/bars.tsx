@@ -6,13 +6,13 @@ import { toBarState, type CallState } from "@/lib/realtime/types";
 
 export function Bars({ callState, count = 10 }: { callState: CallState; count?: number }) {
   return (
-    <div className="tb-elbars" style={{ height: 28, color: "currentColor" }}>
+    <div className="tb-elbars" aria-hidden="true">
       <BarVisualizer
         state={toBarState(callState)}
         barCount={count}
         demo
         centerAlign={false}
-        style={{ height: "100%", gap: "4px" }}
+        className="tb-elbars-viz"
       />
     </div>
   );

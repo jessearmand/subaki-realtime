@@ -596,6 +596,19 @@
 .tb-orb-fit > .tb-orb {
   --tb-orb-size: 100%;
 }
+.tb-gradient-orb-wrap,
+.tb-gradient-orb {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.tb-gradient-orb canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 
 .tb-caption-area {
   min-height: 0;
@@ -1737,10 +1750,32 @@
   animation-delay: -0.42s;
 }
 
-/* Brutalist override for the ElevenLabs BarVisualizer bars */
-.tb-elbars [data-bar],
-.tb-elbars span {
+/* Brutalist override for the ElevenLabs BarVisualizer bars. */
+.tb-elbars {
+  width: 212px;
+  height: 28px;
+  color: var(--ink);
+}
+.tb-elbars-viz {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 4px;
+  background: transparent !important;
   border-radius: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+.tb-elbars-viz > div {
+  max-width: 4px;
+  min-width: 3px;
+  border-radius: 0 !important;
+  background: currentColor !important;
+}
+.tb-elbars-viz > div[data-highlighted="true"] {
+  background: var(--accent) !important;
 }
 
 /* ── Tweaks panel (in-app preferences) ────────────────────────────────── */

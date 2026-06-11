@@ -33,7 +33,7 @@ bun run dev        # http://localhost:3000
 Or via **mise** tasks (load fnox secrets and give you a clean stop):
 
 ```bash
-mise run dev       # = fnox exec -- bun run dev (ElevenLabs/xAI keys loaded)
+mise run dev       # = fnox exec -- bun run dev (ElevenLabs/xAI/OpenAI keys loaded)
 mise run stop      # stop the server on PORT (default 3000)
 ```
 
@@ -76,17 +76,45 @@ ElevenLabs keeps each agent in `agent_configs/*.json`. It's a shared `BASE`
 prompt + greeting. The selected persona drives the live session via
 `resolveXaiAgent(personaId)`. Edit that file to personalize — no env strings.
 
-Pick the **XAI** row under Providers, choose a persona, and press CALL — it mints
-a token, opens the WebSocket, captures the mic as PCM16, plays the agent's audio,
-streams transcripts, and barges in on server-VAD speech detection. Without
-`XAI_API_KEY` set, CALL shows a clear "XAI_API_KEY is not set" caption instead of
-connecting.
+Pick the **XAI** row under Providers (it's the default), choose a persona, and
+press CALL — it mints a token, opens the WebSocket, captures the mic as PCM16,
+plays the agent's audio, streams transcripts, and barges in on server-VAD speech
+detection. Without `XAI_API_KEY` set, CALL shows a clear "XAI_API_KEY is not set"
+caption instead of connecting.
+
+## Wiring the real OpenAI provider
+
+OpenAI's realtime API (`gpt-realtime-2`) connects over **WebRTC** — the browser's
+peer connection carries the audio both ways, so there's no hand-rolled PCM
+pipeline. A short-lived **ephemeral key** is minted server-side at
+`POST /api/openai/token`; the browser then POSTs its SDP offer straight to
+`https://api.openai.com/v1/realtime/calls` with that key, and session control +
+transcripts flow over the `oai-events` data channel. The secret `OPENAI_API_KEY`
+never reaches the client.
+
+Keep `OPENAI_API_KEY` in **fnox** and run via `fnox exec -- bun run dev`. No
+`OPENAI_*` values live in `.env` files.
+
+Per-persona config (voice, multi-line instructions, opening line, reasoning
+effort, turn-detection) lives in the typed module **`lib/realtime/openai-agent.ts`**
+— a shared `BASE` (model / reasoning / `gpt-realtime-whisper` input transcription /
+turn-detection) plus a per-persona map of OpenAI voice + prompt + greeting,
+resolved by `resolveOpenaiAgent(personaId)`. The persona `instructions` follow a
+light slice of OpenAI's Realtime 2.0 prompt skeleton (Role, Personality & Tone,
+Pacing, Unclear Audio, Variety).
+
+Pick the **OPENAI** row under Providers, choose a persona, and press CALL — it
+mints a key, negotiates WebRTC, plays the agent's audio, shows the user + agent
+transcripts (whisper for input), and barges in on server-VAD speech detection.
+Without `OPENAI_API_KEY` set, CALL shows a clear "OPENAI_API_KEY is not set"
+caption instead of connecting.
 
 ## Architecture
 
 ```
 app/                       layout (fonts), globals.css (brutalist + orb styles), page (ConversationProvider)
 app/api/xai/token/         route handler that mints the xAI ephemeral client-secret
+app/api/openai/token/      route handler that mints the OpenAI ephemeral key
 components/ui/             ElevenLabs + shadcn components (copied, editable)
 components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
                            orb-visualizer (hybrid), custom-orb, bars, tools-button,
@@ -95,7 +123,9 @@ hooks/                     use-tweaks (localStorage), use-media-query
 lib/data.ts                personas, providers (with engine discriminator), tools, mock transcript
 lib/realtime/              types (CallState, SessionApi), use-realtime-session (dispatcher),
                            use-xai-session (Grok WS engine), xai-audio (PCM16 + playback),
-                           xai-agent (per-persona Grok config: voice + prompt + greeting)
+                           xai-agent (per-persona Grok config: voice + prompt + greeting),
+                           use-openai-session (gpt-realtime-2 WebRTC engine),
+                           openai-agent (per-persona OpenAI config: voice + prompt + greeting)
 ```
 
 The `useRealtimeSession` hook owns the call state machine. It always calls

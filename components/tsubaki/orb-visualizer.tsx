@@ -57,9 +57,10 @@ export function OrbVisualizer({
 
   if (orbStyle === "gradient") {
     return (
-      <div style={{ width: "100%", height: "100%" }}>
+      <div className="tb-gradient-orb-wrap">
         {mounted && (
           <Orb
+            className="tb-gradient-orb"
             colors={[accent, shade(accent, -60)]}
             agentState={toOrbState(callState)}
             inputVolumeRef={inRef}

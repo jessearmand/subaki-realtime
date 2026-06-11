@@ -20,7 +20,7 @@ export interface Provider {
   region: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
-  engine?: "elevenlabs" | "xai";
+  engine?: "elevenlabs" | "xai" | "openai";
 }
 
 export interface Tool {
@@ -93,13 +93,24 @@ export const PERSONAS: Persona[] = [
 
 export const PROVIDERS: Provider[] = [
   {
+    id: "grok",
+    name: "XAI",
+    model: "grok-voice-latest",
+    latency: 280,
+    status: "beta",
+    region: "US-WEST",
+    note: "Default. Unfiltered, no-nonsense response style.",
+    engine: "xai",
+  },
+  {
     id: "openai",
     name: "OPENAI",
     model: "gpt-realtime-2",
     latency: 220,
     status: "ready",
     region: "US-EAST",
-    note: "Default. Best general performance.",
+    note: "Best general performance.",
+    engine: "openai",
   },
   {
     id: "elevenlabs",
@@ -119,16 +130,6 @@ export const PROVIDERS: Provider[] = [
     status: "ready",
     region: "US-CENTRAL",
     note: "Lowest first-token latency. Video input.",
-  },
-  {
-    id: "grok",
-    name: "XAI",
-    model: "grok-voice-latest",
-    latency: 280,
-    status: "beta",
-    region: "US-WEST",
-    note: "Unfiltered. No-nonsense response style.",
-    engine: "xai",
   },
   {
     id: "mistral",

@@ -76,11 +76,11 @@ ElevenLabs keeps each agent in `agent_configs/*.json`. It's a shared `BASE`
 prompt + greeting. The selected persona drives the live session via
 `resolveXaiAgent(personaId)`. Edit that file to personalize — no env strings.
 
-Pick the **XAI** row under Providers, choose a persona, and press CALL — it mints
-a token, opens the WebSocket, captures the mic as PCM16, plays the agent's audio,
-streams transcripts, and barges in on server-VAD speech detection. Without
-`XAI_API_KEY` set, CALL shows a clear "XAI_API_KEY is not set" caption instead of
-connecting.
+Pick the **XAI** row under Providers (it's the default), choose a persona, and
+press CALL — it mints a token, opens the WebSocket, captures the mic as PCM16,
+plays the agent's audio, streams transcripts, and barges in on server-VAD speech
+detection. Without `XAI_API_KEY` set, CALL shows a clear "XAI_API_KEY is not set"
+caption instead of connecting.
 
 ## Wiring the real OpenAI provider
 
@@ -103,11 +103,11 @@ resolved by `resolveOpenaiAgent(personaId)`. The persona `instructions` follow a
 light slice of OpenAI's Realtime 2.0 prompt skeleton (Role, Personality & Tone,
 Pacing, Unclear Audio, Variety).
 
-Pick the **OPENAI** row under Providers (it's the default), choose a persona, and
-press CALL — it mints a key, negotiates WebRTC, plays the agent's audio, shows the
-user + agent transcripts (whisper for input), and barges in on server-VAD speech
-detection. Without `OPENAI_API_KEY` set, CALL shows a clear "OPENAI_API_KEY is not
-set" caption instead of connecting.
+Pick the **OPENAI** row under Providers, choose a persona, and press CALL — it
+mints a key, negotiates WebRTC, plays the agent's audio, shows the user + agent
+transcripts (whisper for input), and barges in on server-VAD speech detection.
+Without `OPENAI_API_KEY` set, CALL shows a clear "OPENAI_API_KEY is not set"
+caption instead of connecting.
 
 ## Architecture
 

@@ -1,0 +1,97 @@
+name: Claude Review
+
+# Automated, thorough code review on each new PR — tuned for cost.
+#
+# Cost levers (without weakening any single review):
+#   1. Runs on opened / ready_for_review / reopened — NOT `synchronize`. One
+#      review per PR instead of a fresh run on every pushed commit. Re-reviews
+#      after fixes are on-demand: comment "@claude review the latest changes"
+#      (handled by claude.yml).
+#   2. Drafts are skipped until marked ready.
+#   3. concurrency cancels a superseded run if events stack.
+#   4. Path filter skips PRs that touch only docs/meta — no code to review.
+#   5. Minimal tool allowlist (read the diff + comment); the build/oxc
+#      workflows already run tsc, oxlint, oxfmt and build, so the review never
+#      re-runs them.
+
+on:
+    pull_request:
+        types: [opened, ready_for_review, reopened]
+        paths:
+            - "app/**"
+            - "components/**"
+            - "lib/**"
+            - "hooks/**"
+            - "**/*.ts"
+            - "**/*.tsx"
+            - "package.json"
+            - ".github/workflows/**"
+
+# One in-flight review per PR; a newer trigger cancels the older run.
+concurrency:
+    group: claude-review-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+jobs:
+    review:
+        # Skip drafts (they get reviewed once marked ready_for_review).
+        if: github.event.pull_request.draft == false
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
+            id-token: write
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
+
+            - name: Claude Code Review
+              uses: anthropics/claude-code-action@v1
+              with:
+                  claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+                  # Tracking comment with progress checkboxes + full PR context.
+                  track_progress: true
+
+                  prompt: |
+                      REPO: ${{ github.repository }}
+                      PR NUMBER: ${{ github.event.pull_request.number }}
+
+                      Review this PR for Tsubaki, a Next.js 16 / React 19 / TypeScript
+                      realtime voice console. The PR branch is already checked out.
+
+                      First read CLAUDE.md — it is the source of truth for conventions
+                      and the hard-won gotchas of this codebase. Hold the diff against it.
+
+                      Focus on what static analysis cannot catch (CI already runs tsc,
+                      oxlint, oxfmt and `bun run build`, so do NOT re-run or report
+                      type/format/lint/build issues):
+
+                      - Correctness of React hooks: effect dependencies, ref lifecycles,
+                        and especially that setState updaters stay PURE so StrictMode's
+                        double-invoke can't drop transcript turns.
+                      - Resource teardown / leaks: WebRTC peer connections, WebSocket,
+                        AudioContext, MediaStream tracks, and timers must all be released
+                        on hangup, provider switch, and unmount.
+                      - The provider-agnostic SessionApi contract: any new engine must
+                        match the shared surface and wire through the dispatcher cleanly;
+                        the UI must never call a provider directly.
+                      - Secret handling: ephemeral-key mint routes must never leak the
+                        server API key to the client; check error paths don't echo it.
+                      - Next.js boundaries: "use client" only at the boundary, no SSR for
+                        the WebGL orb, client-only providers behind a wrapper.
+
+                      Post inline comments for specific, high-confidence issues. Use a
+                      single top-level comment for overall assessment. Be concise and
+                      skip nitpicks — if the PR looks solid, say so briefly rather than
+                      manufacturing feedback.
+
+                  # Minimal toolset: inspect the PR and comment. No build tools —
+                  # CI covers typecheck/lint/format/build already.
+                  claude_args: |
+                      --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+
+                      # Uncomment to cap cost on large PRs / if you hit usage limits:
+                      # --model claude-sonnet-4-6

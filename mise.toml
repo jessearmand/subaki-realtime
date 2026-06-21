@@ -2,13 +2,39 @@
 NEXT_PUBLIC_ELEVENLABS_AGENT_ID = "agent_0701ksfnj6kzfg2rq4gznfpjmfx4"
 
 # ── Tasks ─────────────────────────────────────────────────────────────────
-# Secrets (ELEVENLABS_API_KEY, XAI_API_KEY, OPENAI_API_KEY) live in fnox; `fnox exec -- …`
-# injects them for the wrapped command (the recommended fnox + mise pattern).
-# Run with `mise run dev` / `mise run stop`.
+# Secrets (ELEVENLABS_API_KEY, XAI_API_KEY, OPENAI_API_KEY, MISTRAL_API_KEY) live in
+# fnox; `fnox exec -- …` injects them for the wrapped command (the recommended
+# fnox + mise pattern). Run with `mise run dev` / `mise run stop`.
+# The cascade engine's realtime STT also needs `mise run stt-proxy` (separate process).
 
 [tasks.dev]
-description = "Start the Next.js dev server with fnox secrets loaded"
-run = "fnox exec -- bun run dev"
+description = "Start the Next.js dev server (+ Mistral STT proxy) with fnox secrets loaded"
+run = '''
+# Start the realtime-STT proxy in the background so the cascade engine has it
+# without a second terminal; tear it down when the dev server exits. Without it,
+# pressing CALL on the MISTRAL provider logs a harmless but noisy
+# ws://localhost:3001 ERR_CONNECTION_REFUSED (STT then falls back to Web Speech).
+fnox exec -- bun run scripts/mistral-stt-proxy.ts &
+proxy_pid=$!
+trap 'kill "$proxy_pid" 2>/dev/null' EXIT INT TERM
+fnox exec -- bun run dev
+'''
+
+[tasks.stt-proxy]
+description = "Mistral realtime-STT WebSocket proxy (adds the Bearer header the browser can't); :3001"
+run = "fnox exec -- bun run scripts/mistral-stt-proxy.ts"
+
+[tasks.stop-stt-proxy]
+description = "Stop the STT proxy listening on STT_PROXY_PORT (default 3001)"
+run = '''
+port="${STT_PROXY_PORT:-3001}"
+pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  kill $pids && echo "Stopped STT proxy on :$port (PID: $pids)"
+else
+  echo "No STT proxy running on :$port"
+fi
+'''
 
 [tasks.stop]
 description = "Stop the dev server listening on PORT (default 3000)"

@@ -9,5 +9,5 @@
     "no-unused-vars": "warn",
     "no-console": "off"
   },
-  "ignorePatterns": [".next", "node_modules", "next-env.d.ts", "components/ui"]
+  "ignorePatterns": [".next", "node_modules", "next-env.d.ts", "components/ui", "scripts"]
 }

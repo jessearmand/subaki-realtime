@@ -114,6 +114,28 @@ export function ScrollGlyph({ size = 14 }: GlyphProps) {
   );
 }
 
+export function SendGlyph({ size = 14 }: GlyphProps) {
+  // Arrow into an end-bar — "send / commit my turn".
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      aria-hidden="true"
+      style={{ display: "block" }}
+    >
+      <line x1="2" y1="8" x2="10" y2="8" />
+      <path d="M7 5 L10 8 L7 11" />
+      <line x1="13" y1="3.5" x2="13" y2="12.5" />
+    </svg>
+  );
+}
+
 export function InterruptGlyph({ size = 14 }: GlyphProps) {
   // Open palm — universal "stop / hold on, let me talk".
   return (

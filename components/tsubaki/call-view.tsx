@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Btn, Tag } from "./primitives";
-import { MicGlyph, InterruptGlyph, PhoneGlyph, PhoneHangGlyph, ScrollGlyph } from "./glyphs";
+import {
+  MicGlyph,
+  InterruptGlyph,
+  PhoneGlyph,
+  PhoneHangGlyph,
+  ScrollGlyph,
+  SendGlyph,
+} from "./glyphs";
 import { OrbVisualizer } from "./orb-visualizer";
 import { Bars } from "./bars";
 import { ScrollArea } from "./scroll-area";
@@ -112,6 +119,16 @@ export function CallView({
           >
             <InterruptGlyph />
           </Btn>
+          {session.canSendTurn && (
+            <Btn
+              small
+              onClick={session.sendTurn}
+              disabled={callState !== "listening"}
+              aria-label="Send turn"
+            >
+              <SendGlyph />
+            </Btn>
+          )}
           <Btn
             primary
             onClick={live ? session.hangup : session.start}

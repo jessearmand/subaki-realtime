@@ -20,7 +20,7 @@ export interface Provider {
   region: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
-  engine?: "elevenlabs" | "xai" | "openai";
+  engine?: "elevenlabs" | "xai" | "openai" | "cascade";
 }
 
 export interface Tool {
@@ -134,11 +134,12 @@ export const PROVIDERS: Provider[] = [
   {
     id: "mistral",
     name: "MISTRAL",
-    model: "voxtral-mini",
-    latency: 410,
-    status: "ready",
+    model: "cascade · gemma-4-31B",
+    latency: 1300,
+    status: "beta",
     region: "EU-FR",
-    note: "EU-resident. Best multilingual coverage.",
+    note: "STT→LM→TTS cascade. HF/Mistral LM; browser STT/TTS (MVP).",
+    engine: "cascade",
   },
   {
     id: "fal",

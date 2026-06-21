@@ -6,6 +6,7 @@ import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { CallState, SessionApi, SessionTurn } from "./types";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
+import { useCascadeSession } from "./use-cascade-session";
 
 const SCRIPT_TURNS: SessionTurn[] = TRANSCRIPT_SCRIPT.map((t, i) => ({
   id: `s${i}`,
@@ -96,8 +97,10 @@ export function useRealtimeSession({
   // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
   const xai = useXaiSession(engine === "xai", persona);
   const openai = useOpenaiSession(engine === "openai", persona);
+  const cascade = useCascadeSession(engine === "cascade", persona);
   // Whichever custom engine is active owns the session; null ⇒ ElevenLabs/mock.
-  const custom = engine === "xai" ? xai : engine === "openai" ? openai : null;
+  const custom =
+    engine === "xai" ? xai : engine === "openai" ? openai : engine === "cascade" ? cascade : null;
 
   // The active call state comes from whichever engine owns the session.
   const activeCallState: CallState = custom ? custom.callState : callState;
@@ -247,6 +250,12 @@ export function useRealtimeSession({
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
+  // Manual end-of-turn — only the half-duplex cascade STT exposes one.
+  const canSendTurn = engine === "cascade";
+  const sendTurn = useCallback(() => {
+    if (engine === "cascade") cascade.sendTurn();
+  }, [engine, cascade]);
+
   // ── Volumes for the orb ───────────────────────────────────────────────────
   const getInputVolume = useCallback(() => {
     if (engine === "elevenlabs") {
@@ -291,6 +300,8 @@ export function useRealtimeSession({
       start,
       hangup,
       interrupt,
+      sendTurn,
+      canSendTurn,
       getInputVolume: custom ? custom.getInputVolume : getInputVolume,
       getOutputVolume: custom ? custom.getOutputVolume : getOutputVolume,
     }),
@@ -306,6 +317,8 @@ export function useRealtimeSession({
       start,
       hangup,
       interrupt,
+      sendTurn,
+      canSendTurn,
       getInputVolume,
       getOutputVolume,
     ],

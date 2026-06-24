@@ -149,15 +149,22 @@ Speech — harmless, but `mise run dev` avoids it by starting the proxy up front
 
 The browser captures the mic at 16 kHz PCM16, streams it to the proxy, and turns
 Mistral's `transcription.text.delta` events into user turns. Turn boundaries are
-client-side, with two ways to end a turn (in `lib/realtime/mistral-stt.ts`):
+client-side, with two ways to end a turn:
 
-- **Auto (adaptive VAD).** A silence gate ends the turn after `SILENCE_HANGOVER_MS`
-  below an *adaptive* voice threshold that tracks the room's noise floor — so a
-  noisy mic doesn't read as perpetual speech (the failure mode of a fixed
-  threshold). Tunables: `BASE_VOICE_RMS`, `NOISE_MULT`, `SILENCE_HANGOVER_MS`.
+- **Auto (Silero VAD).** `lib/realtime/silero-vad.ts` runs **Silero VAD** in the
+  browser via `onnxruntime-web` (WASM) — a neural voice-activity detector that
+  answers *"did the user stop talking?"* (Mistral answers *"what did they say?"*).
+  Per-frame speech probability drives a hysteresis state machine; `onSpeechEnd`
+  ends the turn. This replaced an energy/RMS gate that sat below most rooms' noise
+  floor and never fired. Tunables (in `mistral-stt.ts`): `VAD_REDEMPTION_MS` (the
+  "let me finish" window), `VAD_POSITIVE`/`VAD_NEGATIVE`, `VAD_MIN_SPEECH_MS`. The
+  ~2 MB model (snakers4/silero-vad, 64-sample context + 512 frame @ 16 kHz) and the
+  ORT WASM both load from jsDelivr at call-start, pinned to `SILERO_TAG` /
+  `ORT_VERSION` in `silero-vad.ts` — no model binary in the repo. If it fails to
+  load (offline / CDN down), transcription still works — use Send.
 - **Manual send.** A **Send-turn** button (the arrow-into-bar glyph, enabled only
   while listening) ends your turn instantly via `endTurnNow()` — the dependable
-  path when the room is noisy or you want to barge ahead.
+  override when you want to barge ahead.
 
 The proxy URL is `NEXT_PUBLIC_MISTRAL_STT_WS` (default `ws://localhost:3001`). **If
 the proxy is down or the mic is denied, STT automatically falls back to browser
@@ -191,7 +198,8 @@ lib/realtime/              types (CallState, SessionApi), use-realtime-session (
                            use-openai-session (gpt-realtime-2 WebRTC engine),
                            openai-agent (per-persona OpenAI config: voice + prompt + greeting),
                            use-cascade-session (STT→LM→TTS engine), cascade-agent (per-persona),
-                           mistral-stt (16 kHz capture + realtime-STT client w/ silence-gated turns)
+                           mistral-stt (16 kHz capture + realtime-STT client),
+                           silero-vad (Silero VAD v5 via onnxruntime-web for turn detection)
 ```
 
 The `useRealtimeSession` hook owns the call state machine. It always calls

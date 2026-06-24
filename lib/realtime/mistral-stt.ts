@@ -7,28 +7,28 @@
 //
 // Turn boundaries are OURS, not the model's: Mistral only emits a terminal
 // `transcription.done` after `input_audio.end` (which closes the stream), so for
-// a back-and-forth conversation we keep the session open and decide a turn ended
-// with a client-side silence gate (`SILENCE_HANGOVER_MS`) — directly fixing the
-// "it cut me off before I finished" feel of the browser's fixed endpointer.
+// a back-and-forth conversation we keep the session open and detect end-of-turn
+// client-side with **Silero VAD** (neural, via onnxruntime-web — see
+// `silero-vad.ts`). Silero answers "did the user stop talking?"; Mistral answers
+// "what did they say?". This replaced an energy/RMS gate that sat below most
+// rooms' noise floor and never fired end-of-turn. The manual "send" button
+// (`endTurnNow`) remains as an override.
 //
 // The proxy lives at NEXT_PUBLIC_MISTRAL_STT_WS (default ws://localhost:3001);
 // run it with `mise run stt-proxy`. See scripts/mistral-stt-proxy.ts.
 
 import { calculateRms, float32ToPcm16Base64 } from "./xai-audio";
+import { SileroVad } from "./silero-vad";
 
 const SAMPLE_RATE = 16000;
-const PROC_FRAMES = 2048; // ~128 ms per audio block (finer VAD resolution)
-// VAD tunables. The voice threshold is ADAPTIVE: it tracks the room's noise floor
-// (EMA over silent frames) so a noisy mic doesn't read as perpetual speech — the
-// old fixed 0.012 was below many rooms' noise floor, so the turn never ended.
-const BASE_VOICE_RMS = 0.02; // floor of the dynamic threshold (quiet room)
-const MAX_VOICE_RMS = 0.09; // cap so a loud room still lets speech through
-const NOISE_MULT = 2.2; // speech must exceed noiseFloor × this …
-const NOISE_MARGIN = 0.008; // … plus this fixed margin
-const NOISE_EMA = 0.04; // noise-floor adaptation rate per silent frame
-const MIN_SPEECH_MS = 300; // ignore sub-300 ms blips (clicks, breaths)
-const SILENCE_HANGOVER_MS = 800; // silence after speech that ends the turn
+const PROC_FRAMES = 2048; // ~128 ms per audio block; a multiple of Silero's 512
 const FLUSH_GRACE_MS = 350; // wait after flush to collect trailing deltas
+// Silero turn-detection tunables (forwarded to SileroVad). Bump REDEMPTION_MS if
+// it still ends turns too early; raise the thresholds if a noisy room over-triggers.
+const VAD_REDEMPTION_MS = 900; // silence after speech that ends the turn
+const VAD_MIN_SPEECH_MS = 250; // shortest run that counts as a real turn
+const VAD_POSITIVE = 0.3; // speech-probability onset threshold
+const VAD_NEGATIVE = 0.25; // speech-probability release threshold
 
 export interface MistralSttOptions {
   /** WebSocket URL of the local proxy (e.g. ws://localhost:3001). */
@@ -52,6 +52,7 @@ export class MistralStt {
   private stream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private proc: ScriptProcessorNode | null = null;
+  private vad: SileroVad | null = null;
 
   // Capture gating: audio is streamed only while listening && !muted.
   private listening = false;
@@ -59,16 +60,11 @@ export class MistralStt {
   private closed = false;
   private ready = false;
 
-  // Per-turn transcript + VAD state.
+  // Per-turn transcript + emit state.
   private turnText = "";
-  private voiceMs = 0;
-  private hadSpeech = false;
-  private silenceMs = 0;
   private emitting = false;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private inputRms = 0;
-  // Adaptive background-noise estimate (EMA over silent frames).
-  private noiseFloor = 0.01;
 
   constructor(opts: MistralSttOptions) {
     this.opts = opts;
@@ -102,14 +98,43 @@ export class MistralStt {
     this.source = source;
     const proc = ctx.createScriptProcessor(PROC_FRAMES, 1, 1);
     this.proc = proc;
-    const frameMs = (PROC_FRAMES / SAMPLE_RATE) * 1000;
-    proc.onaudioprocess = (e) => this.onAudio(e.inputBuffer.getChannelData(0), frameMs);
+    proc.onaudioprocess = (e) => this.onAudio(e.inputBuffer.getChannelData(0));
     source.connect(proc);
     // Required for the callback to fire in some browsers; the node writes no
     // output, so this does not echo the mic to the speakers.
     proc.connect(ctx.destination);
 
     this.connectWs();
+
+    // Load Silero VAD in parallel (model fetch + ORT init). The mic streams to
+    // Mistral immediately; turn detection comes online once this resolves. If it
+    // fails to load, transcription still works — the manual "send" button covers
+    // turn ends.
+    SileroVad.create({
+      positiveSpeechThreshold: VAD_POSITIVE,
+      negativeSpeechThreshold: VAD_NEGATIVE,
+      redemptionMs: VAD_REDEMPTION_MS,
+      minSpeechMs: VAD_MIN_SPEECH_MS,
+      onSpeechStart: () => this.onSpeechStart(),
+      onSpeechEnd: () => this.onSpeechEnd(),
+      // VAD failure is non-fatal: don't tear down Mistral STT (and don't fall
+      // back to Web Speech, which is the thing we moved away from) — just lose
+      // auto turn-detection. The manual "send" button still ends turns.
+      onError: (m) => console.warn(`[mistral-stt] VAD: ${m} — use the Send button`),
+    })
+      .then((vad) => {
+        if (this.closed) {
+          vad.close();
+          return;
+        }
+        this.vad = vad;
+        if (this.listening && !this.muted) vad.resume();
+      })
+      .catch((err) => {
+        console.warn(
+          `[mistral-stt] Silero VAD load failed (${err instanceof Error ? err.message : "unknown"}) — use the Send button`,
+        );
+      });
   }
 
   private connectWs(): void {
@@ -173,36 +198,35 @@ export class MistralStt {
     }
   }
 
-  private onAudio(input: Float32Array, frameMs: number): void {
+  private onAudio(input: Float32Array): void {
     if (this.muted || !this.listening) {
       this.inputRms = 0;
       return;
     }
-    const rms = calculateRms(input);
-    this.inputRms = rms;
+    this.inputRms = calculateRms(input); // for the input-level visualizer only
 
     const ws = this.ws;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "input_audio.append", audio: float32ToPcm16Base64(input) }));
     }
 
-    // Adaptive silence-gated turn detection.
-    const threshold = Math.min(
-      MAX_VOICE_RMS,
-      Math.max(BASE_VOICE_RMS, this.noiseFloor * NOISE_MULT + NOISE_MARGIN),
-    );
-    if (rms >= threshold) {
-      this.voiceMs += frameMs;
-      this.silenceMs = 0;
-      if (this.voiceMs >= MIN_SPEECH_MS) this.hadSpeech = true;
-    } else {
-      // Below threshold ⇒ this frame is ambient; let the noise floor track it.
-      this.noiseFloor = this.noiseFloor * (1 - NOISE_EMA) + rms * NOISE_EMA;
-      if (this.hadSpeech) {
-        this.silenceMs += frameMs;
-        if (this.silenceMs >= SILENCE_HANGOVER_MS && !this.emitting) this.endTurn();
-      }
+    // Silero decides the turn boundaries (onSpeechEnd → endTurn).
+    this.vad?.feed(input);
+  }
+
+  /** Silero saw speech begin. If an emit was pending (user paused, then resumed
+   *  within the flush grace), cancel it and keep building the same turn. */
+  private onSpeechStart(): void {
+    if (this.emitting && this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+      this.emitting = false;
     }
+  }
+
+  /** Silero saw end-of-speech ⇒ end the turn (flush + emit). */
+  private onSpeechEnd(): void {
+    if (this.listening && !this.muted && !this.emitting) this.endTurn();
   }
 
   /** Manually end the current turn now (the "send" button), bypassing the
@@ -231,9 +255,6 @@ export class MistralStt {
 
   private resetTurn(): void {
     this.turnText = "";
-    this.voiceMs = 0;
-    this.silenceMs = 0;
-    this.hadSpeech = false;
   }
 
   /** Resume capturing the user (call when entering the listening state). */
@@ -245,6 +266,7 @@ export class MistralStt {
       this.flushTimer = null;
     }
     this.listening = true;
+    this.vad?.resume();
   }
 
   /** Pause capturing (call while the assistant is speaking). Drops any
@@ -252,6 +274,7 @@ export class MistralStt {
   pause(): void {
     this.listening = false;
     this.resetTurn();
+    this.vad?.pause();
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
@@ -275,6 +298,8 @@ export class MistralStt {
   stop(): void {
     this.closed = true;
     this.listening = false;
+    this.vad?.close();
+    this.vad = null;
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;

@@ -1,34 +1,25 @@
 // Server-side LM stage for the STT → LM → TTS cascade engine.
 //
-// Streams an OpenAI-compatible chat completion from one of two backends, chosen
-// per request so the cascade can swap LMs without the browser ever seeing a key:
-//   - "hf"      → Hugging Face Inference router (any served model, e.g. gemma-4-31B-it)
-//   - "mistral" → Mistral API (e.g. mistral-small-latest)
-// The upstream SSE body is piped straight back to the client, which reads the
-// `data: {...}` deltas. Reasoning models stream chain-of-thought in a separate
-// field and emit no spoken `content` until thinking ends, so we send
-// `chat_template_kwargs.enable_thinking:false` by default (ignored otherwise).
+// Streams an OpenAI-compatible chat completion from a backend chosen per request,
+// so the cascade can swap LMs without the browser ever seeing a key. Backends and
+// their URL + secret env key are defined in `config/lm-models.json` (the model
+// catalog) — add one there, not here. The upstream SSE body is piped straight back
+// to the client, which reads the `data: {...}` deltas. Reasoning models stream
+// chain-of-thought in a separate field and emit no spoken `content` until thinking
+// ends, so for backends with `supportsThinking` we send
+// `chat_template_kwargs.enable_thinking:false` by default.
 //
-// Dev only: HF_TOKEN / MISTRAL_API_KEY are provided via fnox (`fnox exec -- bun run dev`).
+// Dev only: the secret named by each backend's `envKey` (HF_TOKEN / MISTRAL_API_KEY)
+// is provided via fnox (`fnox exec -- bun run dev`).
+
+import { DEFAULT_LM_MODEL, resolveLmBackend } from "@/lib/realtime/lm-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Backend = "hf" | "mistral";
-
-const UPSTREAM: Record<Backend, { url: string; envKey: string }> = {
-  hf: {
-    url: "https://router.huggingface.co/v1/chat/completions",
-    envKey: "HF_TOKEN",
-  },
-  mistral: {
-    url: "https://api.mistral.ai/v1/chat/completions",
-    envKey: "MISTRAL_API_KEY",
-  },
-};
-
 interface LlmRequest {
-  backend?: Backend;
+  /** Backend id from the catalog (a key of `backends` in config/lm-models.json). */
+  backend?: string;
   model?: string;
   messages?: Array<{ role: string; content: string }>;
   maxTokens?: number;
@@ -44,12 +35,18 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const backend: Backend = body.backend === "mistral" ? "mistral" : "hf";
-  const { url, envKey } = UPSTREAM[backend];
-  const apiKey = process.env[envKey];
+  const backendId = body.backend ?? DEFAULT_LM_MODEL.backend;
+  const backend = resolveLmBackend(backendId);
+  if (!backend) {
+    return Response.json(
+      { error: `Unknown LM backend "${backendId}" (define it in config/lm-models.json).` },
+      { status: 400 },
+    );
+  }
+  const apiKey = process.env[backend.envKey];
   if (!apiKey) {
     return Response.json(
-      { error: `${envKey} is not set on the server (provide it via fnox).` },
+      { error: `${backend.envKey} is not set on the server (provide it via fnox).` },
       { status: 500 },
     );
   }
@@ -64,16 +61,16 @@ export async function POST(req: Request): Promise<Response> {
     max_tokens: body.maxTokens ?? 256,
     temperature: body.temperature ?? 0.7,
   };
-  // HF-router reasoning models toggle chain-of-thought via chat_template_kwargs
-  // (ignored by non-reasoning models). Mistral's API rejects unknown fields (422),
-  // so only send it for the HF backend.
-  if (backend === "hf") {
+  // Reasoning models toggle chain-of-thought via chat_template_kwargs (ignored by
+  // non-reasoning models). APIs that reject unknown fields (e.g. Mistral, 422) set
+  // supportsThinking:false in the catalog, so we only send it where it's accepted.
+  if (backend.supportsThinking) {
     upstreamBody.chat_template_kwargs = { enable_thinking: body.enableThinking ?? false };
   }
 
   let upstream: Response;
   try {
-    upstream = await fetch(url, {
+    upstream = await fetch(backend.url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -85,7 +82,7 @@ export async function POST(req: Request): Promise<Response> {
   } catch (err) {
     return Response.json(
       {
-        error: `Failed to reach ${backend}: ${err instanceof Error ? err.message : "network error"}`,
+        error: `Failed to reach ${backendId}: ${err instanceof Error ? err.message : "network error"}`,
       },
       { status: 502 },
     );
@@ -94,7 +91,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => "");
     return Response.json(
-      { error: `${backend} chat completion failed`, status: upstream.status, detail },
+      { error: `${backendId} chat completion failed`, status: upstream.status, detail },
       { status: 502 },
     );
   }

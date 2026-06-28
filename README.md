@@ -117,9 +117,9 @@ caption instead of connecting.
 
 The **MISTRAL** row runs a turn-based cascade instead of a single full-duplex
 model: **Mistral realtime STT** → **`/api/llm`** (LM) → **`/api/mistral/tts`**
-(Voxtral TTS). Per-persona backend/model/voice live in
-`lib/realtime/cascade-agent.ts` (default LM `hf` + `google/gemma-4-31B-it`; voices
-are Mistral slugs like `en_paul_neutral`):
+(Voxtral TTS). Per-persona prompt/voice live in `lib/realtime/cascade-agent.ts`
+(voices are Mistral slugs like `en_paul_neutral`); the **LM model is configured
+separately** (see below):
 
 ```bash
 # in fnox (run via `fnox exec -- bun run dev` / `mise run dev`)
@@ -171,11 +171,42 @@ the proxy is down or the mic is denied, STT automatically falls back to browser
 Web Speech** (Chrome-only), so the cascade still works with just the dev server.
 
 `/api/llm` streams an OpenAI-compatible chat completion from the chosen backend,
-keeping the key server-side; HF reasoning models run with thinking off by default
-(`chat_template_kwargs`, sent only to the HF backend — Mistral rejects it) so they
-answer immediately. `/api/mistral/tts` returns per-clause MP3 from
-`voxtral-mini-tts-2603`. Without `HF_TOKEN` the agent turn shows "— LM error —";
-without `MISTRAL_API_KEY` TTS falls back to browser speechSynthesis.
+keeping the key server-side; backends that `supportsThinking` run with thinking off
+by default (`chat_template_kwargs` — Mistral rejects it, so its catalog entry sets
+it false) so reasoning models answer immediately. `/api/mistral/tts` returns
+per-clause MP3 from `voxtral-mini-tts-2603`. Without the LM backend's token the
+agent turn shows "— LM error —"; without `MISTRAL_API_KEY` TTS falls back to
+browser speechSynthesis.
+
+### Configuring the cascade LM
+
+The LM model isn't hard-coded — it's a catalog in **`config/lm-models.json`**, read
+by both the server route (`app/api/llm`) and the client agent
+(`lib/realtime/cascade-agent.ts`) via `lib/realtime/lm-config.ts`. No live model
+list is fetched. To change the model every cascade persona uses, edit `default`:
+
+```jsonc
+{
+  "default": "mistral-small",          // ← the active model id
+  "backends": {
+    "hf":      { "url": "https://router.huggingface.co/v1/chat/completions", "envKey": "HF_TOKEN",        "supportsThinking": true },
+    "mistral": { "url": "https://api.mistral.ai/v1/chat/completions",        "envKey": "MISTRAL_API_KEY", "supportsThinking": false }
+  },
+  "models": [
+    { "id": "gemma-4-31b", "label": "...", "backend": "hf",      "model": "google/gemma-4-31B-it", "temperature": 0.7, "maxTokens": 200 },
+    { "id": "mistral-small", "label": "...", "backend": "mistral", "model": "mistral-small-latest", "temperature": 0.7, "maxTokens": 200 }
+  ]
+}
+```
+
+- **Add a model**: append to `models` (any model the backend serves — e.g. another
+  HF-router repo) and point `default` at its `id`.
+- **Add a backend**: add an entry to `backends` (OpenAI-compatible `url` + the
+  `envKey` naming its fnox secret); reference it from a model's `backend`. The key
+  value stays in fnox and is read server-side only — only the env var *name* and the
+  public URL live in the file.
+- **Per-persona override**: give a persona an `lmModelId` (a catalog id) in
+  `cascade-agent.ts` to pin it to a different model than the global default.
 
 ## Architecture
 
@@ -183,8 +214,9 @@ without `MISTRAL_API_KEY` TTS falls back to browser speechSynthesis.
 app/                       layout (fonts), globals.css (brutalist + orb styles), page (ConversationProvider)
 app/api/xai/token/         route handler that mints the xAI ephemeral client-secret
 app/api/openai/token/      route handler that mints the OpenAI ephemeral key
-app/api/llm/               streaming chat-completion route (HF router | Mistral) for the cascade engine
+app/api/llm/               streaming chat-completion route (catalog-driven backend) for the cascade engine
 app/api/mistral/tts/       Mistral Voxtral TTS route (per-clause MP3) for the cascade engine
+config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
 scripts/mistral-stt-proxy.ts  standalone bun WS proxy: browser ↔ Mistral realtime STT (adds Bearer header)
 components/ui/             ElevenLabs + shadcn components (copied, editable)
 components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
@@ -198,6 +230,7 @@ lib/realtime/              types (CallState, SessionApi), use-realtime-session (
                            use-openai-session (gpt-realtime-2 WebRTC engine),
                            openai-agent (per-persona OpenAI config: voice + prompt + greeting),
                            use-cascade-session (STT→LM→TTS engine), cascade-agent (per-persona),
+                           lm-config (loads config/lm-models.json — backends + model catalog),
                            mistral-stt (16 kHz capture + realtime-STT client),
                            silero-vad (Silero VAD v5 via onnxruntime-web for turn detection)
 ```

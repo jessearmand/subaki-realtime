@@ -8,13 +8,17 @@
 // STT is browser-native (Web Speech, MVP); TTS uses Mistral via /api/mistral/tts
 // (`ttsVoice` = a Mistral voice_id slug, e.g. en_paul_neutral) with a browser
 // speechSynthesis fallback when the key/route is unavailable.
+//
+// The LM model/backend default comes from the catalog in `config/lm-models.json`
+// (via lib/realtime/lm-config) — change the model there, not here. A persona can
+// pin a different catalog entry with `lmModelId`.
 
-export type LmBackend = "hf" | "mistral";
+import { DEFAULT_LM_MODEL, resolveLmModel } from "./lm-config";
 
 export interface CascadeAgentConfig {
-  /** Which /api/llm backend serves this persona. */
-  lmBackend: LmBackend;
-  /** Model id: an HF-router repo (e.g. google/gemma-4-31B-it) or a Mistral model. */
+  /** Which /api/llm backend serves this persona (a catalog backend id). */
+  lmBackend: string;
+  /** Upstream model id (HF-router repo or Mistral model name). */
   lmModel: string;
   /** Spoken-style system prompt. */
   instructions: string;
@@ -32,15 +36,12 @@ You are speaking to the user live over audio, so keep every reply short, natural
 Never use markdown, bullet lists, headings, code blocks, or emoji — your words are spoken aloud.
 If you don't know something, say so briefly.`;
 
-const BASE: Pick<CascadeAgentConfig, "lmBackend" | "lmModel" | "temperature" | "maxTokens"> = {
-  lmBackend: "hf",
-  lmModel: "google/gemma-4-31B-it",
-  temperature: 0.7,
-  maxTokens: 200,
-};
-
 type PersonaAgent = Pick<CascadeAgentConfig, "instructions" | "firstMessage" | "ttsVoice"> &
-  Partial<Pick<CascadeAgentConfig, "lmBackend" | "lmModel" | "temperature" | "maxTokens">>;
+  Partial<Pick<CascadeAgentConfig, "lmBackend" | "lmModel" | "temperature" | "maxTokens">> & {
+    /** Pin this persona to a catalog model id (config/lm-models.json). Overridden
+     *  by an explicit lmBackend/lmModel on the same persona. */
+    lmModelId?: string;
+  };
 
 // Keyed by `Persona.id` from lib/data.ts. Edit freely — the prompt document per persona.
 const PERSONA_AGENTS: Record<string, PersonaAgent> = {
@@ -106,8 +107,18 @@ const DEFAULT_PERSONA_AGENT: PersonaAgent = {
 You are a warm, engaging, empathetic realtime voice assistant.`,
 };
 
-/** Merge the selected persona over the shared BASE config. */
+/** Merge the selected persona over the catalog-driven model defaults. A persona's
+ *  `lmModelId` picks a catalog entry; an explicit `lmBackend`/`lmModel`/etc. on the
+ *  persona still wins over that. */
 export function resolveCascadeAgent(personaId?: string): CascadeAgentConfig {
   const persona = (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
-  return { ...BASE, ...persona };
+  const { lmModelId, ...personaConfig } = persona;
+  const model = lmModelId ? resolveLmModel(lmModelId) : DEFAULT_LM_MODEL;
+  const base = {
+    lmBackend: model.backend,
+    lmModel: model.model,
+    temperature: model.temperature,
+    maxTokens: model.maxTokens,
+  };
+  return { ...base, ...personaConfig };
 }

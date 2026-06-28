@@ -15,9 +15,9 @@ export interface Provider {
   id: string;
   name: string;
   model: string;
-  latency: number;
-  status: "ready" | "beta";
-  region: string;
+  // Where the transport runs: "remote" for hosted realtime APIs, "local / remote"
+  // for the cascade (browser STT/TTS + hosted LM).
+  exec: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
   engine?: "elevenlabs" | "xai" | "openai" | "cascade";
@@ -96,9 +96,7 @@ export const PROVIDERS: Provider[] = [
     id: "grok",
     name: "XAI",
     model: "grok-voice-latest",
-    latency: 280,
-    status: "beta",
-    region: "US-WEST",
+    exec: "remote",
     note: "Default. Unfiltered, no-nonsense response style.",
     engine: "xai",
   },
@@ -106,9 +104,7 @@ export const PROVIDERS: Provider[] = [
     id: "openai",
     name: "OPENAI",
     model: "gpt-realtime-2",
-    latency: 220,
-    status: "ready",
-    region: "US-EAST",
+    exec: "remote",
     note: "Best general performance.",
     engine: "openai",
   },
@@ -116,9 +112,7 @@ export const PROVIDERS: Provider[] = [
     id: "elevenlabs",
     name: "ELEVENLABS",
     model: "eleven-agents-v3",
-    latency: 310,
-    status: "ready",
-    region: "EU-WEST",
+    exec: "remote",
     note: "Best voice fidelity. ElevenLabs UI native.",
     engine: "elevenlabs",
   },
@@ -126,18 +120,14 @@ export const PROVIDERS: Provider[] = [
     id: "gemini",
     name: "GOOGLE",
     model: "gemini-live-2.5",
-    latency: 195,
-    status: "ready",
-    region: "US-CENTRAL",
+    exec: "remote",
     note: "Lowest first-token latency. Video input.",
   },
   {
     id: "mistral",
     name: "MISTRAL",
     model: "cascade · gemma-4-31B",
-    latency: 1300,
-    status: "beta",
-    region: "EU-FR",
+    exec: "local / remote",
     note: "STT→LM→TTS cascade. HF/Mistral LM; browser STT/TTS (MVP).",
     engine: "cascade",
   },
@@ -145,9 +135,7 @@ export const PROVIDERS: Provider[] = [
     id: "fal",
     name: "FAL.AI",
     model: "personaplex-rt",
-    latency: 240,
-    status: "ready",
-    region: "US-WEST",
+    exec: "remote",
     note: "Cheapest tokens. Self-host alternative.",
   },
 ];

@@ -425,6 +425,33 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+/* Primed: the expected next action — Send while LISTENING on a manual-turn
+   (cascade) engine, where the user must commit their turn. Accent outline + a
+   soft pulse so it reads as the thing to press. */
+.tb-btn-primed:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: tb-btn-primed 1.6s ease-in-out infinite;
+}
+.tb-btn-primed:not(:disabled):hover {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+@keyframes tb-btn-primed {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-btn-primed:not(:disabled) {
+    animation: none;
+  }
+}
 
 .tb-tag {
   display: inline-flex;
@@ -592,6 +619,38 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
+  position: relative;
+}
+/* Manual-turn "hold" ring — a held, slowly-rotating dashed ring shown only while
+   LISTENING on a half-duplex (cascade) engine, where the turn ends on SEND. Reads
+   differently from the auto pulse rings, which would imply automatic end-of-turn. */
+.tb-orb-hold {
+  position: absolute;
+  inset: -7%;
+  border: 1.5px dashed var(--accent);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: tb-orb-hold 9s linear infinite;
+}
+@keyframes tb-orb-hold {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.7;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-orb-hold {
+    animation: none;
+    opacity: 0.85;
+  }
 }
 .tb-orb-fit > .tb-orb {
   --tb-orb-size: 100%;
@@ -645,6 +704,16 @@
   color: var(--ink-3);
   font-size: 10px;
   letter-spacing: 0.08em;
+}
+/* Manual-turn hint — silence gate is off on this engine, so the user ends the
+   turn with SEND. Shown under the orb state while listening on cascade. */
+.tb-call-manual-hint {
+  margin-top: 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
 }
 .tb-call-state-dot {
   width: 8px;

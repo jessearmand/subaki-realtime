@@ -7,6 +7,8 @@ interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   danger?: boolean;
   primary?: boolean;
   small?: boolean;
+  /** The expected next action — accent outline + soft pulse (e.g. Send while listening). */
+  primed?: boolean;
 }
 
 export function Btn({
@@ -15,6 +17,7 @@ export function Btn({
   danger,
   primary,
   small,
+  primed,
   className = "",
   ...rest
 }: BtnProps) {
@@ -24,6 +27,7 @@ export function Btn({
     danger ? "tb-btn-danger" : "",
     primary ? "tb-btn-primary" : "",
     small ? "tb-btn-sm" : "",
+    primed ? "tb-btn-primed" : "",
     className,
   ]
     .filter(Boolean)

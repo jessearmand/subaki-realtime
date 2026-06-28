@@ -45,7 +45,7 @@ export function Sidebar({
           active transport
         </div>
         <div>
-          p50 <b style={{ fontVariantNumeric: "tabular-nums" }}>{provider.latency} ms</b>
+          exec <b>{provider.exec.toUpperCase()}</b>
         </div>
       </div>
     </nav>

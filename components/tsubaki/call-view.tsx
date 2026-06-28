@@ -30,7 +30,7 @@ export function CallView({
   provider: Provider;
   tools: Tool[];
 }) {
-  const { callState, caption, muted, elapsed } = session;
+  const { callState, caption, muted, elapsed, canSendTurn } = session;
   const [transcriptOpen, setTranscriptOpen] = useState(tweaks.transcript === "drawer");
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -74,6 +74,10 @@ export function CallView({
                 getInputVolume={session.getInputVolume}
                 getOutputVolume={session.getOutputVolume}
               />
+              {/* Manual-turn "hold" ring — a held, slowly-rotating dashed ring that
+                  reads differently from auto pulse rings: this engine ends the turn
+                  only when the user presses SEND (cascade STT, half-duplex). */}
+              {canSendTurn && callState === "listening" && <div className="tb-orb-hold" />}
             </div>
             {(callState === "listening" || callState === "interrupted") && (
               <Bars callState={callState} count={10} />
@@ -87,6 +91,9 @@ export function CallView({
                 </span>
               )}
             </div>
+            {canSendTurn && callState === "listening" && (
+              <div className="tb-call-manual-hint">MANUAL TURN · PRESS SEND TO REPLY</div>
+            )}
           </div>
 
           {tweaks.transcript !== "off" && (
@@ -119,9 +126,10 @@ export function CallView({
           >
             <InterruptGlyph />
           </Btn>
-          {session.canSendTurn && (
+          {canSendTurn && (
             <Btn
               small
+              primed={callState === "listening"}
               onClick={session.sendTurn}
               disabled={callState !== "listening"}
               aria-label="Send turn"

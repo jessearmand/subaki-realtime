@@ -11,6 +11,10 @@ export function ProvidersView({
   setProvider: (p: Provider) => void;
   accent: string;
 }) {
+  // Surface the headline transport changes in the active-provider detail:
+  // the cascade engine (STT→LM→TTS) and neural Silero VAD turn detection.
+  const isCascade = provider.engine === "cascade";
+
   return (
     <div className="tb-providers">
       <div className="tb-page-hd">
@@ -35,9 +39,7 @@ export function ProvidersView({
             <th style={{ width: 32 }} />
             <th>VENDOR</th>
             <th>MODEL</th>
-            <th>REGION</th>
-            <th style={{ textAlign: "right" }}>P50 LAT</th>
-            <th>STATUS</th>
+            <th>EXECUTION</th>
             <th>NOTES</th>
           </tr>
         </thead>
@@ -54,13 +56,9 @@ export function ProvidersView({
                 </td>
                 <td className="tb-table-vendor">{p.name}</td>
                 <td className="tb-mono-num">{p.model}</td>
-                <td>{p.region}</td>
-                <td className="tb-mono-num" style={{ textAlign: "right" }}>
-                  {p.latency} ms
-                </td>
                 <td>
                   <Tag mono dot>
-                    {p.status.toUpperCase()}
+                    {p.exec.toUpperCase()}
                   </Tag>
                 </td>
                 <td className="tb-table-note">{p.note}</td>
@@ -74,12 +72,18 @@ export function ProvidersView({
         <Hr label={`ACTIVE · ${provider.name}`} />
         <div className="tb-prov-specs">
           <Spec
-            label="ENDPOINT"
-            value={`wss://rt.${provider.id}.tsubaki.dev`}
-            sub="auto-resolved"
+            label="ENGINE"
+            value={provider.engine ? provider.engine.toUpperCase() : "MOCK"}
+            sub={
+              isCascade ? "STT → LM → TTS" : provider.engine ? "native realtime" : "design preview"
+            }
           />
           <Spec label="CODEC" value="opus 48k mono" sub="server-side resample" />
-          <Spec label="VAD" value="server" sub="200 ms silence → end-of-turn" />
+          <Spec
+            label="TURN DETECTION"
+            value={isCascade ? "Silero VAD" : "server VAD"}
+            sub={isCascade ? "neural · browser · send-turn" : "200 ms silence → end-of-turn"}
+          />
           <Spec label="TOOL FORMAT" value="OpenAI-style fn-calls" sub="translated per provider" />
         </div>
       </div>

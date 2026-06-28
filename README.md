@@ -208,6 +208,12 @@ list is fetched. To change the model every cascade persona uses, edit `default`:
 - **Per-persona override**: give a persona an `lmModelId` (a catalog id) in
   `cascade-agent.ts` to pin it to a different model than the global default.
 
+At runtime, the **Providers** view shows an **LM MODEL** picker inset under any
+provider whose engine has a multi-model catalog (just the cascade today) — pick a
+model there and it persists (localStorage `tsubaki.lm-model`) and applies on the
+next turn. Precedence: that runtime pick > a persona's `lmModelId` > the catalog
+`default`. Providers with a single fixed model show no inset.
+
 ## Architecture
 
 ```

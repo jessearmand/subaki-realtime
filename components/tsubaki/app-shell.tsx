@@ -17,18 +17,20 @@ import {
   type Tool,
 } from "@/lib/data";
 import { useTweaks } from "@/hooks/use-tweaks";
+import { useLmModel } from "@/hooks/use-lm-model";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useRealtimeSession } from "@/lib/realtime/use-realtime-session";
 
 export function AppShell() {
   const [tweaks, setTweak] = useTweaks();
+  const [lmModelId, setLmModelId] = useLmModel();
   const [nav, setNav] = useState<NavId>("call");
   const [persona, setPersona] = useState<Persona>(PERSONAS[0]);
   const [provider, setProvider] = useState<Provider>(PROVIDERS[0]);
   const [tools, setTools] = useState<Tool[]>(TOOLS_DEFAULT);
   const isMobile = useMediaQuery("(max-width: 760px)");
 
-  const session = useRealtimeSession({ provider, persona });
+  const session = useRealtimeSession({ provider, persona, lmModelId });
 
   return (
     <div className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}>
@@ -49,7 +51,13 @@ export function AppShell() {
             <PersonasView persona={persona} setPersona={setPersona} accent={tweaks.accent} />
           )}
           {nav === "providers" && (
-            <ProvidersView provider={provider} setProvider={setProvider} accent={tweaks.accent} />
+            <ProvidersView
+              provider={provider}
+              setProvider={setProvider}
+              accent={tweaks.accent}
+              lmModelId={lmModelId}
+              setLmModelId={setLmModelId}
+            />
           )}
           {nav === "settings" && (
             <SettingsView

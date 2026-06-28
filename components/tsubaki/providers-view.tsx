@@ -1,15 +1,21 @@
+import { Fragment } from "react";
 import { Tag, Hr, Spec } from "./primitives";
 import { PROVIDERS, type Provider } from "@/lib/data";
+import { lmModelsForEngine } from "@/lib/realtime/lm-config";
 import type { CSSProperties } from "react";
 
 export function ProvidersView({
   provider,
   setProvider,
   accent,
+  lmModelId,
+  setLmModelId,
 }: {
   provider: Provider;
   setProvider: (p: Provider) => void;
   accent: string;
+  lmModelId: string;
+  setLmModelId: (id: string) => void;
 }) {
   // Surface the headline transport changes in the active-provider detail:
   // the cascade engine (STT→LM→TTS) and neural Silero VAD turn detection.
@@ -49,20 +55,55 @@ export function ProvidersView({
             const radioStyle: CSSProperties | undefined = on
               ? { background: accent, borderColor: accent }
               : undefined;
+            // Only engines with a multi-model catalog (cascade) get a picker inset;
+            // single-model / unconfigurable providers render no inset.
+            const models = lmModelsForEngine(p.engine);
             return (
-              <tr key={p.id} className={on ? "on" : ""} onClick={() => setProvider(p)}>
-                <td className="tb-table-radio">
-                  <span className={on ? "on" : ""} style={radioStyle} />
-                </td>
-                <td className="tb-table-vendor">{p.name}</td>
-                <td className="tb-mono-num">{p.model}</td>
-                <td>
-                  <Tag mono dot>
-                    {p.exec.toUpperCase()}
-                  </Tag>
-                </td>
-                <td className="tb-table-note">{p.note}</td>
-              </tr>
+              <Fragment key={p.id}>
+                <tr className={on ? "on" : ""} onClick={() => setProvider(p)}>
+                  <td className="tb-table-radio">
+                    <span className={on ? "on" : ""} style={radioStyle} />
+                  </td>
+                  <td className="tb-table-vendor">{p.name}</td>
+                  <td className="tb-mono-num">{p.model}</td>
+                  <td>
+                    <Tag mono dot>
+                      {p.exec.toUpperCase()}
+                    </Tag>
+                  </td>
+                  <td className="tb-table-note">{p.note}</td>
+                </tr>
+                {models.length > 1 && (
+                  <tr className={`tb-prov-inset-row ${on ? "on" : ""}`}>
+                    <td />
+                    <td colSpan={4} className="tb-prov-inset">
+                      <div className="tb-prov-inset-inner">
+                        <span className="tb-prov-inset-l">LM MODEL</span>
+                        <span className="tb-prov-models">
+                          {models.map((m) => {
+                            const sel = m.id === lmModelId;
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                className={`tb-prov-model ${sel ? "on" : ""}`}
+                                style={sel ? { borderColor: accent, color: accent } : undefined}
+                                aria-pressed={sel}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLmModelId(m.id);
+                                }}
+                              >
+                                {m.label}
+                              </button>
+                            );
+                          })}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             );
           })}
         </tbody>

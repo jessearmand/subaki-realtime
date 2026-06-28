@@ -107,13 +107,18 @@ const DEFAULT_PERSONA_AGENT: PersonaAgent = {
 You are a warm, engaging, empathetic realtime voice assistant.`,
 };
 
-/** Merge the selected persona over the catalog-driven model defaults. A persona's
- *  `lmModelId` picks a catalog entry; an explicit `lmBackend`/`lmModel`/etc. on the
- *  persona still wins over that. */
-export function resolveCascadeAgent(personaId?: string): CascadeAgentConfig {
+/** Merge the selected persona over the catalog-driven model defaults. Model
+ *  precedence: an explicit UI selection (`overrideModelId`, from the Providers
+ *  picker) > the persona's `lmModelId` pin > the catalog default. An explicit
+ *  `lmBackend`/`lmModel`/etc. on the persona still wins over all of that. */
+export function resolveCascadeAgent(
+  personaId?: string,
+  overrideModelId?: string,
+): CascadeAgentConfig {
   const persona = (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
   const { lmModelId, ...personaConfig } = persona;
-  const model = lmModelId ? resolveLmModel(lmModelId) : DEFAULT_LM_MODEL;
+  const modelId = overrideModelId ?? lmModelId;
+  const model = modelId ? resolveLmModel(modelId) : DEFAULT_LM_MODEL;
   const base = {
     lmBackend: model.backend,
     lmModel: model.model,

@@ -1080,6 +1080,66 @@
   background: var(--accent-fg);
 }
 
+/* Per-provider model-picker inset — a detail row under a provider whose engine
+   has a multi-model catalog (cascade). Single-model providers render no inset. */
+.tb-prov-inset-row {
+  cursor: default;
+}
+.tb-prov-inset-row.on {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+/* The inset itself stays a real table-cell (so colSpan spans the full row); the
+   flex layout lives on an inner wrapper — a flex `td` would drop out of the table
+   box model and shrink to its content. */
+.tb-prov-inset {
+  padding: 8px 14px 10px !important;
+  background: var(--hair-2);
+  border-bottom: 1px solid var(--hair);
+}
+.tb-prov-inset-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tb-prov-inset-l {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
+.tb-prov-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tb-prov-model {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  background: var(--paper);
+  color: var(--ink-2);
+  border: 1px solid var(--hair);
+  border-radius: 0;
+  transition:
+    background 0.08s,
+    color 0.08s,
+    border-color 0.08s;
+}
+.tb-prov-model:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.tb-prov-model.on {
+  font-weight: 600;
+}
+
 .tb-prov-detail {
   padding: 8px 28px 0;
 }

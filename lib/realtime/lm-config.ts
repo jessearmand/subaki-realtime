@@ -60,3 +60,10 @@ export function resolveLmModel(id?: string): LmModel {
 
 /** The catalog default — the model every cascade persona uses unless it pins one. */
 export const DEFAULT_LM_MODEL: LmModel = resolveLmModel(CONFIG.default);
+
+/** Selectable LM models for a provider's engine. Only the cascade engine draws
+ *  from the catalog; every other engine is a single fixed realtime model (so the
+ *  Providers view shows no model picker for them). */
+export function lmModelsForEngine(engine?: string): LmModel[] {
+  return engine === "cascade" ? LM_MODELS : [];
+}

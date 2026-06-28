@@ -88,12 +88,21 @@ function nextClause(buf: string): [string, string] | null {
   return null;
 }
 
-export function useCascadeSession(active: boolean, persona?: Persona): CascadeSession {
+export function useCascadeSession(
+  active: boolean,
+  persona?: Persona,
+  lmModelId?: string,
+): CascadeSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
 
-  const agent = useMemo(() => resolveCascadeAgent(persona?.id), [persona?.id]);
+  // Re-resolves when the persona or the picked LM model changes; agentRef is
+  // updated every render, so a model switch applies on the next turn.
+  const agent = useMemo(
+    () => resolveCascadeAgent(persona?.id, lmModelId),
+    [persona?.id, lmModelId],
+  );
   const agentRef = useRef(agent);
   agentRef.current = agent;
 

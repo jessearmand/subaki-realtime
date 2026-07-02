@@ -67,7 +67,7 @@ The "glitch" is the model's *speaking rhythm*, and it falls out of how Moshi/Per
 
 4. **It's the price of full-duplex.** The very mechanism that lets the model listen and barge-in at 80 ms granularity (per-frame speak/pad decision, no look-ahead) is what makes its monologue halting. One autoregressive stream can't be both narration-smooth *and* 80 ms-responsive. RL-seamless tunes *when* to pad/yield in response to the user (turn-taking); the *within-turn* word-by-word delivery is structural — hence unchanged in the A/B above.
 
-**Implication:** smoothing the opening would require a different model class (a non-streaming TTS for the greeting, or a half-duplex turn-based model that plans whole utterances), not a fix to PersonaPlex serving. Within PersonaPlex the levers are marginal — lower audio-sampling temperature, voice-prompt choice, or simply accepting it as the model's conversational voice. This is the main reason to evaluate alternatives like Voxtral (below).
+**Implication:** smoothing the opening would require a different model class (a non-streaming TTS for the greeting, or a half-duplex turn-based model that plans whole utterances), not a fix to PersonaPlex serving. Within PersonaPlex the levers are marginal — lower audio-sampling temperature, voice-prompt choice, or simply accepting it as the model's conversational voice. This is the main reason to evaluate alternatives like the Voxtral cascade ([voxtral-local-inference.md](voxtral-local-inference.md)).
 
 ## Measurements
 
@@ -199,82 +199,17 @@ Checked whether [mlx-audio](https://github.com/Blaizzy/mlx-audio) (Blaizzy, MIT,
 
 **Verdict:** keep `personaplex-mlx` for PersonaPlex full-duplex; do **not** migrate the codec. Revisit mlx-audio only if/when Tsubaki wants **non-duplex local engines** (local TTS like Kokoro/Sesame, or local STT like Parakeet/Whisper) — its OpenAI-compatible API would map cleanly onto the existing token-mint/engine patterns.
 
-## Voxtral evaluation (`~/Develop/voxmlx`) — STT leg of a cascade alternative (2026-06-18)
+## Voxtral cascade (Mistral) — moved
 
-[Voxtral-Mini-4B-Realtime-2602](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602) (Mistral, **Apache-2.0**) run via [awni/voxmlx](https://github.com/awni/voxmlx). **Crucial: this is streaming ASR — audio in, *text* out. It does not generate speech.** ≈3.4B LM + ≈970M causal audio encoder, natively streaming (sliding-window attention, <500 ms claimed delay), 16 kHz mono input, 13 languages.
+The Voxtral STT / TTS / cascade-LM evaluation (the turn-based STT → LM → TTS
+alternative to full-duplex PersonaPlex) now lives in its own document:
+[voxtral-local-inference.md](voxtral-local-inference.md). It covers the local
+Voxtral models, the swappable-LM cascade prototype, end-to-end latency, and what
+the app needs to run the `MISTRAL` cascade row on-device. The full-duplex
+architecture (this doc) and the cascade are complementary tracks; see the
+comparison table there.
 
-Setup + benchmark on **M5 Max**:
-
-```bash
-git clone https://github.com/awni/voxmlx ~/Develop/voxmlx && cd ~/Develop/voxmlx
-uv venv --python 3.12 .venv && uv pip install -e . --python .venv/bin/python
-.venv/bin/voxmlx --audio file.flac          # file mode (soundfile-readable: flac/16k wav)
-.venv/bin/voxmlx                            # mic streaming
-```
-
-Default model `mlx-community/Voxtral-Mini-4B-Realtime-6bit`. Results (offline batch, `scratchpad/bench_vox.py`): **RTF 0.091 (~11× realtime), 4.2 GB peak, 0.6 s load**, transcription verbatim-accurate on a 10.6 s clip. (A non-16k/flac WAV failed `soundfile.read`; convert with ffmpeg to `-ac 1 -ar 16000` flac first.) The <500 ms figure is the streaming-mode incremental delay (design-bound, not compute-bound — compute has 10× headroom).
-
-### Where Voxtral fits: full-duplex vs cascade
-
-Voxtral is **not** a PersonaPlex replacement — it's the STT front-end of a **cascade voice agent** (Voxtral STT → LLM → TTS). The two architectures trade off exactly along the cadence axis above:
-
-| | PersonaPlex (full-duplex S2S) | Cascade (Voxtral STT → LLM → TTS) |
-| --- | ----------------------------- | --------------------------------- |
-| Assistant voice | model generates it directly | a TTS generates it |
-| Opening/utterance cadence | **halting** (per-frame speak/pad, no look-ahead) | **smooth** (TTS plans whole utterance) |
-| Turn-taking / barge-in | native, 80 ms granularity | turn-based; barge-in must be engineered (VAD + cancel) |
-| Latency | ~160 ms model delay, one model | STT delay + LLM TTFT + TTS first-chunk (additive) |
-| Voice/persona control | voice-prompt `.pt` + text prompt | full control (any TTS voice + system prompt) |
-| Local cost on M5 Max | q8 ~10.1 GB, RTF 0.84 | Voxtral 4.2 GB RTF 0.09 + LLM + TTS (all fit in 64 GB) |
-
-So the cascade is the path to **smooth assistant speech** (no halting greeting) at the cost of true full-duplex naturalness and additive latency. Voxtral's tiny footprint (4.2 GB, RTF 0.09) leaves ample room for a local LLM + a local TTS on the same machine.
-
-### Voxtral TTS — the speech-generation leg (2026-06-18)
-
-[Voxtral-4B-TTS-2603](https://huggingface.co/mistralai/Voxtral-4B-TTS-2603) (Mistral; **CC-BY-NC-4.0**, non-commercial) runs locally via **mlx-audio** (`voxtral_tts` model) using the `mlx-community/Voxtral-4B-TTS-2603-mlx-6bit` quant. 1016 M params, 24 kHz output, **20 preset voices** across 9 languages (`casual_male`, `cheerful_female`, `neutral_male`, `fr_female`, …; no voice cloning).
-
-Setup + benchmark on **M5 Max**:
-
-```bash
-cd ~/Develop/mlx-audio && uv venv --python 3.12 .venv
-uv pip install -e . "mistral-common[audio]" soundfile --python .venv/bin/python
-# from mlx_audio.tts.utils import load; model = load("mlx-community/Voxtral-4B-TTS-2603-mlx-6bit")
-# model.generate(text=..., voice="cheerful_female", stream=True, streaming_interval=0.08)
-```
-
-Results (`scratchpad/bench_tts.py`, `ttfa.py`): **RTF 0.25–0.42, 4.0 GB peak, 3.0 s load**, coherent multilingual speech. Crucially for a cascade, it **streams**: warm **time-to-first-audio ≈ 80–150 ms** (at `streaming_interval=0.08–0.5`; the first cold call is ~1 s due to graph compile). At `temperature=0.8` sentence-boundary pauses can run long (a 1.4 s inter-sentence gap in one take) — `temperature≈0.5` tightens it. Samples staged at `~/Develop/mlx-audio/voxtral_tts_medical*.wav`.
-
-**Both cascade legs now validated locally:** Voxtral STT (4.2 GB, RTF 0.09, <500 ms streaming) + Voxtral TTS (4.0 GB, RTF ≤0.42, TTFA ~80–150 ms) ≈ **8 GB combined**, leaving room for a local LLM in 64 GB — and the whole cascade can run alongside or instead of PersonaPlex (10.1 GB). Whether the TTS actually *sounds* smoother than PersonaPlex's halting opening is a by-ear judgment (the voiced-fraction metric, 45–68 %, overlaps PersonaPlex and can't distinguish planned-TTS prosody from per-frame halting) — but a TTS plans whole utterances, which is the structural reason to expect smoother delivery. License caveat: TTS is **CC-BY-NC** (non-commercial), same constraint as RL-seamless.
-
-**Open next step for the cascade:** ~~wire Voxtral STT → LLM → Voxtral TTS and measure end-to-end latency~~ — done (below). Remaining: engineer barge-in (VAD + TTS cancel) since the cascade is turn-based, and a live Voxtral streaming/mic test.
-
-### Cascade LM stage + end-to-end latency (2026-06-19)
-
-Prototyped the **LM → TTS** half of the cascade with a **swappable LM** at `~/Develop/voice-cascade/` (Python; runs in the mlx-audio venv). The LM stage (`cascade/lm.py`) has one streaming interface with two backends, selected by `LMConfig.engine` — mirroring Tsubaki's `provider.engine` switch:
-
-- **`engine="hf"`** — any chat model on the Hub via **Hugging Face Inference Providers**. `huggingface_hub.InferenceClient(provider="auto")` hits the unified **router** (OpenAI-compatible, `https://router.huggingface.co/v1/chat/completions`); token from `hf auth login`/`HF_TOKEN`, no local download. (The `hf-inference` provider itself now serves mostly CPU/small models — embeddings, GPT-2-class; for conversational LLMs use `provider="auto"`, which routes to partner providers.)
-- **`engine="openai"`** — any **OpenAI-compatible** `/v1` endpoint via httpx+SSE: a local **`llama-server`** (llama.cpp, GGUF + MTP speculative decoding), vLLM, etc. The difference from the HF path is just `base_url`. This is the path for models **no provider serves** (e.g. `Qwen/Qwen3.6-35B-A3B` → BadRequest on the router; only GGUF/FP8 quants exist).
-- **`engine="local"`** — local MLX via `mlx-lm` (written, untested — needs a model download).
-
-Router LM results (M5 Max client, `bench_lm.py`, `provider="auto"`):
-
-| model | TTFT | tok/s | served? |
-| ----- | ---- | ----- | ------- |
-| meta-llama/Llama-3.3-70B-Instruct | 439 ms | 34.1 | ✅ router |
-| Qwen/Qwen2.5-7B-Instruct | ~510 ms | ~22 | ✅ router |
-| google/gemma-4-31B-it | 503 ms | 15.2 | ✅ router (needs thinking off) |
-| google/gemma-4-26B-A4B-it | 0.5–5 s (variable) | 1.8–10 | ✅ router (MoE; provider-side queueing) |
-| Qwen/Qwen3.6-35B-A3B | — | — | ❌ no provider → local llama-server |
-
-**Reasoning-model gotcha (found via `gemma-4-31B-it`):** it streams chain-of-thought in a `reasoning` delta field and emits **no spoken `content`** until thinking ends, so a small token budget yields zero output (looks like a failure — a `TypeError` in the bench, not a 4xx). Fix: `LMConfig.enable_thinking=False` (default), which sends `chat_template_kwargs:{enable_thinking:false}` to the router (`extra_body`) and llama-server (body) — ignored by non-reasoning models. A voice agent never speaks the CoT and wants low latency, so thinking stays off. With it off, `gemma-4-31B-it` → TTFT 503 ms.
-
-End-to-end cascade → Voxtral TTS: `gemma-4-31B-it` **TTFT 503 ms, first-audio 1357 ms**; `gemma-4-26B-A4B-it` first-audio 1187 ms (when the provider is warm). Local llama-server path (gemma-4-12B-it-qat GGUF + MTP) wired via `engine="openai"`.
-
-End-to-end **LM → clause-segmented → Voxtral TTS** (`demo_cascade.py`, TTS warmed): **time-to-first-audio ≈ 1.5 s**, full short turn ≈ 3 s. Dominated by the LM round-trip (network + provider TTFT ~0.5 s + first-clause generation) plus warm TTS synth (~80–150 ms). A *local* LM removes the network leg; PersonaPlex full-duplex is ~160 ms by comparison — **the cascade trades ~1.5 s first-audio for smooth, controllable, any-model speech.**
-
-**Mapping to subaki-realtime:** the LM call becomes a server-side Next.js route (`app/api/llm/route.ts`) that streams the router's OpenAI-compatible response (SSE), keeping the HF token server-side like the existing `xai`/`openai` token-mint routes; a `engine: "cascade-hf" | "cascade-local"` entry in `lib/data.ts` plus a per-persona LM `model`/`provider`/`system_prompt` (parallel to `xai-agent.ts`) makes **local ↔ HF a one-field switch**. Full design in `~/Develop/voice-cascade/README.md`.
-
-## Tsubaki integration (assessed, not yet built)
+## Tsubaki integration — full-duplex `moshi` engine (assessed, not yet built)
 
 No WebRTC and no new web architecture needed — this is a direct-WebSocket engine like xAI (`lib/realtime/use-xai-session.ts`):
 

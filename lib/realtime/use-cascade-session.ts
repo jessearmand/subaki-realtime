@@ -1,18 +1,21 @@
 "use client";
 
 // Cascade voice engine: STT → LM → TTS, turn-based, as a SessionApi-compatible
-// custom engine (same shape as useXaiSession). MVP legs are browser-native so it
-// works today with only a server-side HF/Mistral key for the LM:
-//   - STT  → Web Speech API (webkitSpeechRecognition), streaming transcripts
-//   - LM   → /api/llm (HF Inference router or Mistral), streamed clauses
-//   - TTS  → Mistral /api/mistral/tts per clause (browser speechSynthesis fallback)
-// The Mistral realtime-STT leg replaces the Web Speech piece later; the LM and
-// turn machine stay the same.
+// custom engine (same shape as useXaiSession). Every leg resolves a backend
+// from a catalog, so cloud ↔ local is config, not code:
+//   - STT  → Mistral realtime WS via the Bun proxy, or per-turn batch /api/stt
+//            (local mlx-audio server) — config/voice-models.json `stt`;
+//            Web Speech remains the fallback if the primary STT leg dies
+//   - LM   → /api/llm (HF router / Mistral / local llama-server), streamed
+//            clauses — config/lm-models.json
+//   - TTS  → /api/tts per clause (Mistral or local mlx-audio;
+//            config/voice-models.json `tts`), browser speechSynthesis fallback
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
 import { resolveCascadeAgent } from "./cascade-agent";
 import { MistralStt } from "./mistral-stt";
+import { DEFAULT_STT_BACKEND_ID, DEFAULT_TTS_BACKEND_ID, resolveSttBackend } from "./voice-config";
 import type { CallState, SessionTurn } from "./types";
 
 // Local WS proxy that adds the Mistral Bearer header the browser can't set.
@@ -222,10 +225,14 @@ export function useCascadeSession(
   const speakClause = useCallback(
     async (text: string, signal: AbortSignal): Promise<void> => {
       try {
-        const res = await fetch("/api/mistral/tts", {
+        const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice: agentRef.current.ttsVoice }),
+          body: JSON.stringify({
+            text,
+            voice: agentRef.current.ttsVoice,
+            backend: DEFAULT_TTS_BACKEND_ID,
+          }),
           signal,
         });
         if (!res.ok) throw new Error("tts");
@@ -368,12 +375,16 @@ export function useCascadeSession(
     setState("connecting");
     setCaption("connecting…");
 
-    // Bring up Mistral realtime STT in parallel with the opening line. The mic
-    // stays paused (endListening on the greeting turn) until the greeting
-    // finishes and beginListening() resumes it.
+    // Bring up the STT leg in parallel with the opening line: the Mistral
+    // realtime WS, or batch recording for the local backend (mode from
+    // config/voice-models.json). The mic stays paused (endListening on the
+    // greeting turn) until the greeting finishes and beginListening() resumes it.
     usingMistralRef.current = true;
+    const sttBackend = resolveSttBackend(DEFAULT_STT_BACKEND_ID);
     const stt = new MistralStt({
       wsUrl: STT_WS_URL,
+      mode: sttBackend?.mode ?? "realtime",
+      sttBackend: DEFAULT_STT_BACKEND_ID,
       onPartial: (text) => {
         if (stateRef.current === "listening") setCaption(text);
       },

@@ -53,6 +53,28 @@ llama-server \
   --alias unsloth/gemma-4-12b-it-qat-GGUF
 '''
 
+[tasks.audio-local]
+description = "Serve the local TTS + batch-STT legs (mlx-audio server, Voxtral); :8002"
+run = '''
+# Local voice legs of the cascade (docs/voxtral-local-inference.md). Keyless —
+# config/voice-models.json's `local` tts/stt backends point here. Models load
+# lazily on first request (TTS ~4 GB + STT ~3 GB resident thereafter).
+audio_dir="${MLX_AUDIO_DIR:-$HOME/Develop/mlx-audio}"
+cd "$audio_dir" && .venv/bin/python -m mlx_audio.server --port "${AUDIO_LOCAL_PORT:-8002}"
+'''
+
+[tasks.stop-audio-local]
+description = "Stop the mlx-audio server listening on AUDIO_LOCAL_PORT (default 8002)"
+run = '''
+port="${AUDIO_LOCAL_PORT:-8002}"
+pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  kill $pids && echo "Stopped mlx-audio server on :$port (PID: $pids)"
+else
+  echo "No mlx-audio server running on :$port"
+fi
+'''
+
 [tasks.stop-lm-local]
 description = "Stop the local LM server listening on LM_LOCAL_PORT (default 8001)"
 run = '''

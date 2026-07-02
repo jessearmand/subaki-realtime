@@ -16,9 +16,17 @@
 //
 // The proxy lives at NEXT_PUBLIC_MISTRAL_STT_WS (default ws://localhost:3001);
 // run it with `mise run stt-proxy`. See scripts/mistral-stt-proxy.ts.
+//
+// A second capture mode, `batch`, serves the LOCAL STT backend
+// (config/voice-models.json → mlx-audio server): no WebSocket at all — the
+// turn's PCM is buffered while the user speaks and POSTed as one WAV to
+// /api/stt when the same Silero VAD (or the Send button) ends the turn. No
+// live partial captions in this mode; everything else (mic graph, gating,
+// levels, turn machine) is shared.
 
 import { calculateRms, float32ToPcm16Base64 } from "./xai-audio";
 import { SileroVad } from "./silero-vad";
+import { encodeWavPcm16 } from "./wav";
 
 const SAMPLE_RATE = 16000;
 const PROC_FRAMES = 2048; // ~128 ms per audio block; a multiple of Silero's 512
@@ -29,12 +37,20 @@ const VAD_REDEMPTION_MS = 900; // silence after speech that ends the turn
 const VAD_MIN_SPEECH_MS = 250; // shortest run that counts as a real turn
 const VAD_POSITIVE = 0.3; // speech-probability onset threshold
 const VAD_NEGATIVE = 0.25; // speech-probability release threshold
+// Batch mode: cap the per-turn recording (memory guard — 16 kHz mono Float32 is
+// ~64 KB/s, so 120 s ≈ 7.5 MB). Beyond the cap the turn stops growing.
+const BATCH_MAX_TURN_S = 120;
 
 export interface MistralSttOptions {
   /** WebSocket URL of the local proxy (e.g. ws://localhost:3001). */
   wsUrl: string;
   /** Realtime transcription model id. */
   model?: string;
+  /** `realtime` (default) streams to the Mistral WS proxy; `batch` records the
+   *  turn and POSTs one WAV to /api/stt on turn end (local backend). */
+  mode?: "realtime" | "batch";
+  /** Catalog backend id forwarded to /api/stt in batch mode. */
+  sttBackend?: string;
   /** Running transcript of the in-progress turn (drive the live caption). */
   onPartial: (text: string) => void;
   /** A completed user turn (silence detected after speech). */
@@ -65,6 +81,14 @@ export class MistralStt {
   private emitting = false;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private inputRms = 0;
+
+  // Batch mode: the turn's recorded PCM (Float32 blocks at SAMPLE_RATE).
+  private turnChunks: Float32Array[] = [];
+  private turnSamples = 0;
+
+  private get batch(): boolean {
+    return this.opts.mode === "batch";
+  }
 
   constructor(opts: MistralSttOptions) {
     this.opts = opts;
@@ -104,7 +128,13 @@ export class MistralStt {
     // output, so this does not echo the mic to the speakers.
     proc.connect(ctx.destination);
 
-    this.connectWs();
+    if (this.batch) {
+      // No socket in batch mode — the mic graph is the whole session.
+      this.ready = true;
+      this.opts.onReady?.();
+    } else {
+      this.connectWs();
+    }
 
     // Load Silero VAD in parallel (model fetch + ORT init). The mic streams to
     // Mistral immediately; turn detection comes online once this resolves. If it
@@ -210,9 +240,18 @@ export class MistralStt {
     }
     this.inputRms = calculateRms(input); // for the input-level visualizer only
 
-    const ws = this.ws;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "input_audio.append", audio: float32ToPcm16Base64(input) }));
+    if (this.batch) {
+      // Record the turn locally; it's transcribed in one shot on turn end. The
+      // buffer must copy — ScriptProcessor reuses its channel-data array.
+      if (this.turnSamples < SAMPLE_RATE * BATCH_MAX_TURN_S && !this.emitting) {
+        this.turnChunks.push(new Float32Array(input));
+        this.turnSamples += input.length;
+      }
+    } else {
+      const ws = this.ws;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "input_audio.append", audio: float32ToPcm16Base64(input) }));
+      }
     }
 
     // Silero decides the turn boundaries (onSpeechEnd → endTurn).
@@ -242,8 +281,13 @@ export class MistralStt {
     this.endTurn();
   }
 
-  /** Flush the tail, wait briefly for trailing deltas, then emit the turn. */
+  /** Realtime: flush the tail, wait briefly for trailing deltas, then emit.
+   *  Batch: POST the recorded turn as one WAV and emit the transcription. */
   private endTurn(): void {
+    if (this.batch) {
+      void this.endTurnBatch();
+      return;
+    }
     this.emitting = true;
     const ws = this.ws;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -258,8 +302,44 @@ export class MistralStt {
     }, FLUSH_GRACE_MS);
   }
 
+  private async endTurnBatch(): Promise<void> {
+    const chunks = this.turnChunks;
+    this.resetTurn();
+    if (chunks.length === 0) return;
+    this.emitting = true;
+    this.opts.onPartial("… transcribing");
+    try {
+      const backend = this.opts.sttBackend;
+      const res = await fetch(
+        `/api/stt${backend ? `?backend=${encodeURIComponent(backend)}` : ""}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "audio/wav" },
+          body: encodeWavPcm16(chunks, SAMPLE_RATE),
+        },
+      );
+      if (!res.ok) throw new Error(`stt ${res.status}`);
+      const json = (await res.json()) as { text?: string };
+      const text = json.text?.trim();
+      if (!this.closed && text) this.opts.onFinal(text);
+    } catch (err) {
+      // Non-fatal: one lost turn shouldn't demote the whole session to the
+      // Web Speech fallback (unlike a dead realtime socket). Ask again instead.
+      if (!this.closed) {
+        console.warn(
+          `[mistral-stt] batch STT failed (${err instanceof Error ? err.message : "network error"})`,
+        );
+        this.opts.onPartial("— transcription failed, try again —");
+      }
+    } finally {
+      this.emitting = false;
+    }
+  }
+
   private resetTurn(): void {
     this.turnText = "";
+    this.turnChunks = [];
+    this.turnSamples = 0;
   }
 
   /** Resume capturing the user (call when entering the listening state). */

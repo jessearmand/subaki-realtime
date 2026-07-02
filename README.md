@@ -221,6 +221,36 @@ list is fetched. To change the model every cascade persona uses, edit `default`:
   [docs/voxtral-local-inference.md](docs/voxtral-local-inference.md) for the full
   local-cascade roadmap (STT/TTS legs).
 
+### Configuring the cascade voice legs (TTS + STT)
+
+The TTS and STT legs have their own catalog, **`config/voice-models.json`**
+(read via `lib/realtime/voice-config.ts`), with a `mistral` (cloud) and a
+`local` backend each. `default` picks the backend per leg; override per
+dev-session without editing config:
+
+```bash
+NEXT_PUBLIC_TTS_BACKEND=local NEXT_PUBLIC_STT_BACKEND=local mise run dev
+```
+
+- **TTS** — `/api/tts` resolves the backend server-side: Mistral
+  (`voxtral-mini-tts-2603`, returns `{audio_data}` base64) or the local
+  mlx-audio server (`Voxtral-4B-TTS-2603` 6-bit, raw MP3 bytes). The backend's
+  `voiceMap` translates each persona's Mistral `voice_id` slug
+  (`gb_jane_neutral`, …) to a local preset (`casual_female`, …) — recast persona
+  voices there, not in code.
+- **STT** — two capture modes. `mistral` = realtime WS via the Bun proxy (live
+  partial captions). `local` = **batch**: Silero VAD still owns turn boundaries;
+  the finished turn's PCM is posted as one WAV to `/api/stt`, which forwards to
+  the local mlx-audio `/v1/audio/transcriptions` (`Voxtral-Mini-4B-Realtime`
+  4-bit). No live captions in batch mode.
+- **Local server**: **`mise run audio-local`** serves both legs (mlx-audio
+  server on :8002 from `~/Develop/mlx-audio/.venv`; `MLX_AUDIO_DIR` /
+  `AUDIO_LOCAL_PORT` overrides), `mise run stop-audio-local` stops it. Models
+  load lazily on the first request (~5 s cold, ~7 GB resident for both).
+- **Fully local cascade** = `lm-local` + `audio-local` running, the local LM
+  picked in Providers, and both `NEXT_PUBLIC_*_BACKEND=local`. Voxtral TTS
+  weights are **CC-BY-NC** (dev/eval only).
+
 At runtime, the **Providers** view shows an **LM MODEL** picker inset under any
 provider whose engine has a multi-model catalog (just the cascade today) — pick a
 model there and it persists (localStorage `tsubaki.lm-model`) and applies on the
@@ -234,8 +264,10 @@ app/                       layout (fonts), globals.css (brutalist + orb styles),
 app/api/xai/token/         route handler that mints the xAI ephemeral client-secret
 app/api/openai/token/      route handler that mints the OpenAI ephemeral key
 app/api/llm/               streaming chat-completion route (catalog-driven backend) for the cascade engine
-app/api/mistral/tts/       Mistral Voxtral TTS route (per-clause MP3) for the cascade engine
+app/api/tts/               TTS route (per-clause MP3; Mistral or local mlx-audio, catalog-driven)
+app/api/stt/               batch STT route (per-turn WAV → local mlx-audio transcription)
 config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
+config/voice-models.json   cascade TTS/STT catalog (cloud/local backends + persona voice map)
 scripts/mistral-stt-proxy.ts  standalone bun WS proxy: browser ↔ Mistral realtime STT (adds Bearer header)
 components/ui/             ElevenLabs + shadcn components (copied, editable)
 components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
@@ -250,7 +282,9 @@ lib/realtime/              types (CallState, SessionApi), use-realtime-session (
                            openai-agent (per-persona OpenAI config: voice + prompt + greeting),
                            use-cascade-session (STT→LM→TTS engine), cascade-agent (per-persona),
                            lm-config (loads config/lm-models.json — backends + model catalog),
-                           mistral-stt (16 kHz capture + realtime-STT client),
+                           voice-config (loads config/voice-models.json — TTS/STT backends),
+                           mistral-stt (16 kHz capture + realtime-STT client + batch turn recorder),
+                           wav (PCM16 WAV encoder for batch STT turns),
                            silero-vad (Silero VAD v5 via onnxruntime-web for turn detection)
 ```
 

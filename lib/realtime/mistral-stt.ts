@@ -176,6 +176,11 @@ export class MistralStt {
       return;
     }
     switch (msg.type) {
+      // Mistral marks a successful handshake with `session.created`; our
+      // session.update on open is acked with `session.updated`. Either one
+      // means the session is live — without `ready`, ws.onclose stays silent
+      // and a dead socket would never trigger the Web Speech fallback.
+      case "session.created":
       case "session.updated":
         if (!this.ready) {
           this.ready = true;

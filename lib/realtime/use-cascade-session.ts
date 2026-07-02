@@ -249,11 +249,15 @@ export function useCascadeSession(
   );
 
   // Run one assistant turn: stream the LM reply and speak it clause by clause.
+  // `visible: false` keeps the user text out of the transcript — the greeting
+  // bootstrap is an internal instruction to the LM, not something the user said.
   const onUserTurn = useCallback(
-    async (userText: string) => {
+    async (userText: string, { visible = true } = {}) => {
       endListening();
       speakingRef.current = true;
-      setTurns((prev) => [...prev, { id: `u${prev.length}`, who: "user", text: userText }]);
+      if (visible) {
+        setTurns((prev) => [...prev, { id: `u${prev.length}`, who: "user", text: userText }]);
+      }
       messagesRef.current.push({ role: "user", content: userText });
       setState("speaking");
 
@@ -341,6 +345,22 @@ export function useCascadeSession(
   );
   onUserTurnRef.current = onUserTurn;
 
+  const teardownStt = useCallback(() => {
+    sttRef.current?.stop();
+    sttRef.current = null;
+    usingMistralRef.current = false;
+  }, []);
+
+  // Full hang-up: abort the in-flight LM turn and silence every audio path.
+  const teardown = useCallback(() => {
+    abortRef.current?.abort();
+    speakingRef.current = false;
+    stopRecognition();
+    teardownStt();
+    currentAudioRef.current?.pause();
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+  }, [stopRecognition, teardownStt]);
+
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     messagesRef.current = [];
@@ -361,8 +381,10 @@ export function useCascadeSession(
         if (!speakingRef.current && !mutedRef.current) onUserTurnRef.current(text);
       },
       onError: () => {
-        // Drop to the browser Web Speech fallback for subsequent listens.
-        usingMistralRef.current = false;
+        // Shut down the failed Mistral leg (mic stream, AudioContext, VAD,
+        // socket) before dropping to the browser Web Speech fallback —
+        // otherwise both capture paths run side by side for the rest of the call.
+        teardownStt();
         if (stateRef.current === "listening") {
           setCaption("— STT proxy unavailable, using browser speech —");
           startListening();
@@ -372,29 +394,20 @@ export function useCascadeSession(
     stt.setMuted(mutedRef.current);
     sttRef.current = stt;
     stt.start().catch(() => {
-      usingMistralRef.current = false;
+      // Mic denied / AudioContext failure: release whatever start() got to.
+      teardownStt();
     });
 
-    // Opening line: ask the LM for a greeting, then drop into listening.
-    onUserTurn(agentRef.current.firstMessage);
-  }, [onUserTurn, setState, startListening]);
-
-  const teardownStt = useCallback(() => {
-    sttRef.current?.stop();
-    sttRef.current = null;
-    usingMistralRef.current = false;
-  }, []);
+    // Opening line: ask the LM for a greeting, then drop into listening. The
+    // elicitation prompt goes to the LM only — never into the visible transcript.
+    onUserTurn(agentRef.current.firstMessage, { visible: false });
+  }, [onUserTurn, setState, startListening, teardownStt]);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
-    speakingRef.current = false;
-    stopRecognition();
-    teardownStt();
-    currentAudioRef.current?.pause();
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    teardown();
     setState("ended");
     setCaption("— call ended —");
-  }, [setState, stopRecognition, teardownStt]);
+  }, [setState, teardown]);
 
   const interrupt = useCallback(() => {
     if (stateRef.current !== "speaking") return;
@@ -419,28 +432,20 @@ export function useCascadeSession(
     sttRef.current?.setMuted(m);
   }, []);
 
-  // Tear down when the engine is deselected or unmounted.
+  // Hang up + reset if the engine is deselected mid-session. Teardown must run
+  // directly in the !active branch (same as the xAI/OpenAI hooks) — a cleanup
+  // returned here would only fire on the *next* deps change or unmount, leaving
+  // the mic and STT socket live after a provider switch.
   useEffect(() => {
-    if (active) return;
-    return () => {
-      abortRef.current?.abort();
-      stopRecognition();
-      teardownStt();
-      currentAudioRef.current?.pause();
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-      stateRef.current = "idle";
-    };
-  }, [active, stopRecognition, teardownStt]);
+    if (active || stateRef.current === "idle") return;
+    teardown();
+    setState("idle");
+    setTurns([]);
+    setCaption("press CALL to begin");
+  }, [active, setState, teardown]);
 
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-      stopRecognition();
-      teardownStt();
-      currentAudioRef.current?.pause();
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-    };
-  }, [stopRecognition, teardownStt]);
+  // Cleanup on unmount.
+  useEffect(() => () => teardown(), [teardown]);
 
   const getInputVolume = useCallback(() => {
     const s = stateRef.current;

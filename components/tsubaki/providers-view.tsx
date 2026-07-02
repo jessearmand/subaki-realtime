@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Tag, Hr, Spec } from "./primitives";
 import { PROVIDERS, type Provider } from "@/lib/data";
-import { lmModelsForEngine } from "@/lib/realtime/lm-config";
+import { lmModelsForEngine, providerModelLabel } from "@/lib/realtime/lm-config";
 import type { CSSProperties } from "react";
 
 export function ProvidersView({
@@ -65,7 +65,7 @@ export function ProvidersView({
                     <span className={on ? "on" : ""} style={radioStyle} />
                   </td>
                   <td className="tb-table-vendor">{p.name}</td>
-                  <td className="tb-mono-num">{p.model}</td>
+                  <td className="tb-mono-num">{providerModelLabel(p, lmModelId)}</td>
                   <td>
                     <Tag mono dot>
                       {p.exec.toUpperCase()}

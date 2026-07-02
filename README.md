@@ -172,8 +172,9 @@ Web Speech** (Chrome-only), so the cascade still works with just the dev server.
 
 `/api/llm` streams an OpenAI-compatible chat completion from the chosen backend,
 keeping the key server-side; backends that `supportsThinking` run with thinking off
-by default (`chat_template_kwargs` — Mistral rejects it, so its catalog entry sets
-it false) so reasoning models answer immediately. `/api/mistral/tts` returns
+by default (`chat_template_kwargs`) so reasoning models answer immediately — but
+both current backends set it false, since Mistral 422s on the field and the HF
+router now rejects it with `wrong_api_format`. `/api/mistral/tts` returns
 per-clause MP3 from `voxtral-mini-tts-2603`. Without the LM backend's token the
 agent turn shows "— LM error —"; without `MISTRAL_API_KEY` TTS falls back to
 browser speechSynthesis.
@@ -189,18 +190,20 @@ list is fetched. To change the model every cascade persona uses, edit `default`:
 {
   "default": "mistral-small",          // ← the active model id
   "backends": {
-    "hf":      { "url": "https://router.huggingface.co/v1/chat/completions", "envKey": "HF_TOKEN",        "supportsThinking": true },
+    "hf":      { "url": "https://router.huggingface.co/v1/chat/completions", "envKey": "HF_TOKEN",        "supportsThinking": false },
     "mistral": { "url": "https://api.mistral.ai/v1/chat/completions",        "envKey": "MISTRAL_API_KEY", "supportsThinking": false }
   },
   "models": [
-    { "id": "gemma-4-31b", "label": "...", "backend": "hf",      "model": "google/gemma-4-31B-it", "temperature": 0.7, "maxTokens": 200 },
+    { "id": "gemma-4-31b", "label": "...", "backend": "hf",      "model": "google/gemma-4-31B-it:fastest", "temperature": 0.7, "maxTokens": 200 },
     { "id": "mistral-small", "label": "...", "backend": "mistral", "model": "mistral-small-latest", "temperature": 0.7, "maxTokens": 200 }
   ]
 }
 ```
 
 - **Add a model**: append to `models` (any model the backend serves — e.g. another
-  HF-router repo) and point `default` at its `id`.
+  HF-router repo) and point `default` at its `id`. HF-router models can pin an
+  inference provider with a `:provider` suffix on the model id (`:fastest`,
+  `:cerebras`, …).
 - **Add a backend**: add an entry to `backends` (OpenAI-compatible `url` + the
   `envKey` naming its fnox secret); reference it from a model's `backend`. The key
   value stays in fnox and is read server-side only — only the env var *name* and the

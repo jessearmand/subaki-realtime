@@ -67,3 +67,16 @@ export const DEFAULT_LM_MODEL: LmModel = resolveLmModel(CONFIG.default);
 export function lmModelsForEngine(engine?: string): LmModel[] {
   return engine === "cascade" ? LM_MODELS : [];
 }
+
+/** MODEL label for a provider wherever the UI shows one (sidebar, call header,
+ *  transcript drawer, providers table). Cascade reflects the *picked* catalog
+ *  model — not the static string in lib/data.ts, which can't know the runtime
+ *  selection; every other engine has a single fixed model. */
+export function providerModelLabel(
+  provider: { engine?: string; model: string },
+  lmModelId?: string,
+): string {
+  return provider.engine === "cascade"
+    ? `cascade · ${resolveLmModel(lmModelId).id}`
+    : provider.model;
+}

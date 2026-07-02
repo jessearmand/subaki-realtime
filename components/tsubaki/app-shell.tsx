@@ -19,6 +19,7 @@ import {
 import { useTweaks } from "@/hooks/use-tweaks";
 import { useLmModel } from "@/hooks/use-lm-model";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { providerModelLabel } from "@/lib/realtime/lm-config";
 import { useRealtimeSession } from "@/lib/realtime/use-realtime-session";
 
 export function AppShell() {
@@ -31,12 +32,22 @@ export function AppShell() {
   const isMobile = useMediaQuery("(max-width: 760px)");
 
   const session = useRealtimeSession({ provider, persona, lmModelId });
+  // What the UI shows as the active model — tracks the LM picker for cascade.
+  const providerModel = providerModelLabel(provider, lmModelId);
 
   return (
     <div className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}>
       <TopBar callState={session.callState} compact={isMobile} />
       <div className="tb-shell">
-        {!isMobile && <Sidebar nav={nav} setNav={setNav} persona={persona} provider={provider} />}
+        {!isMobile && (
+          <Sidebar
+            nav={nav}
+            setNav={setNav}
+            persona={persona}
+            provider={provider}
+            providerModel={providerModel}
+          />
+        )}
         <main className="tb-main">
           {nav === "call" && (
             <CallView
@@ -44,6 +55,7 @@ export function AppShell() {
               session={session}
               persona={persona}
               provider={provider}
+              providerModel={providerModel}
               tools={tools}
             />
           )}

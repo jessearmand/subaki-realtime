@@ -22,12 +22,15 @@ export function CallView({
   session,
   persona,
   provider,
+  providerModel,
   tools,
 }: {
   tweaks: Tweaks;
   session: SessionApi;
   persona: Persona;
   provider: Provider;
+  /** Display model — tracks the cascade LM picker (see providerModelLabel). */
+  providerModel: string;
   tools: Tool[];
 }) {
   const { callState, caption, muted, elapsed, canSendTurn } = session;
@@ -53,7 +56,7 @@ export function CallView({
             </Tag>
             {tweaks.providerPreview && (
               <Tag mono>
-                VIA {provider.name} · {provider.model}
+                VIA {provider.name} · {providerModel}
               </Tag>
             )}
           </div>
@@ -164,7 +167,7 @@ export function CallView({
           open={transcriptOpen}
           turns={session.turns}
           personaName={persona.name}
-          providerModel={provider.model}
+          providerModel={providerModel}
           callState={callState}
           dark={tweaks.dark}
         />

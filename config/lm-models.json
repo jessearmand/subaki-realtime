@@ -1,11 +1,11 @@
 {
-  "note": "LM catalog for the cascade (STT -> LM -> TTS) engine. Change `default` to switch the model every cascade persona uses; add entries to `models` to make more available (no live API list needed). A persona can also pin a model via `lmModelId` in lib/realtime/cascade-agent.ts. `backends[*].envKey` names a fnox/env secret read server-side in app/api/llm/route.ts — values never reach the browser. `supportsThinking` sends chat_template_kwargs.enable_thinking:false (reasoning models); leave false for APIs that reject unknown fields (e.g. Mistral). See README 'Configuring the cascade LM'.",
+  "note": "LM catalog for the cascade (STT -> LM -> TTS) engine. Change `default` to switch the model every cascade persona uses; add entries to `models` to make more available (no live API list needed). A persona can also pin a model via `lmModelId` in lib/realtime/cascade-agent.ts. `backends[*].envKey` names a fnox/env secret read server-side in app/api/llm/route.ts — values never reach the browser. `supportsThinking` sends chat_template_kwargs.enable_thinking:false (reasoning models); leave false for APIs that reject unknown fields (Mistral 422s, and the HF router now rejects it with wrong_api_format). HF models pick an inference provider with a `:provider` suffix (e.g. `:fastest`, `:cerebras`). See README 'Configuring the cascade LM'.",
   "default": "gemma-4-31b",
   "backends": {
     "hf": {
       "url": "https://router.huggingface.co/v1/chat/completions",
       "envKey": "HF_TOKEN",
-      "supportsThinking": true
+      "supportsThinking": false
     },
     "mistral": {
       "url": "https://api.mistral.ai/v1/chat/completions",
@@ -16,9 +16,9 @@
   "models": [
     {
       "id": "gemma-4-31b",
-      "label": "Gemma 4 31B · HF router",
+      "label": "Gemma 4 31B · HF fastest",
       "backend": "hf",
-      "model": "google/gemma-4-31B-it",
+      "model": "google/gemma-4-31B-it:fastest",
       "temperature": 0.7,
       "maxTokens": 200
     },

@@ -210,6 +210,16 @@ list is fetched. To change the model every cascade persona uses, edit `default`:
   public URL live in the file.
 - **Per-persona override**: give a persona an `lmModelId` (a catalog id) in
   `cascade-agent.ts` to pin it to a different model than the global default.
+- **Local backend (keyless)**: the `local` backend points at an OpenAI-compatible
+  server on `localhost:8001` with an **empty `envKey`** — no Authorization header
+  is sent, no fnox secret needed. Serve it with **`mise run lm-local`**
+  (llama-server: gemma-4-12B QAT GGUF + MTP speculative decoding; weights under
+  `~/Develop/voice-cascade/models/gemma-4-12B/`, override with
+  `LM_LOCAL_MODEL_DIR` / `LM_LOCAL_PORT`), stop with `mise run stop-lm-local`.
+  The catalog entry's `model` must match the server's `--alias`. Then pick
+  **Gemma 4 12B QAT · local** in the Providers LM picker. See
+  [docs/voxtral-local-inference.md](docs/voxtral-local-inference.md) for the full
+  local-cascade roadmap (STT/TTS legs).
 
 At runtime, the **Providers** view shows an **LM MODEL** picker inset under any
 provider whose engine has a multi-model catalog (just the cascade today) — pick a

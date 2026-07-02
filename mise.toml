@@ -36,6 +36,35 @@ else
 fi
 '''
 
+[tasks.lm-local]
+description = "Serve the local cascade LM (llama-server, gemma-4-12B QAT + MTP draft); :8001"
+run = '''
+# Local LM leg of the cascade (docs/voxtral-local-inference.md). Keyless —
+# config/lm-models.json's `local` backend points at this server, and --alias must
+# match that entry's `model` id. MTP speculative decoding via the draft head;
+# text-only (no --mmproj) and thinking off, per ~/Develop/voice-cascade/README.md.
+model_dir="${LM_LOCAL_MODEL_DIR:-$HOME/Develop/voice-cascade/models/gemma-4-12B}"
+llama-server \
+  --model "$model_dir/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf" \
+  --model-draft "$model_dir/mtp-gemma-4-12B-it.gguf" \
+  --spec-type draft-mtp --spec-draft-n-max 4 \
+  -ngl 999 -fa on --jinja \
+  --port "${LM_LOCAL_PORT:-8001}" \
+  --alias unsloth/gemma-4-12b-it-qat-GGUF
+'''
+
+[tasks.stop-lm-local]
+description = "Stop the local LM server listening on LM_LOCAL_PORT (default 8001)"
+run = '''
+port="${LM_LOCAL_PORT:-8001}"
+pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  kill $pids && echo "Stopped local LM server on :$port (PID: $pids)"
+else
+  echo "No local LM server running on :$port"
+fi
+'''
+
 [tasks.stop]
 description = "Stop the dev server listening on PORT (default 3000)"
 run = '''

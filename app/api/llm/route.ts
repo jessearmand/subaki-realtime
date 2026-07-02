@@ -10,7 +10,9 @@
 // `chat_template_kwargs.enable_thinking:false` by default.
 //
 // Dev only: the secret named by each backend's `envKey` (HF_TOKEN / MISTRAL_API_KEY)
-// is provided via fnox (`fnox exec -- bun run dev`).
+// is provided via fnox (`fnox exec -- bun run dev`). A backend with an empty
+// `envKey` is keyless (local llama-server via `mise run lm-local`) — no
+// Authorization header is sent.
 
 import { DEFAULT_LM_MODEL, resolveLmBackend } from "@/lib/realtime/lm-config";
 
@@ -43,8 +45,10 @@ export async function POST(req: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const apiKey = process.env[backend.envKey];
-  if (!apiKey) {
+  // An empty envKey marks a keyless backend (local llama-server / mlx_lm.server);
+  // only fail when the catalog names a secret that isn't actually set.
+  const apiKey = backend.envKey ? process.env[backend.envKey] : undefined;
+  if (backend.envKey && !apiKey) {
     return Response.json(
       { error: `${backend.envKey} is not set on the server (provide it via fnox).` },
       { status: 500 },
@@ -73,7 +77,7 @@ export async function POST(req: Request): Promise<Response> {
     upstream = await fetch(backend.url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       },

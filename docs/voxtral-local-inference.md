@@ -171,30 +171,37 @@ each leg pointed at a local server** instead of Mistral's API.
 
 Ordered easiest → hardest. Each leg maps to an existing seam in the app.
 
-### 1. LM → local (smallest change)
+### 1. LM → local — ✅ done (2026-07-03)
 
 The LM leg is already backend-agnostic (`config/lm-models.json` +
 `resolveLmBackend`; the route pipes OpenAI-compatible SSE verbatim). A local server
-is just a catalog entry:
+is just a catalog entry — now shipped:
 
 ```jsonc
-// config/lm-models.json → backends
+// config/lm-models.json → backends (as implemented)
 "local": {
-  "url": "http://localhost:8080/v1/chat/completions",
-  "envKey": "",          // keyless localhost
-  "supportsThinking": true
+  "url": "http://localhost:8001/v1/chat/completions",
+  "envKey": "",             // keyless localhost — no Authorization header sent
+  "supportsThinking": true  // llama-server accepts chat_template_kwargs
 }
+// models[] gained "gemma-4-12b-local" → unsloth/gemma-4-12b-it-qat-GGUF
 ```
 
-**One code change:** `app/api/llm/route.ts` currently returns 500 when the
-backend's `envKey` is unset. Make the auth header optional so a keyless local
-backend is allowed (`if (backend.envKey) headers.Authorization = ...`). Then add a
-`models[]` entry pointing at the local server and pick it from the Providers model
-picker.
+**The one code change** landed in `app/api/llm/route.ts`: an empty `envKey` now
+skips the Authorization header instead of returning 500 (a *named-but-unset*
+secret still 500s). Serving is `mise run lm-local` — llama-server with
+`gemma-4-12B-it-qat-UD-Q4_K_XL.gguf` (6.7 GB) + the MTP draft head
+(`--spec-type draft-mtp`), text-only, thinking off, port 8001, `--alias`
+matching the catalog's `model` id; weights under
+`~/Develop/voice-cascade/models/gemma-4-12B/` (override `LM_LOCAL_MODEL_DIR`).
 
-Serving options (any OpenAI-compatible `/v1`): `llama-server` (llama.cpp, GGUF +
-MTP), `mlx_lm.server`, vLLM, or LM Studio. The `voice-cascade` prototype already
-proved the `engine="openai"` path against a local `llama-server`.
+**Measured (M5 Max, warm):** direct llama-server **TTFT 293 ms · ~96 tok/s**;
+through the app's `/api/llm` route **TTFT 169 ms · ~120 tok/s** — versus ~440–500 ms
+TTFT for the best router models. The local 12B removes the network leg, exactly
+as predicted; projected cascade first-audio drops from ~1.5 s toward ~1 s.
+
+(Other OpenAI-compatible servers — `mlx_lm.server`, vLLM, LM Studio — drop in by
+editing the `local` backend URL; nothing else changes.)
 
 ### 2. TTS → local (small refactor)
 
@@ -232,8 +239,9 @@ proxy. Two ways to go local:
 
 Local Voxtral means running background inference servers alongside `bun run dev`:
 voxmlx (STT, option a) or an `/api/stt` route (option b), an mlx-audio TTS
-endpoint, and a local LLM server. Worth a `mise` task group (mirroring `mise run
-stt-proxy`) that brings the local stack up/down. All three fit comfortably in
+endpoint, and a local LLM server. The `mise` task group has started —
+`mise run lm-local` / `stop-lm-local` serve the LM leg (mirroring `mise run
+stt-proxy`); TTS/STT tasks join it as those legs land. All three fit comfortably in
 64 GB (STT 4.2 + TTS 4.0 + a mid-size LM), and can co-reside with PersonaPlex if
 needed.
 
@@ -246,8 +254,8 @@ needed.
 
 ## Open next steps
 
-- LM-local: make `envKey` optional in `app/api/llm/route.ts`, add a `local`
-  backend + model entry. (Afternoon.)
+- ~~LM-local~~ ✅ done — `local` backend + `gemma-4-12b-local` entry, keyless
+  `/api/llm`, `mise run lm-local` (llama-server + MTP). TTFT 169 ms via the route.
 - TTS-local: catalog-ize `app/api/mistral/tts`, add per-persona voice map, stand up
   mlx-audio HTTP. (Day.)
 - STT-local: build the voxmlx WS shim (option a) or the batch `/api/stt` route

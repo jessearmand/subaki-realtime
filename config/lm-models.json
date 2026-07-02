@@ -1,5 +1,5 @@
 {
-  "note": "LM catalog for the cascade (STT -> LM -> TTS) engine. Change `default` to switch the model every cascade persona uses; add entries to `models` to make more available (no live API list needed). A persona can also pin a model via `lmModelId` in lib/realtime/cascade-agent.ts. `backends[*].envKey` names a fnox/env secret read server-side in app/api/llm/route.ts — values never reach the browser. `supportsThinking` sends chat_template_kwargs.enable_thinking:false (reasoning models); leave false for APIs that reject unknown fields (Mistral 422s, and the HF router now rejects it with wrong_api_format). HF models pick an inference provider with a `:provider` suffix (e.g. `:fastest`, `:cerebras`). See README 'Configuring the cascade LM'.",
+  "note": "LM catalog for the cascade (STT -> LM -> TTS) engine. Change `default` to switch the model every cascade persona uses; add entries to `models` to make more available (no live API list needed). A persona can also pin a model via `lmModelId` in lib/realtime/cascade-agent.ts. `backends[*].envKey` names a fnox/env secret read server-side in app/api/llm/route.ts — values never reach the browser; an empty envKey marks a keyless backend (local server) and no Authorization header is sent. `supportsThinking` sends chat_template_kwargs.enable_thinking:false (reasoning models); leave false for APIs that reject unknown fields (Mistral 422s, and the HF router now rejects it with wrong_api_format). HF models pick an inference provider with a `:provider` suffix (e.g. `:fastest`, `:cerebras`). The `local` backend expects `mise run lm-local` (llama-server, port 8001); its model id must match the server's --alias. See README 'Configuring the cascade LM'.",
   "default": "gemma-4-31b",
   "backends": {
     "hf": {
@@ -11,6 +11,11 @@
       "url": "https://api.mistral.ai/v1/chat/completions",
       "envKey": "MISTRAL_API_KEY",
       "supportsThinking": false
+    },
+    "local": {
+      "url": "http://localhost:8001/v1/chat/completions",
+      "envKey": "",
+      "supportsThinking": true
     }
   },
   "models": [
@@ -35,6 +40,14 @@
       "label": "Mistral Small 2603",
       "backend": "mistral",
       "model": "mistral-small-2603",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "gemma-4-12b-local",
+      "label": "Gemma 4 12B QAT · local",
+      "backend": "local",
+      "model": "unsloth/gemma-4-12b-it-qat-GGUF",
       "temperature": 0.7,
       "maxTokens": 200
     }

@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Btn, Tag } from "./primitives";
-import { MicGlyph, InterruptGlyph, PhoneGlyph, PhoneHangGlyph, ScrollGlyph } from "./glyphs";
+import {
+  MicGlyph,
+  InterruptGlyph,
+  PhoneGlyph,
+  PhoneHangGlyph,
+  ScrollGlyph,
+  SendGlyph,
+} from "./glyphs";
 import { OrbVisualizer } from "./orb-visualizer";
 import { Bars } from "./bars";
 import { ScrollArea } from "./scroll-area";
@@ -15,15 +22,18 @@ export function CallView({
   session,
   persona,
   provider,
+  providerModel,
   tools,
 }: {
   tweaks: Tweaks;
   session: SessionApi;
   persona: Persona;
   provider: Provider;
+  /** Display model — tracks the cascade LM picker (see providerModelLabel). */
+  providerModel: string;
   tools: Tool[];
 }) {
-  const { callState, caption, muted, elapsed } = session;
+  const { callState, caption, muted, elapsed, canSendTurn } = session;
   const [transcriptOpen, setTranscriptOpen] = useState(tweaks.transcript === "drawer");
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -46,7 +56,7 @@ export function CallView({
             </Tag>
             {tweaks.providerPreview && (
               <Tag mono>
-                VIA {provider.name} · {provider.model}
+                VIA {provider.name} · {providerModel}
               </Tag>
             )}
           </div>
@@ -67,6 +77,10 @@ export function CallView({
                 getInputVolume={session.getInputVolume}
                 getOutputVolume={session.getOutputVolume}
               />
+              {/* Manual-turn "hold" ring — a held, slowly-rotating dashed ring that
+                  reads differently from auto pulse rings: this engine ends the turn
+                  only when the user presses SEND (cascade STT, half-duplex). */}
+              {canSendTurn && callState === "listening" && <div className="tb-orb-hold" />}
             </div>
             {(callState === "listening" || callState === "interrupted") && (
               <Bars callState={callState} count={10} />
@@ -80,6 +94,9 @@ export function CallView({
                 </span>
               )}
             </div>
+            {canSendTurn && callState === "listening" && (
+              <div className="tb-call-manual-hint">MANUAL TURN · PRESS SEND TO REPLY</div>
+            )}
           </div>
 
           {tweaks.transcript !== "off" && (
@@ -112,6 +129,17 @@ export function CallView({
           >
             <InterruptGlyph />
           </Btn>
+          {canSendTurn && (
+            <Btn
+              small
+              primed={callState === "listening"}
+              onClick={session.sendTurn}
+              disabled={callState !== "listening"}
+              aria-label="Send turn"
+            >
+              <SendGlyph />
+            </Btn>
+          )}
           <Btn
             primary
             onClick={live ? session.hangup : session.start}
@@ -139,7 +167,7 @@ export function CallView({
           open={transcriptOpen}
           turns={session.turns}
           personaName={persona.name}
-          providerModel={provider.model}
+          providerModel={providerModel}
           callState={callState}
           dark={tweaks.dark}
         />

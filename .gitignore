@@ -2,6 +2,9 @@
 
 .claude/settings.local.json
 
+# local scratch / experiment files (not source)
+scratchpad/
+
 # dependencies
 /node_modules
 /.pnp

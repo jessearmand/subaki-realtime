@@ -14,11 +14,14 @@ export function Sidebar({
   setNav,
   persona,
   provider,
+  providerModel,
 }: {
   nav: NavId;
   setNav: (id: NavId) => void;
   persona: Persona;
   provider: Provider;
+  /** Display model — tracks the cascade LM picker (see providerModelLabel). */
+  providerModel: string;
 }) {
   return (
     <nav className="tb-side">
@@ -40,12 +43,12 @@ export function Sidebar({
           active persona
         </div>
         <div>
-          <b>{provider.name}</b> · {provider.model}
+          <b>{provider.name}</b> · {providerModel}
           <br />
           active transport
         </div>
         <div>
-          p50 <b style={{ fontVariantNumeric: "tabular-nums" }}>{provider.latency} ms</b>
+          exec <b>{provider.exec.toUpperCase()}</b>
         </div>
       </div>
     </nav>

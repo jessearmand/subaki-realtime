@@ -26,6 +26,10 @@ export interface SessionApi {
   start: () => void;
   hangup: () => void;
   interrupt: () => void;
+  /** End the user's turn now (half-duplex cascade STT). No-op on full-duplex engines. */
+  sendTurn: () => void;
+  /** Whether this engine has a manual end-of-turn (only the cascade STT does). */
+  canSendTurn: boolean;
   getInputVolume: () => number;
   getOutputVolume: () => number;
 }

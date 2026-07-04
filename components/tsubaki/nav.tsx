@@ -15,6 +15,7 @@ export function Sidebar({
   persona,
   provider,
   providerModel,
+  providerExec,
 }: {
   nav: NavId;
   setNav: (id: NavId) => void;
@@ -22,6 +23,9 @@ export function Sidebar({
   provider: Provider;
   /** Display model — tracks the cascade LM picker (see providerModelLabel). */
   providerModel: string;
+  /** Execution mode — cascade computes it from the resolved backends
+   *  (see providerExecLabel); other engines pass their static `exec`. */
+  providerExec: string;
 }) {
   return (
     <nav className="tb-side">
@@ -48,7 +52,7 @@ export function Sidebar({
           active transport
         </div>
         <div>
-          exec <b>{provider.exec.toUpperCase()}</b>
+          exec <b>{providerExec.toUpperCase()}</b>
         </div>
       </div>
     </nav>

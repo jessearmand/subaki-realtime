@@ -67,3 +67,36 @@ export const DEFAULT_TTS_BACKEND_ID: string =
   process.env.NEXT_PUBLIC_TTS_BACKEND || CONFIG.tts.default;
 export const DEFAULT_STT_BACKEND_ID: string =
   process.env.NEXT_PUBLIC_STT_BACKEND || CONFIG.stt.default;
+
+/** Which cascade legs run on-device this session (backend id `local` is the
+ *  keyless-localhost convention across all three catalogs). LM follows the
+ *  runtime model pick; TTS/STT follow the env/config default. */
+export function cascadeLocalLegs(lmBackend: string): {
+  local: string[];
+  remote: string[];
+} {
+  const legs: Array<[string, string]> = [
+    ["LM", lmBackend],
+    ["TTS", DEFAULT_TTS_BACKEND_ID],
+    ["STT", DEFAULT_STT_BACKEND_ID],
+  ];
+  return {
+    local: legs.filter(([, b]) => b === "local").map(([l]) => l),
+    remote: legs.filter(([, b]) => b !== "local").map(([l]) => l),
+  };
+}
+
+/** EXECUTION label for the Providers table. Cascade reflects the *actual*
+ *  resolved backends — LOCAL when every leg is on-device, REMOTE when none is,
+ *  otherwise the local subset (e.g. "LOCAL: TTS+STT"). Every other engine is a
+ *  fixed cloud transport, so its static `exec` string passes through. */
+export function providerExecLabel(
+  provider: { engine?: string; exec: string },
+  lmBackend: string,
+): string {
+  if (provider.engine !== "cascade") return provider.exec;
+  const { local, remote } = cascadeLocalLegs(lmBackend);
+  if (remote.length === 0) return "local";
+  if (local.length === 0) return "remote";
+  return `local: ${local.join("+")}`;
+}

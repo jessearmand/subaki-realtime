@@ -128,7 +128,7 @@ export const PROVIDERS: Provider[] = [
     name: "MISTRAL",
     model: "cascade · gemma-4-31B",
     exec: "local / remote",
-    note: "STT→LM→TTS cascade. HF/Mistral LM; browser STT/TTS (MVP).",
+    note: "STT→LM→TTS cascade. Every leg cloud (HF/Mistral) or on-device (llama-server + mlx-audio).",
     engine: "cascade",
   },
   {

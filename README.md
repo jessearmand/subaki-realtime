@@ -247,9 +247,10 @@ NEXT_PUBLIC_TTS_BACKEND=local NEXT_PUBLIC_STT_BACKEND=local mise run dev
   server on :8002 from `~/Develop/mlx-audio/.venv`; `MLX_AUDIO_DIR` /
   `AUDIO_LOCAL_PORT` overrides), `mise run stop-audio-local` stops it. Models
   load lazily on the first request (~5 s cold, ~7 GB resident for both).
-- **Fully local cascade** = `lm-local` + `audio-local` running, the local LM
-  picked in Providers, and both `NEXT_PUBLIC_*_BACKEND=local`. Voxtral TTS
-  weights are **CC-BY-NC** (dev/eval only).
+- **Fully local cascade** = **`mise run local-stack`** (one terminal: both
+  servers, Ctrl-C tears both down; `mise run stop-local-stack` from anywhere),
+  the local LM picked in Providers, and both `NEXT_PUBLIC_*_BACKEND=local`.
+  Voxtral TTS weights are **CC-BY-NC** (dev/eval only).
 
 At runtime, the **Providers** view shows an **LM MODEL** picker inset under any
 provider whose engine has a multi-model catalog (just the cascade today) — pick a

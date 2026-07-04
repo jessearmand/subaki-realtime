@@ -53,6 +53,25 @@ llama-server \
   --alias unsloth/gemma-4-12b-it-qat-GGUF
 '''
 
+[tasks.local-stack]
+description = "Serve the full local cascade stack: LM llama-server (:8001) + mlx-audio TTS/STT (:8002)"
+run = '''
+# One terminal for the whole on-device cascade (docs/voxtral-local-inference.md).
+# mlx-audio runs in the background, llama-server in the foreground; Ctrl-C (or
+# the foreground server dying) tears both down via the trap.
+mise run audio-local &
+audio_pid=$!
+trap 'kill "$audio_pid" 2>/dev/null' EXIT INT TERM
+mise run lm-local
+'''
+
+[tasks.stop-local-stack]
+description = "Stop both local inference servers (:8001 + :8002)"
+run = '''
+mise run stop-lm-local
+mise run stop-audio-local
+'''
+
 [tasks.audio-local]
 description = "Serve the local TTS + batch-STT legs (mlx-audio server, Voxtral); :8002"
 run = '''

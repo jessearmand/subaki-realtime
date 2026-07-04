@@ -13,7 +13,7 @@
 // so useRealtimeSession can dispatch to either engine uniformly. Must be called
 // unconditionally (rules of hooks); it stays inert until start().
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
 import type { CallState, SessionTurn } from "./types";
 import { resolveXaiAgent } from "./xai-agent";
@@ -453,15 +453,18 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   // Cleanup on unmount.
   useEffect(() => () => teardown(), [teardown]);
 
-  return {
-    callState,
-    turns,
-    caption,
-    start,
-    stop,
-    interrupt,
-    setMuted,
-    getInputVolume,
-    getOutputVolume,
-  };
+  return useMemo<XaiSession>(
+    () => ({
+      callState,
+      turns,
+      caption,
+      start,
+      stop,
+      interrupt,
+      setMuted,
+      getInputVolume,
+      getOutputVolume,
+    }),
+    [callState, turns, caption, start, stop, interrupt, setMuted, getInputVolume, getOutputVolume],
+  );
 }

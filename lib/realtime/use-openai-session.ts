@@ -299,6 +299,9 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
       // 2) Analysers — input from the mic, output from the model's remote track.
       const ctx = new AudioContext();
       ctxRef.current = ctx;
+      // Playback is routed through this context (createMediaElementSource below),
+      // so a suspended context means silent audio, not just a dead analyser.
+      if (ctx.state === "suspended") await ctx.resume();
       const inAnalyser = ctx.createAnalyser();
       inAnalyser.fftSize = 1024;
       ctx.createMediaStreamSource(stream).connect(inAnalyser);
@@ -316,6 +319,9 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
       pc.ontrack = (e) => {
         const [remote] = e.streams;
         if (!remote) return;
+        // The context may have been (re)suspended since setup — e.g. an iOS audio
+        // interruption — and the element-source graph below is the playback path.
+        if (ctx.state === "suspended") void ctx.resume();
         audioEl.srcObject = remote;
         void audioEl.play().catch(() => {
           // autoplay policy can defer playback; the element remains wired

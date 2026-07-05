@@ -431,13 +431,11 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
             if (stateRef.current === "speaking") setCallState("listening");
             break;
           case "input_audio_buffer.speech_started":
-            // Server VAD detected the user — server truncates the model audio for
-            // us on WebRTC; reflect the barge-in in the UI.
-            cancelAgentResponse();
-            finalizeAgent();
-            setCallState("interrupted");
-            if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
-            interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
+            // Voice barge-in is disabled (`interrupt_response: false` in the VAD
+            // presets) so leaked playback can't truncate the model server-side.
+            // While the model speaks this event is usually its own echo — don't
+            // reflect an interruption that isn't happening. Interrupting is the
+            // manual interrupt button (`interrupt()`).
             break;
           case "input_audio_buffer.speech_stopped":
           case "input_audio_buffer.committed":
@@ -500,7 +498,7 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
         return;
       }
     })();
-  }, [beginAgentResponse, cancelAgentResponse, finalizeAgent, pushAgentDelta, send, teardown]);
+  }, [beginAgentResponse, finalizeAgent, pushAgentDelta, send, teardown]);
 
   const stop = useCallback(() => {
     endedRef.current = true;

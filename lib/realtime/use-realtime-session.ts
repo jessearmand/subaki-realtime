@@ -52,11 +52,14 @@ export function useRealtimeSession({
   provider,
   persona,
   lmModelId,
+  voiceBargeIn,
 }: {
   provider: Provider;
   persona?: Persona;
   /** Cascade-only: overrides the catalog default LM model (from the Providers picker). */
   lmModelId?: string;
+  /** OpenAI-only: let user speech interrupt the agent (settings INTERRUPTIONS toggle). */
+  voiceBargeIn?: boolean;
 }): SessionApi {
   const engine = provider.engine;
   const isReal = !!engine;
@@ -99,7 +102,7 @@ export function useRealtimeSession({
 
   // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
   const xai = useXaiSession(engine === "xai", persona);
-  const openai = useOpenaiSession(engine === "openai", persona);
+  const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false);
   const cascade = useCascadeSession(engine === "cascade", persona, lmModelId);
   // Whichever custom engine is active owns the session; null ⇒ ElevenLabs/mock.
   const custom =

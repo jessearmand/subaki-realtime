@@ -14,7 +14,7 @@
 // dispatch to either uniformly. Must be called unconditionally (rules of hooks);
 // it stays inert until start().
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
 import type { CallState, SessionTurn } from "./types";
 import { resolveOpenaiAgent } from "./openai-agent";
@@ -39,6 +39,8 @@ type OpenaiEvent = {
   delta?: string;
   transcript?: string;
   item_id?: string;
+  response_id?: string;
+  response?: { id?: string };
   error?: { type?: string; code?: string; message?: string };
 };
 
@@ -66,7 +68,16 @@ function analyserLevel(
   return Math.min(1, Math.sqrt(sum / buf.length) * VOL_GAIN);
 }
 
-export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSession {
+export function useOpenaiSession(
+  active: boolean,
+  persona?: Persona,
+  /**
+   * Voice barge-in (settings INTERRUPTIONS): overrides the VAD presets'
+   * `interrupt_response`. Default off — echo-safe on speaker+mic setups;
+   * headphone users opt in to interrupt the agent by speaking.
+   */
+  bargeIn: boolean = false,
+): OpenaiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
@@ -84,11 +95,17 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
   const outBufRef = useRef<Float32Array<ArrayBuffer> | null>(null);
 
   const mutedRef = useRef(false);
+  // Half-duplex gate: with barge-in off, the mic track is silenced while agent
+  // audio is playing so speaker leak can't reach the model at all.
+  const micGatedRef = useRef(false);
   const endedRef = useRef(false);
   const configuredRef = useRef(false);
   const greetedRef = useRef(false);
 
   const turnSeqRef = useRef(0);
+  const agentResponseIdRef = useRef<string | null>(null);
+  const cancelledAgentResponseIdsRef = useRef<Set<string>>(new Set());
+  const suppressAgentDeltasRef = useRef(false);
   const agentTurnIdRef = useRef<string | null>(null);
   const agentBufRef = useRef("");
   const userTurnIdRef = useRef<string | null>(null);
@@ -98,6 +115,8 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
   stateRef.current = callState;
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  const bargeInRef = useRef(bargeIn);
+  bargeInRef.current = bargeIn;
 
   const teardown = useCallback(() => {
     if (interruptTimerRef.current) {
@@ -138,6 +157,10 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
     outBufRef.current = null;
     configuredRef.current = false;
     greetedRef.current = false;
+    micGatedRef.current = false;
+    agentResponseIdRef.current = null;
+    cancelledAgentResponseIdsRef.current.clear();
+    suppressAgentDeltasRef.current = false;
     agentTurnIdRef.current = null;
     agentBufRef.current = "";
     userTurnIdRef.current = null;
@@ -147,6 +170,85 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
   const send = useCallback((obj: unknown) => {
     const dc = dcRef.current;
     if (dc && dc.readyState === "open") dc.send(JSON.stringify(obj));
+  }, []);
+
+  // User mute and the half-duplex gate compose onto the one mic track.
+  // `enabled = false` makes WebRTC transmit silence — instant, no renegotiation.
+  const applyMicEnabled = useCallback(() => {
+    const enabled = !mutedRef.current && !micGatedRef.current;
+    streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = enabled));
+  }, []);
+
+  const setMicGated = useCallback(
+    (gated: boolean) => {
+      micGatedRef.current = gated;
+      applyMicEnabled();
+    },
+    [applyMicEnabled],
+  );
+
+  // The setTurns updaters must stay PURE (no ref mutation inside): React
+  // StrictMode double-invokes them, so id/sequence mutation happens here once.
+  const beginAgentResponse = useCallback((responseId?: string) => {
+    if (!responseId) return;
+    agentResponseIdRef.current = responseId;
+    cancelledAgentResponseIdsRef.current.delete(responseId);
+    suppressAgentDeltasRef.current = false;
+  }, []);
+
+  const shouldAcceptAgentDelta = useCallback((responseId?: string) => {
+    if (suppressAgentDeltasRef.current) {
+      if (!responseId || cancelledAgentResponseIdsRef.current.has(responseId)) return false;
+      suppressAgentDeltasRef.current = false;
+    }
+    if (responseId && cancelledAgentResponseIdsRef.current.has(responseId)) return false;
+    const activeResponseId = agentResponseIdRef.current;
+    if (activeResponseId && responseId && activeResponseId !== responseId) return false;
+    if (!activeResponseId && responseId) agentResponseIdRef.current = responseId;
+    return stateRef.current !== "interrupted" || !!agentTurnIdRef.current;
+  }, []);
+
+  const cancelAgentResponse = useCallback(() => {
+    const responseId = agentResponseIdRef.current;
+    if (responseId) cancelledAgentResponseIdsRef.current.add(responseId);
+    agentResponseIdRef.current = null;
+    suppressAgentDeltasRef.current = true;
+  }, []);
+
+  const pushAgentDelta = useCallback(
+    (delta: string, responseId?: string) => {
+      if (!shouldAcceptAgentDelta(responseId)) return;
+      agentBufRef.current += delta;
+      const text = agentBufRef.current;
+      setCaption(text);
+      let id = agentTurnIdRef.current;
+      if (id) {
+        const tid = id;
+        setTurns((prev) => prev.map((t) => (t.id === tid ? { ...t, text } : t)));
+      } else {
+        id = `o${turnSeqRef.current++}`;
+        agentTurnIdRef.current = id;
+        const tid = id;
+        setTurns((prev) => [...prev, { id: tid, who: "agent", text, live: true }]);
+      }
+    },
+    [shouldAcceptAgentDelta],
+  );
+
+  const finalizeAgent = useCallback((responseId?: string) => {
+    if (responseId && cancelledAgentResponseIdsRef.current.has(responseId)) {
+      if (agentResponseIdRef.current === responseId) agentResponseIdRef.current = null;
+      return;
+    }
+    const activeResponseId = agentResponseIdRef.current;
+    if (responseId && activeResponseId && responseId !== activeResponseId) {
+      return;
+    }
+    const id = agentTurnIdRef.current;
+    if (id) setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, live: false } : t)));
+    agentResponseIdRef.current = null;
+    agentTurnIdRef.current = null;
+    agentBufRef.current = "";
   }, []);
 
   const start = useCallback(() => {
@@ -166,30 +268,6 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
     };
 
     // ── transcript helpers ──────────────────────────────────────────────
-    // The setTurns updaters must stay PURE (no ref mutation inside): React
-    // StrictMode double-invokes them, so any id/sequence mutation must happen
-    // here, once, before calling setTurns.
-    const pushAgentDelta = (delta: string) => {
-      agentBufRef.current += delta;
-      const text = agentBufRef.current;
-      setCaption(text);
-      let id = agentTurnIdRef.current;
-      if (id) {
-        const tid = id;
-        setTurns((prev) => prev.map((t) => (t.id === tid ? { ...t, text } : t)));
-      } else {
-        id = `o${turnSeqRef.current++}`;
-        agentTurnIdRef.current = id;
-        const tid = id;
-        setTurns((prev) => [...prev, { id: tid, who: "agent", text, live: true }]);
-      }
-    };
-    const finalizeAgent = () => {
-      const id = agentTurnIdRef.current;
-      if (id) setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, live: false } : t)));
-      agentTurnIdRef.current = null;
-      agentBufRef.current = "";
-    };
     const pushUserDelta = (delta: string) => {
       userBufRef.current += delta;
       const text = userBufRef.current;
@@ -244,11 +322,15 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
         return;
       }
       streamRef.current = stream;
-      if (mutedRef.current) stream.getAudioTracks().forEach((t) => (t.enabled = false));
+      applyMicEnabled();
 
       // 2) Analysers — input from the mic, output from the model's remote track.
       const ctx = new AudioContext();
       ctxRef.current = ctx;
+      // The context only drives the level analysers (playback goes through the
+      // <audio> element so Chrome's echo canceller keeps its reference signal),
+      // but a suspended context still means dead orb meters.
+      if (ctx.state === "suspended") await ctx.resume();
       const inAnalyser = ctx.createAnalyser();
       inAnalyser.fftSize = 1024;
       ctx.createMediaStreamSource(stream).connect(inAnalyser);
@@ -260,13 +342,25 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
       pcRef.current = pc;
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;
+      audioEl.setAttribute("playsinline", "true");
+      audioEl.setAttribute("webkit-playsinline", "true");
       audioElRef.current = audioEl;
       pc.ontrack = (e) => {
         const [remote] = e.streams;
         if (!remote) return;
+        // Keep the analyser's context alive — e.g. after an iOS audio interruption.
+        if (ctx.state === "suspended") void ctx.resume();
+        // Play the element DIRECTLY — do not route it through the AudioContext
+        // (createMediaElementSource → destination). Chrome's echo canceller uses
+        // directly-played remote WebRTC audio as its reference; rerouting through
+        // Web Audio bypasses AEC and the speakers feed the model back to itself.
         audioEl.srcObject = remote;
-        // Tap the remote stream for the output orb level (analyser only; the
-        // <audio> element does the actual playback, so don't reach destination).
+        void audioEl.play().catch(() => {
+          // autoplay policy can defer playback; the element remains wired
+        });
+        // Passive tap on the remote stream for the orb level only (never connected
+        // to destination — the element owns playback). Chrome keeps this analyser
+        // fed as long as the same stream is attached to a playing media element.
         try {
           const outAnalyser = ctx.createAnalyser();
           outAnalyser.fftSize = 1024;
@@ -297,7 +391,8 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
             instructions: agent.instructions,
             audio: {
               input: {
-                turn_detection: agent.turnDetection,
+                // The settings INTERRUPTIONS toggle decides barge-in, not the preset.
+                turn_detection: { ...agent.turnDetection, interrupt_response: bargeInRef.current },
                 transcription: agent.transcription,
               },
               output: { voice: agent.voice },
@@ -344,29 +439,50 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
             greet();
             break;
           case "response.created":
+            beginAgentResponse(msg.response?.id ?? msg.response_id);
             if (stateRef.current !== "interrupted") setCallState("speaking");
             break;
           case "response.output_audio_transcript.delta":
             if (msg.delta) {
               if (stateRef.current !== "interrupted") setCallState("speaking");
-              pushAgentDelta(msg.delta);
+              pushAgentDelta(msg.delta, msg.response_id);
             }
             break;
           case "response.done":
-            finalizeAgent();
+            finalizeAgent(msg.response?.id ?? msg.response_id);
             if (stateRef.current === "speaking") setCallState("listening");
             break;
           case "input_audio_buffer.speech_started":
-            // Server VAD detected the user — server truncates the model audio for
-            // us on WebRTC; reflect the barge-in in the UI.
-            finalizeAgent();
-            setCallState("interrupted");
-            if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
-            interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
+            // With barge-in on (`interrupt_response: true`) the server truncates
+            // the model's audio for us on WebRTC — reflect the interruption in
+            // the UI. With it off (the echo-safe default) this event is usually
+            // the model's own leaked playback, so don't fake an interruption
+            // that isn't happening; interrupting is the manual button.
+            if (bargeInRef.current) {
+              cancelAgentResponse();
+              finalizeAgent();
+              setCallState("interrupted");
+              if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
+              interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
+            }
             break;
           case "input_audio_buffer.speech_stopped":
           case "input_audio_buffer.committed":
             if (stateRef.current === "interrupted") setCallState("listening");
+            break;
+          case "output_audio_buffer.started":
+            // Agent audio is now playing (WebRTC-only event). With barge-in off,
+            // go half-duplex: silence the mic so speaker leak can't be committed
+            // as a user turn and answered. With barge-in on, the mic stays open
+            // so the user can talk over the agent.
+            if (!bargeInRef.current) setMicGated(true);
+            break;
+          case "output_audio_buffer.stopped":
+          case "output_audio_buffer.cleared":
+            // Playback drained (or was cleared by interrupt) — reopen the mic.
+            // Gate off here rather than at response.done: generation finishes
+            // while the audio tail is still playing, and that tail is the echo.
+            setMicGated(false);
             break;
           case "conversation.item.input_audio_transcription.delta":
             if (msg.delta) pushUserDelta(msg.delta);
@@ -425,7 +541,16 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
         return;
       }
     })();
-  }, [send, teardown]);
+  }, [
+    applyMicEnabled,
+    beginAgentResponse,
+    cancelAgentResponse,
+    finalizeAgent,
+    pushAgentDelta,
+    send,
+    setMicGated,
+    teardown,
+  ]);
 
   const stop = useCallback(() => {
     endedRef.current = true;
@@ -439,15 +564,20 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
     // Cancel the in-progress response and clear any unplayed server audio.
     send({ type: "response.cancel" });
     send({ type: "output_audio_buffer.clear" });
+    cancelAgentResponse();
+    finalizeAgent();
     setCallState("interrupted");
     if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
     interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
-  }, [send]);
+  }, [cancelAgentResponse, finalizeAgent, send]);
 
-  const setMuted = useCallback((muted: boolean) => {
-    mutedRef.current = muted;
-    streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !muted));
-  }, []);
+  const setMuted = useCallback(
+    (muted: boolean) => {
+      mutedRef.current = muted;
+      applyMicEnabled();
+    },
+    [applyMicEnabled],
+  );
 
   const getInputVolume = useCallback(() => {
     if (mutedRef.current) return 0;
@@ -457,6 +587,28 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
     () => analyserLevel(outAnalyserRef.current, outBufRef.current),
     [],
   );
+
+  // Reflect a barge-in toggle flip into a live session — `session.update` is a
+  // merge, so only turn_detection needs resending. No-ops until configured
+  // (send() drops messages while the data channel is closed).
+  useEffect(() => {
+    // Turning barge-in on mid-call lifts the half-duplex gate immediately —
+    // don't leave the mic silenced waiting for the current playback to drain.
+    if (bargeIn) setMicGated(false);
+    if (!configuredRef.current) return;
+    const agent = resolveOpenaiAgent(personaRef.current?.id);
+    send({
+      type: "session.update",
+      session: {
+        type: "realtime",
+        audio: {
+          input: {
+            turn_detection: { ...agent.turnDetection, interrupt_response: bargeIn },
+          },
+        },
+      },
+    });
+  }, [bargeIn, send, setMicGated]);
 
   // Hang up + reset if the provider is switched away from OpenAI mid-session.
   useEffect(() => {
@@ -473,15 +625,18 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
   // Cleanup on unmount.
   useEffect(() => () => teardown(), [teardown]);
 
-  return {
-    callState,
-    turns,
-    caption,
-    start,
-    stop,
-    interrupt,
-    setMuted,
-    getInputVolume,
-    getOutputVolume,
-  };
+  return useMemo<OpenaiSession>(
+    () => ({
+      callState,
+      turns,
+      caption,
+      start,
+      stop,
+      interrupt,
+      setMuted,
+      getInputVolume,
+      getOutputVolume,
+    }),
+    [callState, turns, caption, start, stop, interrupt, setMuted, getInputVolume, getOutputVolume],
+  );
 }

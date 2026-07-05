@@ -35,6 +35,8 @@ This is all a **dev environment — no production yet**. `ELEVENLABS_API_KEY` li
 - **Height chain:** `.tsubaki` is `height:100%`, so `<body>` must be `h-full overflow-hidden` (not `min-h-full`) or the 50/50 call layout overflows the viewport.
 - **ElevenLabs CLI:** add one component per `bunx @elevenlabs/cli@latest components add <name>` call.
 - **`useConversation` methods throw before `startSession()`** ("No active conversation"). Guard `setMuted`/`getInputVolume`/`getOutputVolume` on `status === "connected"` — they run as soon as the ELEVENLABS provider is selected, not just mid-call.
+- **Never route the OpenAI WebRTC `<audio>` element through `createMediaElementSource`.** Chrome's echo canceller references the *directly played* remote track; rerouting playback through Web Audio bypasses AEC, and on speakers the model hears its own voice (semantic VAD commits the echo as user turns → the agent answers itself). Play the element directly; orb levels come from a passive `createMediaStreamSource(remote)` analyser never connected to `destination`.
+- **OpenAI half-duplex mic gating** (barge-in OFF, the default): the mic track is silenced from `output_audio_buffer.started` until `stopped`/`cleared` — **not** `response.done`, which fires while the audio tail is still playing (that tail *is* the echo). Voice barge-in is the settings INTERRUPTIONS toggle (`voiceBargeIn` tweak, headphone users only).
 - **`.env*` writes are blocked** by a hook — document env vars in the README instead.
 - Bash hooks require `rg` (not `grep`/`find -name`).
 

@@ -11,6 +11,12 @@ export interface Tweaks {
   orbStyle: OrbStyle;
   transcript: TranscriptMode;
   providerPreview: boolean;
+  /**
+   * Voice barge-in (OpenAI engine): let user speech interrupt the agent
+   * mid-sentence. OFF by default — on speaker+mic setups the model hears its
+   * own playback and truncates itself; headphone users can opt in.
+   */
+  voiceBargeIn: boolean;
 }
 
 export const TWEAK_DEFAULTS: Tweaks = {
@@ -19,6 +25,7 @@ export const TWEAK_DEFAULTS: Tweaks = {
   orbStyle: "gradient",
   transcript: "drawer",
   providerPreview: true,
+  voiceBargeIn: false,
 };
 
 // Camellia crimson is the Tsubaki default; burnt orange (#C2410C) stays selectable.

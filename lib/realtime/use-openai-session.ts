@@ -177,7 +177,13 @@ export function useOpenaiSession(active: boolean, persona?: Persona): OpenaiSess
     const activeResponseId = agentResponseIdRef.current;
     if (activeResponseId && responseId && activeResponseId !== responseId) return false;
     if (!activeResponseId && responseId) agentResponseIdRef.current = responseId;
-    return stateRef.current !== "interrupted" || !!agentTurnIdRef.current;
+    // A delta that survived the cancelled/suppress/id checks above belongs to a
+    // live response — accept it even while the UI sits in the brief
+    // "interrupted" window, or a fast reply after a barge-in loses its leading
+    // text. Only unattributed deltas (no response id and no open turn) are
+    // ambiguous enough to drop there: they may be the cancelled response's tail.
+    if (stateRef.current !== "interrupted") return true;
+    return !!responseId || !!agentTurnIdRef.current;
   }, []);
 
   const cancelAgentResponse = useCallback(() => {

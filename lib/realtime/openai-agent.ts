@@ -92,11 +92,13 @@ export interface OpenaiAgentConfig {
 // Semantic VAD classifies on utterance completion rather than raw audio energy,
 // so background noise and fillers no longer trigger a turn.
 //
-// Voice barge-in is off in every preset: on speaker+mic setups the model hears
-// its own playback before the echo canceller converges (worst on the first
-// session after a page load) and truncates itself mid-sentence. Semantic VAD
-// can't filter this — the leak *is* speech. Interruption is the manual
-// interrupt button instead (`response.cancel` + `output_audio_buffer.clear`).
+// Voice barge-in defaults off in every preset: on speaker+mic setups the model
+// hears its own playback before the echo canceller converges (worst on the
+// first session after a page load) and truncates itself mid-sentence. Semantic
+// VAD can't filter this — the leak *is* speech. The settings INTERRUPTIONS
+// toggle overrides `interrupt_response` at session time for headphone users;
+// with it off, interruption is the manual interrupt button
+// (`response.cancel` + `output_audio_buffer.clear`).
 const VAD_SNAPPY: OpenaiAgentConfig["turnDetection"] = {
   type: "semantic_vad",
   eagerness: "medium",

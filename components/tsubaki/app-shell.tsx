@@ -35,7 +35,12 @@ export function AppShell() {
   // Bind the C/P/V/S section keys the sidebar advertises.
   useNavKeys(setNav);
 
-  const session = useRealtimeSession({ provider, persona, lmModelId });
+  const session = useRealtimeSession({
+    provider,
+    persona,
+    lmModelId,
+    voiceBargeIn: tweaks.voiceBargeIn,
+  });
   // What the UI shows as the active model — tracks the LM picker for cascade.
   const providerModel = providerModelLabel(provider, lmModelId);
   // Execution mode — for cascade, computed from the resolved backends.
@@ -87,6 +92,8 @@ export function AppShell() {
               onMutedChange={(m) => {
                 if (m !== session.muted) session.toggleMute();
               }}
+              bargeIn={tweaks.voiceBargeIn}
+              onBargeInChange={(v) => setTweak("voiceBargeIn", v)}
             />
           )}
         </main>

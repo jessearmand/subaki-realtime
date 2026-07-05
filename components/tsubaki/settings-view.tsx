@@ -10,12 +10,17 @@ export function SettingsView({
   setTools,
   muted,
   onMutedChange,
+  bargeIn,
+  onBargeInChange,
 }: {
   accent: string;
   tools: Tool[];
   setTools: (updater: (prev: Tool[]) => Tool[]) => void;
   muted: boolean;
   onMutedChange: (m: boolean) => void;
+  /** Voice barge-in — user speech interrupts the agent (OpenAI engine). */
+  bargeIn: boolean;
+  onBargeInChange: (v: boolean) => void;
 }) {
   const [device, setDevice] = useState("");
   const outputs = useAudioOutputDevices();
@@ -23,7 +28,6 @@ export function SettingsView({
   const [latency, setLatency] = useState(220);
   const [vad, setVad] = useState(0.65);
   const [denoise, setDenoise] = useState(true);
-  const [interruptions, setInterruptions] = useState(true);
   const [pushToTalk, setPushToTalk] = useState(false);
 
   // Default the output selection to the first real device once enumerated.
@@ -122,8 +126,8 @@ export function SettingsView({
               <span>600</span>
             </div>
           </FieldRow>
-          <FieldRow label="INTERRUPTIONS">
-            <SwitchRow value={interruptions} onChange={setInterruptions} />
+          <FieldRow label="INTERRUPTIONS" hint="voice barge-in · headphones only">
+            <SwitchRow value={bargeIn} onChange={onBargeInChange} />
           </FieldRow>
           <FieldRow label="PUSH-TO-TALK">
             <SwitchRow value={pushToTalk} onChange={setPushToTalk} />

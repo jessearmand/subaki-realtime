@@ -19,6 +19,7 @@ import {
 import { useTweaks } from "@/hooks/use-tweaks";
 import { useLmModel } from "@/hooks/use-lm-model";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useNavKeys } from "@/hooks/use-nav-keys";
 import { providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
 import { providerExecLabel } from "@/lib/realtime/voice-config";
 import { useRealtimeSession } from "@/lib/realtime/use-realtime-session";
@@ -31,6 +32,8 @@ export function AppShell() {
   const [provider, setProvider] = useState<Provider>(PROVIDERS[0]);
   const [tools, setTools] = useState<Tool[]>(TOOLS_DEFAULT);
   const isMobile = useMediaQuery("(max-width: 760px)");
+  // Bind the C/P/V/S section keys the sidebar advertises.
+  useNavKeys(setNav);
 
   const session = useRealtimeSession({ provider, persona, lmModelId });
   // What the UI shows as the active model — tracks the LM picker for cascade.

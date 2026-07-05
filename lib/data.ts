@@ -89,6 +89,15 @@ export const PERSONAS: Persona[] = [
     desc: "A mystery-novel narrator — atmospheric, deliberate, with an ear for the telling detail.",
     wpm: 138,
   },
+  {
+    id: "vesper",
+    name: "VESPER",
+    accent: "BRIT · F",
+    traits: ["NOIR", "VELVET", "WRY"],
+    voice: "Alto · 170–260 Hz",
+    desc: "Cipher's counterpart — a velvet noir narrator with a wry, conspiratorial edge.",
+    wpm: 130,
+  },
 ];
 
 export const PROVIDERS: Provider[] = [

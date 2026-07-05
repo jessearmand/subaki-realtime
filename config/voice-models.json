@@ -1,0 +1,44 @@
+{
+  "note": "TTS + STT catalog for the cascade engine's voice legs (sibling of lm-models.json). `default` picks the backend each leg uses; override per dev-session with NEXT_PUBLIC_TTS_BACKEND / NEXT_PUBLIC_STT_BACKEND (client-resolved, passed to the routes as `backend`). `envKey` names a fnox/env secret read server-side; empty = keyless local server. The `local` backends expect `mise run audio-local` (mlx-audio server, port 8002). TTS `voiceMap` translates cascade-agent's Mistral voice_id slugs to the local model's preset names (voxtral_tts has 5 English presets: casual_male, casual_female, cheerful_female, neutral_male, neutral_female) — recast personas here. `responseShape`: mistral-json = {audio_data: base64}; audio-bytes = raw audio body (OpenAI-style).",
+  "tts": {
+    "default": "mistral",
+    "backends": {
+      "mistral": {
+        "url": "https://api.mistral.ai/v1/audio/speech",
+        "envKey": "MISTRAL_API_KEY",
+        "model": "voxtral-mini-tts-2603",
+        "responseShape": "mistral-json"
+      },
+      "local": {
+        "url": "http://localhost:8002/v1/audio/speech",
+        "envKey": "",
+        "model": "mlx-community/Voxtral-4B-TTS-2603-mlx-6bit",
+        "responseShape": "audio-bytes",
+        "temperature": 0.5,
+        "defaultVoice": "neutral_male",
+        "voiceMap": {
+          "gb_jane_neutral": "casual_female",
+          "gb_jane_confident": "cheerful_female",
+          "gb_jane_sad": "neutral_female",
+          "gb_oliver_neutral": "casual_male",
+          "en_paul_neutral": "neutral_male",
+          "en_paul_sad": "casual_male"
+        }
+      }
+    }
+  },
+  "stt": {
+    "default": "mistral",
+    "backends": {
+      "mistral": {
+        "mode": "realtime"
+      },
+      "local": {
+        "mode": "batch",
+        "url": "http://localhost:8002/v1/audio/transcriptions",
+        "envKey": "",
+        "model": "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+      }
+    }
+  }
+}

@@ -150,90 +150,116 @@ TTS synth (~80–150 ms). A *local* LM removes the network leg; PersonaPlex
 full-duplex is ~160 ms by comparison — **the cascade trades ~1.5 s first-audio for
 smooth, controllable, any-model speech.**
 
-## What the app runs today (cloud Voxtral)
+## What the app runs (cloud and local Voxtral)
 
 The `MISTRAL` provider row (`engine: "cascade"` in `lib/data.ts`, `exec: "local /
-remote"`) already runs the full cascade — but every model leg is a **cloud** call
-to Mistral / the HF router. The only on-device pieces are Silero VAD (turn
-detection) and mic/audio capture:
+remote"`) runs the full cascade with **every model leg selectable cloud ↔ local**
+(catalogs in `config/lm-models.json` + `config/voice-models.json`); Silero VAD
+(turn detection) and mic/audio capture are always on-device:
 
-| Leg | Today (cloud) | Local Voxtral equivalent |
-| --- | ------------- | ------------------------ |
-| STT | Mistral realtime WS (`voxtral-mini-transcribe-realtime-2602`) via the Bun proxy `scripts/mistral-stt-proxy.ts` | voxmlx (`Voxtral-Mini-4B-Realtime`) |
-| LM | `app/api/llm` → catalog backend (`hf` router / `mistral`) | local OpenAI-compatible server (llama-server / mlx-lm / vLLM) |
-| TTS | `app/api/mistral/tts` → `voxtral-mini-tts-2603` | mlx-audio (`Voxtral-4B-TTS-2603`) |
-| Turn detection | Silero VAD (browser, onnxruntime-web) — already local | unchanged |
+| Leg | Cloud backend | Local backend (✅ wired) |
+| --- | ------------- | ----------------------- |
+| STT | Mistral realtime WS (`voxtral-mini-transcribe-realtime-2602`) via the Bun proxy `scripts/mistral-stt-proxy.ts` | batch `/api/stt` → mlx-audio (`Voxtral-Mini-4B-Realtime-2602-4bit`) |
+| LM | `app/api/llm` → catalog backend (`hf` router / `mistral`) | `/api/llm` → llama-server (gemma-4-12B QAT + MTP) |
+| TTS | `/api/tts` → Mistral `voxtral-mini-tts-2603` | `/api/tts` → mlx-audio (`Voxtral-4B-TTS-2603-mlx-6bit`) |
+| Turn detection | Silero VAD (browser, onnxruntime-web) — always local | unchanged |
 
-So "local Voxtral" is not a new engine — it is the **same cascade topology with
-each leg pointed at a local server** instead of Mistral's API.
+"Local Voxtral" is not a new engine — it is the **same cascade topology with each
+leg pointed at a local server** instead of Mistral's API.
 
 ## What needs to be prepared for local Voxtral
 
 Ordered easiest → hardest. Each leg maps to an existing seam in the app.
 
-### 1. LM → local (smallest change)
+### 1. LM → local — ✅ done (2026-07-03)
 
 The LM leg is already backend-agnostic (`config/lm-models.json` +
 `resolveLmBackend`; the route pipes OpenAI-compatible SSE verbatim). A local server
-is just a catalog entry:
+is just a catalog entry — now shipped:
 
 ```jsonc
-// config/lm-models.json → backends
+// config/lm-models.json → backends (as implemented)
 "local": {
-  "url": "http://localhost:8080/v1/chat/completions",
-  "envKey": "",          // keyless localhost
-  "supportsThinking": true
+  "url": "http://localhost:8001/v1/chat/completions",
+  "envKey": "",             // keyless localhost — no Authorization header sent
+  "supportsThinking": true  // llama-server accepts chat_template_kwargs
 }
+// models[] gained "gemma-4-12b-local" → unsloth/gemma-4-12b-it-qat-GGUF
 ```
 
-**One code change:** `app/api/llm/route.ts` currently returns 500 when the
-backend's `envKey` is unset. Make the auth header optional so a keyless local
-backend is allowed (`if (backend.envKey) headers.Authorization = ...`). Then add a
-`models[]` entry pointing at the local server and pick it from the Providers model
-picker.
+**The one code change** landed in `app/api/llm/route.ts`: an empty `envKey` now
+skips the Authorization header instead of returning 500 (a *named-but-unset*
+secret still 500s). Serving is `mise run lm-local` — llama-server with
+`gemma-4-12B-it-qat-UD-Q4_K_XL.gguf` (6.7 GB) + the MTP draft head
+(`--spec-type draft-mtp`), text-only, thinking off, port 8001, `--alias`
+matching the catalog's `model` id; weights under
+`~/Develop/voice-cascade/models/gemma-4-12B/` (override `LM_LOCAL_MODEL_DIR`).
 
-Serving options (any OpenAI-compatible `/v1`): `llama-server` (llama.cpp, GGUF +
-MTP), `mlx_lm.server`, vLLM, or LM Studio. The `voice-cascade` prototype already
-proved the `engine="openai"` path against a local `llama-server`.
+**Measured (M5 Max, warm):** direct llama-server **TTFT 293 ms · ~96 tok/s**;
+through the app's `/api/llm` route **TTFT 169 ms · ~120 tok/s** — versus ~440–500 ms
+TTFT for the best router models. The local 12B removes the network leg, exactly
+as predicted; projected cascade first-audio drops from ~1.5 s toward ~1 s.
 
-### 2. TTS → local (small refactor)
+(Other OpenAI-compatible servers — `mlx_lm.server`, vLLM, LM Studio — drop in by
+editing the `local` backend URL; nothing else changes.)
 
-`app/api/mistral/tts/route.ts` **hardcodes** the Mistral URL + model — unlike the
-LM leg, it never got the catalog treatment. To go local:
+### 2. TTS → local — ✅ done (2026-07-03)
 
-- Give TTS a small catalog (a `tts` section in `config/lm-models.json` or a sibling
-  file): `{ url, envKey, model, voiceMap }`, and resolve a backend per request the
-  way `/api/llm` does.
-- Stand up an mlx-audio HTTP endpoint serving `voxtral_tts` and point a `local`
-  TTS backend at it.
-- **Voice mapping:** `cascade-agent.ts`'s `ttsVoice` is a flat Mistral `voice_id`
-  slug (`gb_jane_neutral`). mlx-audio uses different preset names
-  (`cheerful_female`, `neutral_male`, …). Each persona needs a per-backend voice
-  map, not one string — the cleanest place is a `voiceMap` in the TTS backend
-  config keyed by persona.
+The Mistral-only route was replaced by a catalog-driven **`/api/tts`**:
 
-### 3. STT → local (largest change)
+- **`config/voice-models.json`** (sibling of the LM catalog, read via
+  `lib/realtime/voice-config.ts`) defines `tts.backends.{mistral,local}` with
+  `{ url, envKey, model, responseShape, voiceMap }`. Response shapes differ:
+  Mistral answers `{audio_data: base64}`, the local server streams raw MP3 —
+  the route normalizes both to `audio/mpeg` bytes.
+- The **local backend is the mlx-audio server** (`POST /v1/audio/speech`,
+  OpenAI-shaped) serving `mlx-community/Voxtral-4B-TTS-2603-mlx-6bit` — no
+  custom endpoint needed; `mise run audio-local` (port 8002).
+- **Voice mapping** landed as `voiceMap` on the local backend: Mistral
+  `voice_id` slug → voxtral_tts preset (`gb_jane_neutral` → `casual_female`, …;
+  5 English presets for 6 personas, so two share). `cascade-agent.ts` stays
+  slug-only.
 
-The browser speaks the **Mistral realtime WS protocol**
-(`session.update` / `input_audio.append` / `transcription.text.delta`) to the Bun
-proxy. Two ways to go local:
+Measured (M5 Max): warm synth **~0.9 s/sentence** direct, **1.4 s** through
+`/api/tts` (cold first call ~5 s while the model loads).
 
-- **(a) Local realtime WS shim** — a small server wrapping voxmlx that speaks the
-  same wire protocol, then flip `NEXT_PUBLIC_MISTRAL_STT_WS` to
-  `ws://localhost:<port>`. Keeps the entire client path (`mistral-stt.ts`, Silero
-  VAD, partial captions) unchanged. Most work, cleanest result. (voxmlx today is a
-  CLI/mic tool, not a server — the shim is the missing piece.)
-- **(b) Per-turn batch STT** — Silero VAD already owns turn boundaries client-side,
-  so POST each finished turn's PCM to a local `/api/stt` → voxmlx and skip the
-  streaming WS entirely. Loses live partial captions but is far simpler; a good
-  MVP given VAD already fires end-of-turn.
+### 3. STT → local — ✅ done, option (b) (2026-07-03)
+
+Batch per-turn STT (option b) shipped; the WS shim (option a) remains a future
+upgrade for live partial captions.
+
+- **`/api/stt`** forwards a finished turn's WAV (multipart) to the local
+  mlx-audio `POST /v1/audio/transcriptions` (`response_format=json`) serving
+  `mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit` — the same server as TTS.
+- **Client**: `MistralStt` gained `mode: "realtime" | "batch"`. Batch mode opens
+  no socket; it records the turn's 16 kHz PCM (Silero VAD + Send button own the
+  boundaries exactly as before), encodes one WAV (`lib/realtime/wav.ts`) on turn
+  end and POSTs it. A failed transcription is non-fatal (one lost turn, no
+  Web-Speech demotion). No live captions in this mode.
+- Backend per leg is picked by `config/voice-models.json` `default`, overridable
+  per dev-session: `NEXT_PUBLIC_TTS_BACKEND=local NEXT_PUBLIC_STT_BACKEND=local`.
+
+Measured: **0.96 s** through `/api/stt` for a 3 s turn (warm), verbatim
+transcript.
+
+> **mlx-audio server fix required:** MLX ≥0.31 makes streams thread-local, and
+> the stock server loads models via `asyncio.to_thread` while inference runs on
+> its broker thread → `RuntimeError: There is no Stream(gpu, 0) in current
+> thread` on the first request. Fixed in the local checkout
+> (`~/Develop/mlx-audio`, `ModelLoadAdapter` routes preflight loads through the
+> broker thread); worth upstreaming to Blaizzy/mlx-audio.
 
 ### Serving / ops
 
-Local Voxtral means running background inference servers alongside `bun run dev`:
-voxmlx (STT, option a) or an `/api/stt` route (option b), an mlx-audio TTS
-endpoint, and a local LLM server. Worth a `mise` task group (mirroring `mise run
-stt-proxy`) that brings the local stack up/down. All three fit comfortably in
+The fully-local cascade is two background servers alongside `bun run dev`:
+
+- `mise run lm-local` — llama-server (LM, :8001)
+- `mise run audio-local` — mlx-audio server (TTS **and** batch STT, :8002)
+
+plus `stop-lm-local` / `stop-audio-local`. Resident footprint: LM ~7 GB + TTS
+~4 GB + STT ~3 GB ≈ **14 GB**, comfortable in 64 GB (PersonaPlex's 10 GB could
+still co-reside). Select the local legs with the Providers LM picker +
+`NEXT_PUBLIC_TTS_BACKEND=local NEXT_PUBLIC_STT_BACKEND=local`. All three fit comfortably in
 64 GB (STT 4.2 + TTS 4.0 + a mid-size LM), and can co-reside with PersonaPlex if
 needed.
 
@@ -246,13 +272,18 @@ needed.
 
 ## Open next steps
 
-- LM-local: make `envKey` optional in `app/api/llm/route.ts`, add a `local`
-  backend + model entry. (Afternoon.)
-- TTS-local: catalog-ize `app/api/mistral/tts`, add per-persona voice map, stand up
-  mlx-audio HTTP. (Day.)
-- STT-local: build the voxmlx WS shim (option a) or the batch `/api/stt` route
-  (option b).
+- ~~LM-local~~ ✅ done — `local` backend + `gemma-4-12b-local` entry, keyless
+  `/api/llm`, `mise run lm-local` (llama-server + MTP). TTFT 169 ms via the route.
+- ~~TTS-local~~ ✅ done — catalog-driven `/api/tts` + `voiceMap`, mlx-audio server
+  via `mise run audio-local`. ~1.4 s/clause via the route (warm).
+- ~~STT-local~~ ✅ done (option b) — batch `/api/stt` + `MistralStt` batch mode.
+  0.96 s per 3 s turn (warm).
 - Live mic test of the fully-local cascade; measure end-to-end first-audio vs the
-  cloud path (cloud baseline ≈ 1.5 s first-audio).
+  cloud path (cloud baseline ≈ 1.5 s first-audio; local should land near ~1 s).
+- Upstream the mlx-audio broker-thread load fix (Blaizzy/mlx-audio).
+- Later upgrade: the voxmlx realtime WS shim (STT option a) to restore live
+  partial captions on the local path.
+- Persona voice casting: only 5 English voxtral_tts presets exist — revisit the
+  `voiceMap` casting (and maybe per-persona `temperature`) by ear.
 
 Full Python design in `~/Develop/voice-cascade/README.md`.

@@ -12,7 +12,8 @@ import catalog from "@/config/lm-models.json";
 export interface LmBackendConfig {
   /** OpenAI-compatible chat-completions endpoint. */
   url: string;
-  /** Name of the secret env var holding the bearer token (read server-side only). */
+  /** Name of the secret env var holding the bearer token (read server-side only).
+   *  Empty string = keyless backend (local server); no Authorization header sent. */
   envKey: string;
   /** Send chat_template_kwargs.enable_thinking:false (reasoning models). Must be
    *  false for APIs that reject unknown fields (e.g. Mistral). */

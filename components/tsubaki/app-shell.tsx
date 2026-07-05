@@ -19,7 +19,8 @@ import {
 import { useTweaks } from "@/hooks/use-tweaks";
 import { useLmModel } from "@/hooks/use-lm-model";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { providerModelLabel } from "@/lib/realtime/lm-config";
+import { providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
+import { providerExecLabel } from "@/lib/realtime/voice-config";
 import { useRealtimeSession } from "@/lib/realtime/use-realtime-session";
 
 export function AppShell() {
@@ -34,6 +35,8 @@ export function AppShell() {
   const session = useRealtimeSession({ provider, persona, lmModelId });
   // What the UI shows as the active model — tracks the LM picker for cascade.
   const providerModel = providerModelLabel(provider, lmModelId);
+  // Execution mode — for cascade, computed from the resolved backends.
+  const providerExec = providerExecLabel(provider, resolveLmModel(lmModelId).backend);
 
   return (
     <div className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}>
@@ -46,6 +49,7 @@ export function AppShell() {
             persona={persona}
             provider={provider}
             providerModel={providerModel}
+            providerExec={providerExec}
           />
         )}
         <main className="tb-main">

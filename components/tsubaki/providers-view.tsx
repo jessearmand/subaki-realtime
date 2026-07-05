@@ -1,7 +1,12 @@
 import { Fragment } from "react";
 import { Tag, Hr, Spec } from "./primitives";
 import { PROVIDERS, type Provider } from "@/lib/data";
-import { lmModelsForEngine, providerModelLabel } from "@/lib/realtime/lm-config";
+import { lmModelsForEngine, providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
+import {
+  DEFAULT_STT_BACKEND_ID,
+  DEFAULT_TTS_BACKEND_ID,
+  providerExecLabel,
+} from "@/lib/realtime/voice-config";
 import type { CSSProperties } from "react";
 
 export function ProvidersView({
@@ -20,6 +25,9 @@ export function ProvidersView({
   // Surface the headline transport changes in the active-provider detail:
   // the cascade engine (STT→LM→TTS) and neural Silero VAD turn detection.
   const isCascade = provider.engine === "cascade";
+  // The cascade's EXECUTION cell reflects the resolved backends, so it follows
+  // the LM picker live (TTS/STT come from config/voice-models.json + env).
+  const lmBackend = resolveLmModel(lmModelId).backend;
 
   return (
     <div className="tb-providers">
@@ -68,7 +76,7 @@ export function ProvidersView({
                   <td className="tb-mono-num">{providerModelLabel(p, lmModelId)}</td>
                   <td>
                     <Tag mono dot>
-                      {p.exec.toUpperCase()}
+                      {providerExecLabel(p, lmBackend).toUpperCase()}
                     </Tag>
                   </td>
                   <td className="tb-table-note">{p.note}</td>
@@ -119,7 +127,15 @@ export function ProvidersView({
               isCascade ? "STT → LM → TTS" : provider.engine ? "native realtime" : "design preview"
             }
           />
-          <Spec label="CODEC" value="opus 48k mono" sub="server-side resample" />
+          {isCascade ? (
+            <Spec
+              label="VOICE LEGS"
+              value={`TTS ${DEFAULT_TTS_BACKEND_ID.toUpperCase()} · STT ${DEFAULT_STT_BACKEND_ID.toUpperCase()}`}
+              sub="NEXT_PUBLIC_*_BACKEND · voice-models.json"
+            />
+          ) : (
+            <Spec label="CODEC" value="opus 48k mono" sub="server-side resample" />
+          )}
           <Spec
             label="TURN DETECTION"
             value={isCascade ? "Silero VAD" : "server VAD"}

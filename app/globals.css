@@ -681,7 +681,9 @@
 }
 .tb-caption-scroll .tb-scroll-area {
   display: flex;
-  align-items: center;
+  /* Transcript-style anchor: pin the top edge so streaming text only grows
+     downward into empty space — centered text re-centers on every line wrap. */
+  align-items: flex-start;
   justify-content: center;
   padding: 16px 28px;
 }

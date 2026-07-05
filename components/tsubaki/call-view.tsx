@@ -34,6 +34,10 @@ export function CallView({
   tools: Tool[];
 }) {
   const { callState, caption, muted, elapsed, canSendTurn } = session;
+  // Animation identity for the caption: while a turn is streaming, key by the
+  // turn id so token updates mutate the node in place (no remount, no replayed
+  // entry animation). Status captions (no turns yet) still animate per change.
+  const captionKey = session.turns.at(-1)?.id ?? caption;
   const [transcriptOpen, setTranscriptOpen] = useState(tweaks.transcript === "drawer");
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -102,7 +106,7 @@ export function CallView({
           {tweaks.transcript !== "off" && (
             <div className="tb-caption-area">
               <ScrollArea className="tb-caption-scroll" dark={tweaks.dark}>
-                <div className="tb-caption" key={caption}>
+                <div className="tb-caption" key={captionKey}>
                   <span className="tb-caption-q">“</span>
                   <span className="tb-caption-t">{caption}</span>
                   <span className="tb-caption-q">”</span>

@@ -12,6 +12,7 @@ import { OrbVisualizer } from "./orb-visualizer";
 import { Bars } from "./bars";
 import { ScrollArea } from "./scroll-area";
 import { ToolsButton } from "./tools-button";
+import { StreamingText } from "./streaming-text";
 import { TranscriptDrawer } from "./transcript-drawer";
 import { STATE_LABEL, isLive, type SessionApi } from "@/lib/realtime/types";
 import type { Persona, Provider, Tool } from "@/lib/data";
@@ -34,6 +35,13 @@ export function CallView({
   tools: Tool[];
 }) {
   const { callState, caption, muted, elapsed, canSendTurn } = session;
+  // Animation identity for the caption: while a turn is actively streaming
+  // (live: true — cascade/xai/openai engines), key by the turn id so token
+  // updates mutate the node in place. Everywhere else (mock script, status
+  // captions, ElevenLabs whole-message turns) key by text so the entry
+  // animation replays per caption change, as originally designed.
+  const liveTurn = session.turns.at(-1);
+  const captionKey = liveTurn?.live ? liveTurn.id : caption;
   const [transcriptOpen, setTranscriptOpen] = useState(tweaks.transcript === "drawer");
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -102,9 +110,11 @@ export function CallView({
           {tweaks.transcript !== "off" && (
             <div className="tb-caption-area">
               <ScrollArea className="tb-caption-scroll" dark={tweaks.dark}>
-                <div className="tb-caption" key={caption}>
+                <div className="tb-caption" key={captionKey}>
                   <span className="tb-caption-q">“</span>
-                  <span className="tb-caption-t">{caption}</span>
+                  <span className="tb-caption-t">
+                    <StreamingText text={caption} />
+                  </span>
                   <span className="tb-caption-q">”</span>
                 </div>
               </ScrollArea>

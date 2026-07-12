@@ -113,6 +113,79 @@ transcripts (whisper for input), and barges in on server-VAD speech detection.
 Without `OPENAI_API_KEY` set, CALL shows a clear "OPENAI_API_KEY is not set"
 caption instead of connecting.
 
+## Wiring the fal.ai PersonaPlex provider (full-duplex)
+
+The **FAL.AI** row runs [NVIDIA PersonaPlex](https://huggingface.co/nvidia/personaplex-7b-v1)
+hosted on fal.ai ([`fal-ai/personaplex/realtime`](https://fal.ai/models/fal-ai/personaplex/realtime))
+— a **full-duplex** speech-to-speech model that listens while it speaks. Unlike
+every other engine there is no VAD and no turn events: the model opens the call
+with its own greeting, barge-in is native (just talk over it), and INTERRUPT is
+effectively a no-op. There is no user-side transcript (no ASR in the path); the
+agent transcript streams from the model's inner-monologue text tokens.
+
+Transport is a direct browser→fal WebSocket
+(`wss://fal.run/fal-ai/personaplex/realtime`) carrying **msgpack** binary frames
+with raw PCM16 audio bytes at a fixed 24 kHz both ways (the server silently
+ignores JSON text frames) — the `AudioContext` is constructed at 24 kHz so the
+browser resamples at the edges. A short-lived JWT is minted server-side at
+`POST /api/fal/token`; the secret `FAL_API_KEY` never reaches the client.
+
+Keep `FAL_API_KEY` in **fnox** and run via `fnox exec -- bun run dev` /
+`mise run dev`. No `FAL_*` values live in `.env` files. Pricing is
+$0.001/compute-second, billed while the socket is open.
+
+Per-persona config (voice preset + role prompt + sampling) lives in the typed
+module **`lib/realtime/fal-agent.ts`** — PersonaPlex is conditioned per session
+by one of 18 voice presets (`NATF0–3`, `NATM0–3`, `VARF0–4`, `VARM0–4`) and a
+short role-play prompt (no instruction-following scaffold), resolved by
+`resolveFalAgent(personaId)`.
+
+Two full-duplex quirks are handled in `lib/realtime/use-fal-session.ts`:
+
+- **Greeting gate** (`lib/realtime/greeting-gate.ts`): the mic is replaced with
+  silence until the model finishes its opening greeting, and `autoGainControl`
+  is off — otherwise amplified room tone makes the model interrupt its own
+  greeting mid-sentence. (Same logic we validated server-side in the local MLX
+  fork; see `docs/personaplex-local-inference.md`.)
+- **Continuous timeline**: mute and the gate send silence chunks instead of
+  pausing sends — the model tracks the conversation as two synchronized audio
+  streams, so the input clock must never stop.
+
+Use headphones — the model hears everything the mic hears, including its own
+voice from speakers. Pick the **FAL.AI** row under Providers, choose a persona,
+and press CALL. Without `FAL_API_KEY` set, CALL shows a clear "FAL_API_KEY is not set"
+caption instead of connecting.
+
+## Wiring the local KYUTAI provider (full-duplex, on-device)
+
+The **KYUTAI** row runs the same PersonaPlex architecture fully **on-device**:
+the [kyutai/personaplex-rl-seamless](https://huggingface.co/kyutai/personaplex-rl-seamless)
+RL fine-tune (better turn-taking/backchanneling; non-commercial RL delta) served
+by our [personaplex-mlx fork](https://github.com/jessearmand/personaplex-mlx)
+(`tsubaki-server` branch) at q8 on Apple Silicon. Start the server, then the app:
+
+```bash
+mise run personaplex-local   # personaplex-mlx local_web on :8998 (kyutai RL, q8)
+mise run dev
+```
+
+`PERSONAPLEX_HF_REPO=nvidia/personaplex-7b-v1 mise run personaplex-local` serves
+the base checkpoint instead; `PERSONAPLEX_DIR`/`PERSONAPLEX_PORT` override the
+checkout path (default `~/Develop/personaplex-mlx`) and port. No API key — the
+browser connects straight to `ws://localhost:8998/api/chat` with the persona's
+`voice_prompt`/`text_prompt` as query params and **`format=pcm`**, our fork's
+codec-free wire mode (raw PCM16 @ 24 kHz in the tag-prefixed binary frames; see
+the fork's README for the protocol).
+
+Engine: `lib/realtime/use-moshi-session.ts`. Persona conditioning (voice preset
++ role prompt) is **shared with the fal engine** via
+`lib/realtime/personaplex-personas.ts`, so an A/B between KYUTAI and FAL.AI
+varies only the serving stack. Differences from the fal engine: no token route,
+and the greeting mic-gate runs **server-side** (our fork has it on by default)
+instead of in the browser. Everything else matches — model greets first,
+barge-in is native, mute streams silence (the local model's steps are
+input-driven, so the mic clock must never stop), headphones recommended.
+
 ## Wiring the Cascade provider (STT → LM → TTS)
 
 The **MISTRAL** row runs a turn-based cascade instead of a single full-duplex

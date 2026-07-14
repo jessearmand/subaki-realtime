@@ -17,7 +17,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
 import type { CallState, SessionTurn } from "./types";
-import { resolveOpenaiAgent } from "./openai-agent";
+import { FIRECRAWL_TOOL_GUIDANCE, firecrawlMcpTool, resolveOpenaiAgent } from "./openai-agent";
+import type { RealtimeToolConfig } from "./openai-agent";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const VOL_GAIN = 3.5;
@@ -42,6 +43,13 @@ type OpenaiEvent = {
   response_id?: string;
   response?: { id?: string };
   error?: { type?: string; code?: string; message?: string };
+  /** Conversation item payload (MCP tool listing / approval / call items). */
+  item?: {
+    id?: string;
+    type?: string;
+    name?: string;
+    server_label?: string;
+  };
 };
 
 function extractToken(data: unknown): string | null {
@@ -308,6 +316,21 @@ export function useOpenaiSession(
     void (async () => {
       const agent = resolveOpenaiAgent(personaRef.current?.id);
 
+      // 0) Kick off the Firecrawl MCP token fetch now; awaited before the SDP
+      // exchange so `configure()` (data-channel open, which is later still)
+      // sees the resolved value. Tools are strictly optional — any failure
+      // (or the OAuth flow never having been run) degrades to a no-tools call.
+      const firecrawlAuthPromise: Promise<string | null> = fetch("/api/firecrawl/token", {
+        method: "POST",
+      })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const data = (await res.json()) as { authorization?: string };
+          return typeof data.authorization === "string" ? data.authorization : null;
+        })
+        .catch(() => null);
+      let tools: RealtimeToolConfig[] = [];
+
       // 1) Mic capture (also feeds the input analyser for the orb).
       let stream: MediaStream;
       try {
@@ -394,7 +417,12 @@ export function useOpenaiSession(
             type: "realtime",
             model: agent.model,
             output_modalities: ["audio"],
-            instructions: agent.instructions,
+            // Tools get a prompt section too — the model won't reach for the
+            // web unless it knows it can (and how to narrate doing so aloud).
+            instructions: tools.length
+              ? agent.instructions + FIRECRAWL_TOOL_GUIDANCE
+              : agent.instructions,
+            ...(tools.length ? { tools: [...agent.tools, ...tools], tool_choice: "auto" } : {}),
             audio: {
               input: {
                 // The settings INTERRUPTIONS toggle decides barge-in, not the preset.
@@ -496,6 +524,39 @@ export function useOpenaiSession(
           case "conversation.item.input_audio_transcription.completed":
             finalizeUser(msg.transcript ?? "");
             break;
+          // ── Remote MCP tools (executed by the Realtime API, not by us) ──
+          case "mcp_list_tools.failed":
+            // Tools didn't import; the call continues voice-only.
+            console.warn("[openai] firecrawl MCP tool listing failed");
+            break;
+          case "response.mcp_call.in_progress":
+            // The model is between speech segments while the tool runs, so the
+            // caption is free — surface the activity instead of dead air.
+            setCaption("searching the web…");
+            break;
+          case "response.mcp_call.failed":
+            setCaption("— web tool call failed —");
+            break;
+          case "conversation.item.done":
+            // Defensive: our firecrawl config is require_approval "never", but
+            // if the server ever asks anyway, auto-approve our own read-only
+            // server rather than deadlocking the turn (an unanswered
+            // mcp_approval_request stalls the tool call indefinitely).
+            if (msg.item?.type === "mcp_approval_request") {
+              if (msg.item.server_label === "firecrawl" && msg.item.id) {
+                send({
+                  type: "conversation.item.create",
+                  item: {
+                    type: "mcp_approval_response",
+                    approval_request_id: msg.item.id,
+                    approve: true,
+                  },
+                });
+              } else {
+                console.warn("[openai] unapproved MCP request from", msg.item.server_label);
+              }
+            }
+            break;
           case "error":
             setCaption(`— ${msg.error?.message ?? "OpenAI error"} —`);
             break;
@@ -522,6 +583,12 @@ export function useOpenaiSession(
         fail("— no OpenAI token returned —");
         return;
       }
+      if (endedRef.current) return;
+
+      // Resolve Firecrawl access before the SDP exchange — the data channel
+      // (whose open event triggers configure()) can't beat setRemoteDescription.
+      const firecrawlAuth = await firecrawlAuthPromise;
+      if (firecrawlAuth) tools = [firecrawlMcpTool(firecrawlAuth)];
       if (endedRef.current) return;
 
       try {

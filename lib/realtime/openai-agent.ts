@@ -40,6 +40,35 @@ export type TranscriptionDelay = "minimal" | "low" | "medium" | "high" | "xhigh"
  */
 export type VadEagerness = "low" | "medium" | "high" | "auto";
 
+/**
+ * Remote MCP tool, executed by the Realtime API itself (not by this client).
+ * The client's only jobs are configuring access here and answering approval
+ * requests if `require_approval` asks for them.
+ */
+export interface McpToolConfig {
+  type: "mcp";
+  /** Unique label for this server within the session's tools array. */
+  server_label: string;
+  server_url: string;
+  /** OAuth access token (or other bearer credential) for the MCP server. */
+  authorization?: string;
+  /** Narrow the imported tool surface — the server sees any data the model sends. */
+  allowed_tools?: string[];
+  require_approval?: "always" | "never";
+  // NOTE: the docs also list `server_description`, but gpt-realtime-2 rejects
+  // it ("Unknown parameter") — don't add it back without checking the model.
+}
+
+/** Classic function tool — the app executes it and returns function_call_output. */
+export interface FunctionToolConfig {
+  type: "function";
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export type RealtimeToolConfig = McpToolConfig | FunctionToolConfig;
+
 export interface OpenaiAgentConfig {
   /** Realtime model for the session + token mint. */
   model: string;
@@ -61,7 +90,7 @@ export interface OpenaiAgentConfig {
     delay?: TranscriptionDelay;
   };
   /** Tools enabled for the session. Empty by default. */
-  tools: Array<{ type: string }>;
+  tools: RealtimeToolConfig[];
   /**
    * Turn-taking strategy, passed straight through to
    * `session.audio.input.turn_detection`. We use `semantic_vad` (ends a turn
@@ -157,7 +186,7 @@ type PersonaAgent = Pick<OpenaiAgentConfig, "voice" | "instructions" | "firstMes
 const PERSONA_AGENTS: Record<string, PersonaAgent> = {
   // Warm, calm, measured contralto — onboarding & long-form support.
   aria: {
-    voice: "marin",
+    voice: "shimmer",
     // Patient onboarding voice — tolerate the pauses of someone thinking aloud.
     turnDetection: VAD_RELAXED,
     firstMessage:
@@ -299,3 +328,36 @@ export function resolveOpenaiAgent(personaId?: string): OpenaiAgentConfig {
   const persona = (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
   return { ...BASE, ...persona };
 }
+
+// ── Firecrawl MCP (web search / page reading) ────────────────────────────────
+//
+// The Realtime API connects to Firecrawl's keyless MCP endpoint itself; we
+// pass the short-lived OAuth access token minted by /api/firecrawl/token.
+// The surface is deliberately narrow (search + scrape only — both read-only
+// web operations, hence require_approval "never"); tool names verified against
+// the live server's tools/list. Widening this list is a product decision, not
+// a plumbing one — monitor_* and crawl tools mutate account state or run long.
+
+const FIRECRAWL_MCP_URL = "https://mcp.firecrawl.dev/v2/mcp";
+
+export function firecrawlMcpTool(authorization: string): McpToolConfig {
+  return {
+    type: "mcp",
+    server_label: "firecrawl",
+    server_url: FIRECRAWL_MCP_URL,
+    authorization,
+    allowed_tools: ["firecrawl_search", "firecrawl_scrape"],
+    require_approval: "never",
+  };
+}
+
+/**
+ * Appended to the persona instructions when Firecrawl tools are live, so the
+ * model knows it can reach the web and how to narrate doing so out loud.
+ */
+export const FIRECRAWL_TOOL_GUIDANCE = `
+
+# Web Tools
+- You can search the live web with firecrawl_search and read a specific page with firecrawl_scrape.
+- Use them when the user asks about current events, prices, docs, or anything you're unsure is still true.
+- Say a short phrase like "let me look that up" before calling a tool, and keep spoken summaries of results brief — never read URLs or raw markup aloud.`;

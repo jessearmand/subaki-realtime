@@ -100,8 +100,6 @@ const DEFAULT_PERSONA_AGENT: PersonaPlexPersona = {
 };
 
 /** The selected persona's PersonaPlex conditioning (voice preset + role prompt). */
-export function resolvePersonaPlexPersona(
-  personaId?: string,
-): PersonaPlexPersona {
+export function resolvePersonaPlexPersona(personaId?: string): PersonaPlexPersona {
   return (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
 }

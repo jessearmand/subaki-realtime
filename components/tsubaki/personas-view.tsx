@@ -17,7 +17,8 @@ export function PersonasView({
           <div className="tb-h-eyebrow">001 / VOICE LIBRARY</div>
           <h1 className="tb-h1">Personas.</h1>
           <p className="tb-lede">
-            Six built-in voices. Two clone slots. Selection persists across providers.
+            One ancient camellia spirit. Seven named manifestations. Selection persists across
+            providers.
           </p>
         </div>
         <div className="tb-page-hd-r">
@@ -51,7 +52,9 @@ export function PersonasView({
               />
             </div>
             <div className="tb-persona-name">{p.name}</div>
-            <div className="tb-persona-accent">{p.accent}</div>
+            <div className="tb-persona-accent">
+              {p.accent} · {p.aspect}
+            </div>
             <div className="tb-persona-traits">
               {p.traits.map((t) => (
                 <span key={t} className="tb-trait">

@@ -5,16 +5,19 @@
 // return the JWT. The browser then connects with
 //   new WebSocket("wss://fal.run/fal-ai/personaplex/realtime?fal_jwt_token=" + jwt)
 //
-// The token API wants the app ALIAS only (no owner prefix): "personaplex".
+// The current token API (fal.ai/docs/model-apis/real-time) takes a SINGULAR
+// owner-prefixed `app` path + `duration` — not the legacy alpha endpoint's
+// `allowed_apps` alias array. (The docs' own example shows `allowed_apps`, but
+// the live endpoint 422s on it: "Field required: app".)
 // Dev only: FAL_API_KEY is provided via fnox (`fnox exec -- bun run dev`).
 
 export const runtime = "nodejs";
 // Never cache a freshly-minted token.
 export const dynamic = "force-dynamic";
 
-const TOKENS_URL = "https://rest.alpha.fal.ai/tokens/";
+const TOKENS_URL = "https://rest.fal.ai/tokens/realtime";
 const TOKEN_TTL_SECONDS = 300;
-const ALLOWED_APPS = ["personaplex"];
+const APP = "fal-ai/personaplex/realtime";
 
 export async function POST(): Promise<Response> {
   const apiKey = process.env.FAL_API_KEY;
@@ -35,8 +38,8 @@ export async function POST(): Promise<Response> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        allowed_apps: ALLOWED_APPS,
-        token_expiration: TOKEN_TTL_SECONDS,
+        app: APP,
+        duration: TOKEN_TTL_SECONDS,
       }),
     });
   } catch (err) {
@@ -61,14 +64,16 @@ export async function POST(): Promise<Response> {
     );
   }
 
-  // fal returns the JWT as a bare JSON string ("ey…"); normalize to { token }.
+  // The live endpoint returns the JWT as a bare JSON string ("ey…"), though the
+  // docs show { token }; normalize either shape to { token }.
   let token = text.trim();
   try {
     const parsed: unknown = JSON.parse(text);
     if (typeof parsed === "string") token = parsed;
     else if (parsed && typeof parsed === "object") {
       const d = parsed as Record<string, unknown>;
-      if (typeof d.detail === "string") token = d.detail;
+      if (typeof d.token === "string") token = d.token;
+      else if (typeof d.detail === "string") token = d.detail;
     }
   } catch {
     // Not JSON — treat the raw body as the token.

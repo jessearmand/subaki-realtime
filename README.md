@@ -5,10 +5,11 @@
 [![CodeQL](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-A brutalist/editorial realtime voice console, recreated from a Claude Design
-handoff and built on **ElevenLabs UI** primitives. Four screens — Sessions
-(call), Personas, Providers, Settings — with a full call lifecycle
-(idle → connecting → listening → speaking → interrupted → ended).
+A brutalist inspired design of realtime voice interface, made with Claude Design,
+and built from **ElevenLabs UI** primitives.
+
+Four screens — Sessions (voice interaction), Personas, Providers, Settings
+— with a full call lifecycle (idle → connecting → listening → speaking → interrupted → ended).
 
 Multi-provider by design: the UI binds to a provider-agnostic session adapter.
 Every provider row runs the mocked lifecycle except **ElevenLabs**, which is

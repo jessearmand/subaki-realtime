@@ -272,11 +272,14 @@ export function useFalSession(active: boolean, persona?: Persona): FalSession {
 
       ws.onopen = () => {
         if (endedRef.current) return;
-        // Kick the session with the persona config; the model greets first,
-        // so the user is "listening" from the start.
-        sendAudio(new Uint8Array(0));
+        // The mic worklet's continuous chunks (silence while gated) are what
+        // drive the session — no bootstrap frame here: `audio` is a REQUIRED
+        // non-empty binary in fal's realtime schema, so a zero-length kick is
+        // invalid. The model greets first, but a COLD fal container loads the
+        // 7B model before any audio comes back — tell the user instead of
+        // sitting on a dead-sounding "listening…".
         setCallState("listening");
-        setCaption("listening…");
+        setCaption("connected — model warming up (a cold start can take a minute)…");
       };
 
       const handleResult = (msg: FalResult) => {

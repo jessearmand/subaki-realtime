@@ -3,8 +3,8 @@ import { Btn, Tag } from "./primitives";
 import {
   MicGlyph,
   InterruptGlyph,
-  PhoneGlyph,
   PhoneHangGlyph,
+  WaveGlyph,
   ScrollGlyph,
   SendGlyph,
 } from "./glyphs";
@@ -156,7 +156,7 @@ export function CallView({
             danger={live}
             aria-label={live ? "Hang up" : "Call"}
           >
-            {live ? <PhoneHangGlyph /> : <PhoneGlyph />}
+            {live ? <PhoneHangGlyph /> : <WaveGlyph />}
           </Btn>
           {tweaks.transcript === "drawer" && (
             <Btn

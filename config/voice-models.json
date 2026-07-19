@@ -20,7 +20,9 @@
           "gb_jane_neutral": "casual_female",
           "gb_jane_confident": "cheerful_female",
           "gb_jane_sad": "neutral_female",
+          "gb_jane_sarcasm": "casual_female",
           "gb_oliver_neutral": "casual_male",
+          "gb_oliver_confident": "casual_male",
           "en_paul_neutral": "neutral_male",
           "en_paul_sad": "casual_male"
         }

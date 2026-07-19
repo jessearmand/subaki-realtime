@@ -4,8 +4,8 @@ interface GlyphProps {
   size?: number;
 }
 
-export function PhoneGlyph({ size = 14 }: GlyphProps) {
-  // Upright handset — start a call.
+export function WaveGlyph({ size = 14 }: GlyphProps) {
+  // Audio waveform bars — start a voice call.
   return (
     <svg
       width={size}
@@ -19,7 +19,11 @@ export function PhoneGlyph({ size = 14 }: GlyphProps) {
       aria-hidden="true"
       style={{ display: "block" }}
     >
-      <path d="M3.2 2.4h3.2l1.2 3.2-1.8 1.2a8 8 0 0 0 3.4 3.4l1.2-1.8 3.2 1.2v3.2c0 .55-.45 1-1 1A11.6 11.6 0 0 1 2.2 3.4c0-.55.45-1 1-1z" />
+      <line x1="2" y1="6.5" x2="2" y2="9.5" />
+      <line x1="5" y1="4.5" x2="5" y2="11.5" />
+      <line x1="8" y1="2.5" x2="8" y2="13.5" />
+      <line x1="11" y1="4.5" x2="11" y2="11.5" />
+      <line x1="14" y1="6.5" x2="14" y2="9.5" />
     </svg>
   );
 }

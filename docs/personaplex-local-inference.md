@@ -155,6 +155,42 @@ Two server-side changes landed in `personaplex-mlx`:
 
 Verified: server delivery stalls >120 ms went 2→0 (gaps now 80–100 ms from the first frame, real-speech input included); browser worklet output went from 98 %-silence to faithfully matching its input (peak 0.316, **0 discontinuities**). Probes: `scratchpad/gap_timeline2.py`, `convo_probe.py`.
 
+### Upstream fix adopted (2026-07-12): PR #4 `sync_state()` — pre-handshake prompt evaluation
+
+Searched GitHub/HF for upstream work on the greeting issues before changing anything (see the survey section below). One directly relevant find: [mu-hashmi/personaplex-mlx#4](https://github.com/mu-hashmi/personaplex-mlx/pull/4) (benob, open) — "fix stuttering at start of interaction". MLX builds the ~12s voice-prompt + system-prompt forward pass **lazily**; without the patch the whole graph stays deferred until the first real generation step forces it, blocking that step for over a second. The patch adds `LmGen.sync_state()` (an `mx.eval` over cache + KV state) called at the end of `step_system_prompts()`, i.e. *before* the server sends the `0x00` handshake.
+
+This is complementary to our fixes, not a duplicate: our `ServerState.warmup()` pre-compiles the sampling kernels once at startup; `sync_state()` forces the **per-session** prompt compute. Applied to the local checkout and A/B'd with `scratchpad/gap_timeline2.py` (3 runs each, steady-state after first session):
+
+| | handshake | first_audio | dead time (handshake → first audio) | stalls >120ms |
+| --- | --- | --- | --- | --- |
+| before | ~245 ms | ~1506 ms | **~1260 ms** | 0 |
+| after (PR #4) | ~1437 ms | ~1512 ms | **~75 ms** | 0 |
+
+Total connect→first-audio is unchanged (~1.5 s — the compute just moves), but the session now starts **realtime-aligned**: previously the client began streaming mic at ~245 ms while the model was stalled evaluating the lazy graph for ~1.2 s, so every session opened with a 1.2 s input backlog the model had to burn down (the residual source of early-turn latency and, on slower machines, the start-of-interaction stutter benob reports). Now the model is fully evaluated before the client is told to start. Greeting quality unchanged (silence probe: continuous 0.22→3.76 s), 11 tests pass, ruff clean; the 3 `ty` diagnostics are pre-existing. Patch is applied in the working tree of `~/Develop/personaplex-mlx` alongside our other uncommitted fixes.
+
+### Upstream issue survey (2026-07-12) — halting cadence still has no fix
+
+Searched NVIDIA/personaplex (10k★) issues, mu-hashmi/personaplex-mlx, and HF discussions on both checkpoints:
+
+- **Nothing upstream addresses the halting greeting cadence** — no issue even reports it as a bug, consistent with our conclusion that it's the model's intrinsic speaking rhythm (PAD-token gaps). The architectural analysis above stands; the levers remain temperature/voice choice or a different model class.
+- [NVIDIA/personaplex#3](https://github.com/NVIDIA/personaplex/issues/3) and [#96](https://github.com/NVIDIA/personaplex/issues/96) (choppy audio, ever-growing latency on DGX Spark/GB10): GPU-bound — GB10 measures ~120–135 ms per 80 ms frame, RTF >1.5, so it can never keep up. Notably a commenter confirms **RTX 4090 runs it "perfectly as in the demo"** — our M5 Max q8 (RTF 0.80) is closer to the 4090 case than the Spark case, and our pipeline is healthy.
+- [#67](https://github.com/NVIDIA/personaplex/issues/67) asks about the negative-duration-silence trick used in training for barge-in simulation — useful background on why the model is so eager to yield (our mic-gate remains the right mitigation).
+- `kyutai/personaplex-rl-seamless` has **zero** HF discussions; nvidia/personaplex-7b-v1 discussions are unrelated (voice cloning, DOI, language requests).
+
+### fal.ai hosting (GPU reference environment) — engine implemented
+
+Status: the Tsubaki **`fal` engine is built** (branch `fal/personaplex`): direct
+WS via `use-fal-session.ts` + `/api/fal/token` mint + per-persona
+`fal-agent.ts`, with a client-side `greeting-gate.ts` port of the MLX server's
+mic gate and `autoGainControl:false`. Needs `FAL_API_KEY` in fnox for live runs;
+see the README's "Wiring the fal.ai PersonaPlex provider" section.
+
+fal.ai officially hosts the model: [`fal-ai/personaplex/realtime`](https://fal.ai/models/fal-ai/personaplex/realtime) — a realtime **WebSocket** endpoint at `https://fal.run/fal-ai/personaplex/realtime`, $0.001/compute-second.
+
+- I/O: **PCM s16le, 24 kHz mono, base64 in JSON** both directions (`{"audio": ...}` in, `{"audio", "text"}` out) — *not* Opus. This maps almost 1:1 onto Tsubaki's existing xAI engine plumbing (`xai-audio.ts` already does base64 PCM16 + `PlaybackQueue`), so a fal engine is likely **less** new code than the local `moshi` engine (no browser Opus codec needed).
+- Params mirror the local server: `prompt` (persona text), `voice` (same 18 NATF/NATM/VARF/VARM presets, default NATF2), `temperature_text/audio`, `top_k_text/audio`, `seed` — plus `voice_audio_url` for on-the-fly **voice cloning** (10s+ sample, billed 2×), which the local stack doesn't expose.
+- Use case: A/B the same persona/voice/seed against our MLX serving to separate model-intrinsic behavior (halting cadence should reproduce identically) from serving artifacts, and to feel full-duplex turn-taking with datacenter-GPU headroom. Auth is a `FAL_API_KEY` header — would live in fnox like the other provider keys, minted to the browser via a token route like `/api/xai/token`.
+
 ### Residual "glitch": full-duplex self-interruption (not a pipeline bug)
 
 After the fix, a user recording of a live "Bank" conversation (`bank_teller_personaplex_audio.webm`) still had a choppy opening: silence dropouts of ~1120 ms and ~860 ms in the first ~2.7 s, then clean. But the recording has **zero clicks** (max sample step 0.032) — these are clean silence gaps, not codec/buffer artifacts. Tracing it:
@@ -209,11 +245,12 @@ the app needs to run the `MISTRAL` cascade row on-device. The full-duplex
 architecture (this doc) and the cascade are complementary tracks; see the
 comparison table there.
 
-## Tsubaki integration — full-duplex `moshi` engine (assessed, not yet built)
+## Tsubaki integration — full-duplex `moshi` engine (BUILT — 2026-07-13)
 
-No WebRTC and no new web architecture needed — this is a direct-WebSocket engine like xAI (`lib/realtime/use-xai-session.ts`):
+Landed as the **KYUTAI** provider row (`engine: "moshi"`), verified live in-browser against the RL checkpoint (Aria greeted in-character, then followed up on its own — the RL model's backchannel behavior). As assessed: a direct-WebSocket engine like xAI, with one deviation from the original plan — **no browser Opus**. Instead the fork's server (branch `tsubaki-server`) gained a `?format=pcm` wire mode (raw PCM16 LE @ 24 kHz in the `0x01` frames, both directions), so the browser engine needs no codec at all and mirrors the fal engine almost verbatim:
 
-- `use-moshi-session.ts` implementing `SessionApi`; provider entry `engine: "moshi"` → `ws://localhost:8998/api/chat`; per-persona `moshi-agent.ts` resolving voice/text prompts into query params.
-- New piece: browser-side Opus (`opus-recorder` encode / `ogg-opus-decoder` decode) instead of PCM16-base64; playback reuses `PlaybackQueue` from `xai-audio.ts`.
-- Full-duplex consequences: no user-side transcript (no ASR events), `interrupt()` is a no-op (model handles barge-in natively), `callState` derives from output audio activity.
-- **Mic-gate the opening greeting** (see residual-glitch section): hold/threshold mic frames until the greeting completes, and set `autoGainControl:false` (keep `echoCancellation`/`noiseSuppression`), so ambient noise doesn't make the model interrupt its own greeting.
+- `use-moshi-session.ts` implements the shared session surface; `moshi-agent.ts` resolves per-persona `voice_prompt`/`text_prompt` into the connect URL's query params (`ws://localhost:8998/api/chat`, override via `NEXT_PUBLIC_PERSONAPLEX_WS_URL`).
+- Persona conditioning (voice preset + role prompt) is shared with the fal engine via `personaplex-personas.ts` — an A/B between KYUTAI and FAL.AI varies only the serving stack.
+- Full-duplex consequences as assessed: no user transcript, `interrupt()` only stops local playback, `callState` derives from output voicing (700 ms hold across pad gaps, 1.5 s quiet finalizes a transcript turn).
+- The greeting mic-gate runs **server-side** (our fork, on by default); the client keeps `autoGainControl:false`. Mute streams silence — the local model's steps are input-driven, so the mic clock must never stop.
+- Orchestration: `mise run personaplex-local` (kyutai RL by default; `PERSONAPLEX_HF_REPO` switches checkpoints) + `mise run dev`.

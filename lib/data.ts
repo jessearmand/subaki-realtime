@@ -20,7 +20,7 @@ export interface Provider {
   exec: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
-  engine?: "elevenlabs" | "xai" | "openai" | "cascade";
+  engine?: "elevenlabs" | "xai" | "openai" | "cascade" | "fal" | "moshi";
 }
 
 export interface Tool {
@@ -143,9 +143,18 @@ export const PROVIDERS: Provider[] = [
   {
     id: "fal",
     name: "FAL.AI",
-    model: "personaplex-rt",
+    model: "personaplex-7b",
     exec: "remote",
-    note: "Cheapest tokens. Self-host alternative.",
+    note: "Full-duplex speech-to-speech (NVIDIA PersonaPlex). Listens while it speaks.",
+    engine: "fal",
+  },
+  {
+    id: "kyutai",
+    name: "KYUTAI",
+    model: "personaplex-rl · q8",
+    exec: "local",
+    note: "Full-duplex PersonaPlex RL fine-tune on-device (MLX). Needs `mise run personaplex-local`.",
+    engine: "moshi",
   },
 ];
 

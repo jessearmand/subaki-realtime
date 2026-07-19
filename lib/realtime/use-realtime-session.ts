@@ -7,6 +7,8 @@ import type { CallState, SessionApi, SessionTurn } from "./types";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
 import { useCascadeSession } from "./use-cascade-session";
+import { useFalSession } from "./use-fal-session";
+import { useMoshiSession } from "./use-moshi-session";
 
 const SCRIPT_TURNS: SessionTurn[] = TRANSCRIPT_SCRIPT.map((t, i) => ({
   id: `s${i}`,
@@ -39,6 +41,8 @@ function mockCaption(state: CallState): string {
  *   - "elevenlabs" → real conversation via `@elevenlabs/react`
  *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
  *   - "openai" → real gpt-realtime-2 voice via WebRTC (useOpenaiSession)
+ *   - "fal" → full-duplex PersonaPlex via a direct WebSocket (useFalSession)
+ *   - "moshi" → full-duplex PersonaPlex on the LOCAL MLX server (useMoshiSession)
  * All expose the same `SessionApi` so the UI is provider-agnostic.
  *
  * `useXaiSession` and `useOpenaiSession` share one interface, so the dispatcher
@@ -104,9 +108,21 @@ export function useRealtimeSession({
   const xai = useXaiSession(engine === "xai", persona);
   const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false);
   const cascade = useCascadeSession(engine === "cascade", persona, lmModelId);
+  const fal = useFalSession(engine === "fal", persona);
+  const moshi = useMoshiSession(engine === "moshi", persona);
   // Whichever custom engine is active owns the session; null ⇒ ElevenLabs/mock.
   const custom =
-    engine === "xai" ? xai : engine === "openai" ? openai : engine === "cascade" ? cascade : null;
+    engine === "xai"
+      ? xai
+      : engine === "openai"
+        ? openai
+        : engine === "cascade"
+          ? cascade
+          : engine === "fal"
+            ? fal
+            : engine === "moshi"
+              ? moshi
+              : null;
 
   // The active call state comes from whichever engine owns the session.
   const activeCallState: CallState = custom ? custom.callState : callState;

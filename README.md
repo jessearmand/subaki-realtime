@@ -5,8 +5,9 @@
 [![CodeQL](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-A brutalist inspired design of realtime voice interface, made with Claude Design,
-and built from **ElevenLabs UI** primitives.
+A brutalist inspired design of realtime voice console inspired by [古椿の霊](https://grokipedia.com/page/furutsubaki_no_rei) a yokai (妖怪) in Japanese folklore, made with Claude Design, and built from **ElevenLabs UI** primitives.
+
+Refer to [yokai-finder](https://yokai.com/finder/) for more information about yokai from each region in Japan.
 
 Four screens — Sessions (voice interaction), Personas, Providers, Settings
 — with a full call lifecycle (idle → connecting → listening → speaking → interrupted → ended).

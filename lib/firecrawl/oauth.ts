@@ -19,14 +19,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
+import { FIRECRAWL_MCP_URL } from "./config";
 
 const AUTHORIZATION_ENDPOINT = "https://www.firecrawl.dev/api/oauth/authorize";
 const TOKEN_ENDPOINT = "https://www.firecrawl.dev/api/oauth/token";
 const REGISTRATION_ENDPOINT = "https://www.firecrawl.dev/api/oauth/register";
 const SCOPE = "firecrawl:global";
-
-/** Keyless MCP endpoint — both the RFC 8707 resource and the Realtime tool's server_url. */
-export const FIRECRAWL_MCP_URL = "https://mcp.firecrawl.dev/v2/mcp";
 
 const STORE_PATH = join(process.cwd(), ".firecrawl", "oauth.json");
 /** Refresh this many ms before the recorded expiry to absorb clock skew. */
@@ -108,10 +106,11 @@ export async function ensureClient(redirectUri: string): Promise<string> {
   if (!res.ok) {
     throw new Error(`Firecrawl client registration failed (${res.status})`);
   }
-  const data = (await res.json()) as { client_id?: string };
-  if (!data.client_id) throw new Error("Firecrawl registration returned no client_id");
-  saveStore({ ...store, client: { client_id: data.client_id, redirect_uri: redirectUri } });
-  return data.client_id;
+  const data = (await res.json()) as { client_id?: unknown };
+  const clientId = asBoundedString(data.client_id);
+  if (!clientId) throw new Error("Firecrawl registration returned no usable client_id");
+  saveStore({ ...store, client: { client_id: clientId, redirect_uri: redirectUri } });
+  return clientId;
 }
 
 export function buildAuthorizeUrl(params: {
@@ -134,9 +133,27 @@ export function buildAuthorizeUrl(params: {
 }
 
 interface TokenResponse {
-  access_token?: string;
-  refresh_token?: string;
-  expires_in?: number;
+  access_token?: unknown;
+  refresh_token?: unknown;
+  expires_in?: unknown;
+}
+
+// Everything persisted to the store is validated + bounded first (CodeQL
+// js/http-to-file-access): the write path itself is a fixed 0600 JSON file,
+// but the field values arrive over the network — accept only non-empty
+// strings of sane length and a clamped expiry.
+const MAX_FIELD_LENGTH = 8192;
+
+function asBoundedString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 && value.length <= MAX_FIELD_LENGTH
+    ? value
+    : null;
+}
+
+/** Clamp expires_in to [1 min, 24 h]; anything absent or absurd → 1 h. */
+function clampExpiresIn(value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : 3600;
+  return Math.min(Math.max(n, 60), 86_400);
 }
 
 async function requestTokens(body: URLSearchParams): Promise<StoredTokens> {
@@ -149,11 +166,12 @@ async function requestTokens(body: URLSearchParams): Promise<StoredTokens> {
     throw new Error(`Firecrawl token request failed (${res.status})`);
   }
   const data = (await res.json()) as TokenResponse;
-  if (!data.access_token) throw new Error("Firecrawl token response had no access_token");
+  const accessToken = asBoundedString(data.access_token);
+  if (!accessToken) throw new Error("Firecrawl token response had no usable access_token");
   return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_at: Date.now() + (data.expires_in ?? 3600) * 1000,
+    access_token: accessToken,
+    refresh_token: asBoundedString(data.refresh_token) ?? undefined,
+    expires_at: Date.now() + clampExpiresIn(data.expires_in) * 1000,
   };
 }
 

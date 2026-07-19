@@ -15,6 +15,11 @@
 // `resolveOpenaiAgent(personaId)` merges a persona over BASE. Only the secret
 // OPENAI_API_KEY stays outside (in fnox); everything declarative lives here.
 
+// Shared with the server-side OAuth module: server_url must equal the RFC 8707
+// resource the token is scoped to (import from config, NOT oauth.ts — that
+// module is server-only via node:fs/node:crypto).
+import { FIRECRAWL_MCP_URL } from "@/lib/firecrawl/config";
+
 export type OpenaiVoice =
   | "marin"
   | "cedar"
@@ -337,8 +342,6 @@ export function resolveOpenaiAgent(personaId?: string): OpenaiAgentConfig {
 // web operations, hence require_approval "never"); tool names verified against
 // the live server's tools/list. Widening this list is a product decision, not
 // a plumbing one — monitor_* and crawl tools mutate account state or run long.
-
-const FIRECRAWL_MCP_URL = "https://mcp.firecrawl.dev/v2/mcp";
 
 export function firecrawlMcpTool(authorization: string): McpToolConfig {
   return {

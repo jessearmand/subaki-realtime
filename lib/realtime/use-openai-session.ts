@@ -320,8 +320,12 @@ export function useOpenaiSession(
       // exchange so `configure()` (data-channel open, which is later still)
       // sees the resolved value. Tools are strictly optional — any failure
       // (or the OAuth flow never having been run) degrades to a no-tools call.
+      // The abort timeout keeps a slow/stuck server-side token refresh off the
+      // call-setup path: past the deadline we proceed voice-only rather than
+      // hold every OpenAI call at "establishing session…" for an optional tool.
       const firecrawlAuthPromise: Promise<string | null> = fetch("/api/firecrawl/token", {
         method: "POST",
+        signal: AbortSignal.timeout(3000),
       })
         .then(async (res) => {
           if (!res.ok) return null;

@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
 import type { CallState, SessionTurn } from "./types";
+import { createMicCapture, type MicCapture } from "./mic-capture";
 import { resolveXaiAgent } from "./xai-agent";
 import {
   base64Pcm16ToFloat32,
@@ -71,8 +72,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   const wsRef = useRef<WebSocket | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const procRef = useRef<ScriptProcessorNode | null>(null);
+  const captureRef = useRef<MicCapture | null>(null);
   const playbackRef = useRef<PlaybackQueue | null>(null);
   // Early mic audio captured before the session is configured (parallel init).
   const earlyBufRef = useRef<EarlyAudioBuffer | null>(null);
@@ -99,14 +99,9 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       clearTimeout(interruptTimerRef.current);
       interruptTimerRef.current = null;
     }
-    if (procRef.current) {
-      procRef.current.onaudioprocess = null;
-      procRef.current.disconnect();
-      procRef.current = null;
-    }
-    if (sourceRef.current) {
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
+    if (captureRef.current) {
+      captureRef.current.stop();
+      captureRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -168,9 +163,8 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
     playbackRef.current = new PlaybackQueue(ctx);
     earlyBufRef.current = new EarlyAudioBuffer();
 
-    // Local mutable capture buffers (live as long as the processor node).
-    let pending: Float32Array[] = [];
-    let total = 0;
+    // AudioWorklet-based capture: chunking runs on the realtime audio thread;
+    // the main thread only receives finished CHUNK_MS chunks (mic-capture.ts).
     const chunkSize = Math.floor((rate * CHUNK_MS) / 1000);
 
     const startCapture = async () => {
@@ -190,44 +184,20 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
         }
         streamRef.current = stream;
         if (ctx.state === "suspended") await ctx.resume();
-        const source = ctx.createMediaStreamSource(stream);
-        sourceRef.current = source;
-        const proc = ctx.createScriptProcessor(4096, 1, 1);
-        procRef.current = proc;
-        proc.onaudioprocess = (e) => {
-          const input = e.inputBuffer.getChannelData(0);
-          inputRmsRef.current = mutedRef.current ? 0 : calculateRms(input);
+        const capture = await createMicCapture(ctx, stream, chunkSize, (chunk) => {
+          inputRmsRef.current = mutedRef.current ? 0 : calculateRms(chunk);
           if (mutedRef.current) return;
-          pending.push(new Float32Array(input));
-          total += input.length;
-          while (total >= chunkSize) {
-            const chunk = new Float32Array(chunkSize);
-            let offset = 0;
-            while (offset < chunkSize && pending.length > 0) {
-              const buf = pending[0];
-              const need = chunkSize - offset;
-              if (buf.length <= need) {
-                chunk.set(buf, offset);
-                offset += buf.length;
-                total -= buf.length;
-                pending.shift();
-              } else {
-                chunk.set(buf.subarray(0, need), offset);
-                pending[0] = buf.subarray(need);
-                offset += need;
-                total -= need;
-              }
-            }
-            const audio = float32ToPcm16Base64(chunk);
-            // Stream live once configured; until then accumulate the early audio.
-            if (streamingRef.current) send({ type: "input_audio_buffer.append", audio });
-            else earlyBufRef.current?.push(audio);
-          }
-        };
-        source.connect(proc);
-        // Required in some browsers for the callback to fire; the processor
-        // writes no output, so this does not echo the mic to the speakers.
-        proc.connect(ctx.destination);
+          const audio = float32ToPcm16Base64(chunk);
+          // Stream live once configured; until then accumulate the early audio.
+          if (streamingRef.current) send({ type: "input_audio_buffer.append", audio });
+          else earlyBufRef.current?.push(audio);
+        });
+        if (endedRef.current) {
+          // Hung up while the worklet module loaded.
+          capture.stop();
+          return;
+        }
+        captureRef.current = capture;
       } catch {
         fail("— microphone permission denied —");
       }

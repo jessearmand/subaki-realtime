@@ -7,14 +7,31 @@
 // browser's native AudioContext rate end-to-end — we advertise it to xAI in
 // `session.update`, so no resampling is needed (mirrors the xai-cookbook).
 
-/** Float32 [-1,1] → PCM16 → base64. */
-export function float32ToPcm16Base64(float32: Float32Array): string {
+/** Float32 [-1,1] → PCM16 little-endian bytes. */
+export function float32ToPcm16Bytes(float32: Float32Array): Uint8Array {
   const pcm16 = new Int16Array(float32.length);
   for (let i = 0; i < float32.length; i++) {
     const s = Math.max(-1, Math.min(1, float32[i]));
     pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
-  return arrayBufferToBase64(pcm16.buffer);
+  return new Uint8Array(pcm16.buffer);
+}
+
+/** PCM16 little-endian bytes → Float32 [-1,1]. */
+export function pcm16BytesToFloat32(bytes: Uint8Array): Float32Array {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const n = Math.floor(bytes.byteLength / 2);
+  const float32 = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const s = view.getInt16(i * 2, true);
+    float32[i] = s / (s < 0 ? 0x8000 : 0x7fff);
+  }
+  return float32;
+}
+
+/** Float32 [-1,1] → PCM16 → base64. */
+export function float32ToPcm16Base64(float32: Float32Array): string {
+  return arrayBufferToBase64(float32ToPcm16Bytes(float32).buffer as ArrayBuffer);
 }
 
 /** base64 PCM16 → Float32 [-1,1]. */

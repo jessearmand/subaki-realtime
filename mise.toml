@@ -106,6 +106,33 @@ else
 fi
 '''
 
+[tasks.personaplex-local]
+description = "Serve local full-duplex PersonaPlex (personaplex-mlx, kyutai RL checkpoint, q8); :8998"
+run = '''
+# The KYUTAI provider row's engine (lib/realtime/use-moshi-session.ts) connects
+# to this server at ws://localhost:8998/api/chat?format=pcm. Keyless (HF token
+# from the ambient env for the gated checkpoint download, first run only).
+# Switch checkpoints with PERSONAPLEX_HF_REPO=nvidia/personaplex-7b-v1.
+plex_dir="${PERSONAPLEX_DIR:-$HOME/Develop/personaplex-mlx}"
+cd "$plex_dir" && uv run python -u -m personaplex_mlx.local_web \
+  -q 8 \
+  --hf-repo "${PERSONAPLEX_HF_REPO:-kyutai/personaplex-rl-seamless}" \
+  --port "${PERSONAPLEX_PORT:-8998}" \
+  --no-browser
+'''
+
+[tasks.stop-personaplex-local]
+description = "Stop the PersonaPlex server listening on PERSONAPLEX_PORT (default 8998)"
+run = '''
+port="${PERSONAPLEX_PORT:-8998}"
+pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  kill $pids && echo "Stopped PersonaPlex server on :$port (PID: $pids)"
+else
+  echo "No PersonaPlex server running on :$port"
+fi
+'''
+
 [tasks.stop]
 description = "Stop the dev server listening on PORT (default 3000)"
 run = '''

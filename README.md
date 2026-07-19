@@ -113,6 +113,34 @@ transcripts (whisper for input), and barges in on server-VAD speech detection.
 Without `OPENAI_API_KEY` set, CALL shows a clear "OPENAI_API_KEY is not set"
 caption instead of connecting.
 
+### Web tools via Firecrawl MCP (OAuth)
+
+The OPENAI engine can search and read the live web through **Firecrawl's
+remote MCP server**. Remote MCP tools are executed **by the Realtime API
+itself** — the browser only configures access in `session.update` and listens
+to lifecycle events (`mcp_list_tools.*`, `response.mcp_call.*`); it never runs
+the tools. The tool surface is deliberately narrow: `firecrawl_search` +
+`firecrawl_scrape` via `allowed_tools`, with `require_approval: "never"`
+(both are read-only web operations). See `firecrawlMcpTool()` in
+`lib/realtime/openai-agent.ts`.
+
+Auth uses Firecrawl's **keyless OAuth endpoint** (`https://mcp.firecrawl.dev/v2/mcp`)
+instead of the API-key-in-URL form, so no `fc-` key exists anywhere in the app:
+
+1. Start the dev server and open **`http://localhost:3000/api/firecrawl/oauth/start`**
+   once. This registers a public OAuth client (Dynamic Client Registration),
+   runs Authorization Code + PKCE against firecrawl.dev, and redirects back.
+2. Tokens land in **`.firecrawl/oauth.json`** (gitignored). Access tokens last
+   ~1h; the refresh token rotates on every server-side refresh — no manual
+   upkeep after the one-time consent.
+3. On each CALL, the session hook POSTs `/api/firecrawl/token` and, if
+   connected, injects the MCP tool (plus a `# Web Tools` prompt section) into
+   the session config. Not connected → the call proceeds voice-only.
+
+The browser sees only the short-lived scoped access token — that is the OAuth
+trade Firecrawl documents (revocable per-client, small blast radius), versus a
+raw API key that never expires.
+
 ## Wiring the fal.ai PersonaPlex provider (full-duplex)
 
 The **FAL.AI** row runs [NVIDIA PersonaPlex](https://huggingface.co/nvidia/personaplex-7b-v1)

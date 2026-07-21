@@ -72,6 +72,8 @@ Each real provider owns a configuration module that translates the catalog into 
 - OpenAI: [`lib/realtime/openai-agent.ts`](../lib/realtime/openai-agent.ts)
 - xAI: [`lib/realtime/xai-agent.ts`](../lib/realtime/xai-agent.ts)
 - Cascade: [`lib/realtime/cascade-agent.ts`](../lib/realtime/cascade-agent.ts)
+- PersonaPlex (fal.ai hosted and local MLX):
+  [`lib/realtime/personaplex-personas.ts`](../lib/realtime/personaplex-personas.ts)
 - ElevenLabs: agent configuration managed through the ElevenLabs integration
 
 At present, the complete Furutsubaki prompt architecture is implemented in the OpenAI module
@@ -277,6 +279,29 @@ When porting:
 - preserve the manifestation boundaries even when using a smaller model;
 - tune temperature and output limits independently from character prose;
 - test browser and remote TTS backends because they may interpret pacing differently.
+
+### PersonaPlex
+
+PersonaPlex (fal.ai hosted and local MLX) is a full-duplex role-play model with no
+instruction-following chat scaffold. It is conditioned once per session with a voice preset and a
+free-text role prompt, and it adheres to a persona most reliably when the prompt follows one of
+the two template families the model was fine-tuned on (service and discussion).
+
+When porting:
+
+- weave the Furutsubaki identity into the role sentence itself ("you are the sheltering aspect
+  of the spirit of an ancient camellia tree"); do not prepend a shared guardrail block —
+  meta-instructions fall outside the template distribution and weaken adherence;
+- phrase manifestation boundaries as role-play character traits ("never blustering"), not policy;
+- end each prompt with what to do at the open — the model speaks first and there is no
+  `firstMessage` bootstrap or turn detection;
+- treat the non-human boundary as best-effort: a role-play model may improvise a backstory under
+  adversarial questioning, which is an accepted compromise on this engine;
+- the 18 voice presets are unlabeled beyond natural/variety and gender, so casting is settled by
+  live audition rather than labels; personas may share a preset when their prompts separate the
+  delivery (Nova and Vesper both use `VARF2`, differing by prompt energy);
+- prompt openers may deviate from the literal family text ("You enjoy adventure") as long as the
+  name-introduction pattern holds — audition results outrank strict template conformance.
 
 ## Propagation Procedure
 

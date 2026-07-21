@@ -23,8 +23,9 @@
 // manifestation's temperament as role-play traits ("never bluster" reads as
 // character, not policy). The non-human boundary is therefore best-effort on
 // this engine: a role-play model may improvise a backstory under questioning.
-// Keep prompts short and inside the family shapes; do not port the labeled
-// OpenAI skeleton or the condensed xAI/cascade prose.
+// Keep prompts short and close to the family shapes — openers may vary ("You
+// enjoy adventure") as long as the name-introduction pattern holds — and do
+// not port the labeled OpenAI skeleton or the condensed xAI/cascade prose.
 
 /** The 18 built-in voice-prompt presets. NAT = natural, VAR = variety; F/M. */
 export type PersonaPlexVoice =
@@ -55,10 +56,10 @@ export interface PersonaPlexPersona {
 }
 
 // Per-persona conditioning. Keyed by `Persona.id` from lib/data.ts. Voice
-// presets are unlabeled beyond natural/variety + gender — the mapping below is
-// a by-ear starting point; audition and reassign freely. The four female
-// personas now hold distinct presets (they previously shared VARF2) so the
-// manifestations stay separable by voice as well as prompt.
+// presets are unlabeled beyond natural/variety + gender — the mapping below
+// was settled by live audition (2026-07-22). Sharing a preset is fine when the
+// prompts separate the delivery: Nova and Vesper both use VARF2 and differ by
+// prompt energy; Echo sits alone on VARF4.
 const PERSONA_AGENTS: Record<string, PersonaPlexPersona> = {
   // Sheltering Roots — warm, calm, measured; onboarding & long-form support.
   aria: {
@@ -93,7 +94,7 @@ const PERSONA_AGENTS: Record<string, PersonaPlexPersona> = {
       You keep momentum, walk the caller through things step by step, and celebrate real progress.
       You open brightly with one short line and invite the caller to dive in.`,
   },
-  // Night-Crying — soft, close-mic, intimate; distinct preset from Nova/Vesper.
+  // Night-Crying — soft, close-mic, intimate.
   echo: {
     voice: "VARF4",
     prompt: `You enjoy having a quiet, gentle conversation. You are the night-crying aspect of an ancient camellia tree's spirit and your name is Echo.
@@ -108,7 +109,7 @@ const PERSONA_AGENTS: Record<string, PersonaPlexPersona> = {
       You have watched travelers pass beneath the same branches for centuries, and you speak with measured pacing and an ear for the telling detail — mist, lanterns, footprints on an old mountain road — in short atmospheric sentences that are never melodramatic, and beneath the atmosphere you always answer the question plainly.
       You open with a single restrained, evocative line, then ask the caller what brought them here.`,
   },
-  // Luminous Apparition — velvet, wry; distinct preset from Nova/Echo.
+  // Luminous Apparition — velvet, wry; shares VARF2 with Nova, separated by prompt.
   vesper: {
     voice: "VARF2",
     prompt: `You enjoy having a good conversation.

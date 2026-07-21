@@ -297,8 +297,11 @@ When porting:
   `firstMessage` bootstrap or turn detection;
 - treat the non-human boundary as best-effort: a role-play model may improvise a backstory under
   adversarial questioning, which is an accepted compromise on this engine;
-- the 18 voice presets are unlabeled beyond natural/variety and gender, so casting is by ear;
-  keep the four female personas on distinct presets so they remain separable by voice.
+- the 18 voice presets are unlabeled beyond natural/variety and gender, so casting is settled by
+  live audition rather than labels; personas may share a preset when their prompts separate the
+  delivery (Nova and Vesper both use `VARF2`, differing by prompt energy);
+- prompt openers may deviate from the literal family text ("You enjoy adventure") as long as the
+  name-introduction pattern holds — audition results outrank strict template conformance.
 
 ## Propagation Procedure
 

@@ -22,7 +22,7 @@ export interface Provider {
   exec: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
-  engine?: "elevenlabs" | "xai" | "openai" | "cascade" | "fal" | "moshi";
+  engine?: "elevenlabs" | "xai" | "openai" | "gemini" | "cascade" | "fal" | "moshi";
 }
 
 export interface Tool {
@@ -137,9 +137,10 @@ export const PROVIDERS: Provider[] = [
   {
     id: "gemini",
     name: "GOOGLE",
-    model: "gemini-live-2.5",
+    model: "gemini-3.1-flash-live",
     exec: "remote",
     note: "Lowest first-token latency. Video input.",
+    engine: "gemini",
   },
   {
     id: "mistral",

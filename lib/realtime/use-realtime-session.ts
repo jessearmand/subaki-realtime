@@ -6,6 +6,7 @@ import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { CallState, SessionApi, SessionTurn } from "./types";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
+import { useGeminiSession } from "./use-gemini-session";
 import { useCascadeSession } from "./use-cascade-session";
 import { useFalSession } from "./use-fal-session";
 import { useMoshiSession } from "./use-moshi-session";
@@ -41,6 +42,7 @@ function mockCaption(state: CallState): string {
  *   - "elevenlabs" → real conversation via `@elevenlabs/react`
  *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
  *   - "openai" → real gpt-realtime-2 voice via WebRTC (useOpenaiSession)
+ *   - "gemini" → real Gemini Live voice via a direct WebSocket (useGeminiSession)
  *   - "fal" → full-duplex PersonaPlex via a direct WebSocket (useFalSession)
  *   - "moshi" → full-duplex PersonaPlex on the LOCAL MLX server (useMoshiSession)
  * All expose the same `SessionApi` so the UI is provider-agnostic.
@@ -107,6 +109,7 @@ export function useRealtimeSession({
   // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
   const xai = useXaiSession(engine === "xai", persona);
   const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false);
+  const gemini = useGeminiSession(engine === "gemini", persona);
   const cascade = useCascadeSession(engine === "cascade", persona, lmModelId);
   const fal = useFalSession(engine === "fal", persona);
   const moshi = useMoshiSession(engine === "moshi", persona);
@@ -116,13 +119,15 @@ export function useRealtimeSession({
       ? xai
       : engine === "openai"
         ? openai
-        : engine === "cascade"
-          ? cascade
-          : engine === "fal"
-            ? fal
-            : engine === "moshi"
-              ? moshi
-              : null;
+        : engine === "gemini"
+          ? gemini
+          : engine === "cascade"
+            ? cascade
+            : engine === "fal"
+              ? fal
+              : engine === "moshi"
+                ? moshi
+                : null;
 
   // The active call state comes from whichever engine owns the session.
   const activeCallState: CallState = custom ? custom.callState : callState;

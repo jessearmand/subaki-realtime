@@ -28,6 +28,10 @@ service = "fnox"
 type = "keychain"
 service = "fnox"
 
+[providers.google]
+type = "keychain"
+service = "fnox"
+
 [secrets]
 ELEVENLABS_API_KEY= { provider = "ElevenLabs", value = "ELEVENLABS_API_KEY" }
 XAI_API_KEY= { provider = "xai", value = "XAI_API_KEY" }
@@ -36,3 +40,4 @@ CLAUDE_CODE_OAUTH_TOKEN= { provider = "anthropic", value = "CLAUDE_CODE_OAUTH_TO
 MISTRAL_API_KEY= { provider = "mistral", value = "MISTRAL_API_KEY" }
 HF_TOKEN= { provider = "huggingface", value = "HF_TOKEN" }
 FAL_API_KEY= { provider = "fal", value = "FAL_API_KEY" }
+GEMINI_API_KEY= { provider = "google", value = "GEMINI_API_KEY" }

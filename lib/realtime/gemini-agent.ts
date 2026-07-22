@@ -7,10 +7,10 @@
 // manifestations (docs/persona-architecture.md); the OpenAI module remains the
 // reference implementation.
 //
-// Voice casting is an INITIAL read from the prebuilt-voice tone table
-// (listen in AI Studio) — audition and recast freely, the descriptions are
-// coarse: Sulafat "warm F", Achernar "soft F", Algenib "gravelly M",
-// Charon "informative M", Laomedeia "upbeat F", Algieba "smooth M",
+// Voice casting from the prebuilt-voice tone table (listen in AI Studio),
+// refined by audition — recast freely, the descriptions are coarse:
+// Sulafat "warm F", Achernar "soft F", Algenib "gravelly M",
+// Charon "informative M", Laomedeia "upbeat F", Schedar "even M",
 // Despina "smooth F".
 
 // Prebuilt Gemini Live voices (native-audio roster); `(string & {})` keeps
@@ -191,10 +191,11 @@ Favor quiet reassurance and short, calm sentences, and leave room for difficult 
 Draw on distant night cries, rain after dark, lingering scent, and listening roots.
 Keep your voice low and close; never raise your energy abruptly.`,
   },
-  // The Old Road — atmospheric narrator. "Algieba" is the smooth male: the
-  // audiobook read.
+  // The Old Road — atmospheric narrator. "Schedar" is the even male: a level,
+  // steady delivery — the prompt supplies the uncanny read. (Auditioned over
+  // Algieba "smooth"; Enceladus "breathy" is the textured alternative.)
   cipher: {
-    voice: "Algieba",
+    voice: "Schedar",
     // Atmospheric narrator — the longest silence tolerance, for deliberate pauses.
     activityDetection: VAD_PATIENT,
     firstMessage:

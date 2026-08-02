@@ -341,11 +341,29 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
         const content = msg.serverContent;
         if (!content) return;
 
+        // React state setters don't refresh stateRef until the next render, so
+        // guards between fields of the SAME message would read the pre-message
+        // state (e.g. interrupted+audio flipping straight back to "speaking",
+        // or audio+turnComplete leaving the call stuck in "speaking"). Track
+        // the intended state locally instead.
+        let state = stateRef.current;
+        const setState = (s: CallState) => {
+          state = s;
+          setCallState(s);
+        };
+
+        // User transcript fragments FIRST: a fragment bundled with the reply's
+        // first model turn belongs to the utterance that triggered it — append
+        // it before any finalizeUser() below splits off a new user turn.
+        if (content.inputTranscription?.text) {
+          pushUserDelta(content.inputTranscription.text);
+        }
+
         if (content.interrupted) {
           // Server VAD detected the user over the agent — barge-in.
           playbackRef.current?.stop();
           finalizeAgent();
-          setCallState("interrupted");
+          setState("interrupted");
           if (interruptTimerRef.current) clearTimeout(interruptTimerRef.current);
           interruptTimerRef.current = setTimeout(() => setCallState("listening"), 600);
         }
@@ -357,7 +375,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
           for (const part of parts) {
             if (part.inlineData?.data) {
               playbackRef.current?.enqueue(base64Pcm16ToFloat32(part.inlineData.data));
-              if (stateRef.current !== "interrupted") setCallState("speaking");
+              if (state !== "interrupted") setState("speaking");
             }
           }
         }
@@ -366,14 +384,11 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
           if (userTurnIdRef.current) finalizeUser();
           pushAgentDelta(content.outputTranscription.text);
         }
-        if (content.inputTranscription?.text) {
-          pushUserDelta(content.inputTranscription.text);
-        }
 
         if (content.turnComplete) {
           finalizeAgent();
           finalizeUser();
-          if (stateRef.current === "speaking") setCallState("listening");
+          if (state === "speaking") setState("listening");
         }
       };
 

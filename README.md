@@ -143,6 +143,42 @@ The browser sees only the short-lived scoped access token — that is the OAuth
 trade Firecrawl documents (revocable per-client, small blast radius), versus a
 raw API key that never expires.
 
+## Wiring the real Google Gemini provider
+
+Gemini's Live API is **WebSocket-only** in the browser. The client connects
+directly to the v1alpha `BidiGenerateContentConstrained` endpoint on
+`generativelanguage.googleapis.com`, authenticated by a **single-use ephemeral
+auth token** minted server-side at `POST /api/gemini/token` (via `@google/genai`
+`authTokens.create` — ephemeral tokens are v1alpha-only and Google documents no
+raw REST mint endpoint). The secret `GEMINI_API_KEY` never reaches the client.
+
+Keep `GEMINI_API_KEY` in **fnox** and run via `fnox exec -- bun run dev` /
+`mise run dev`. No `GEMINI_*` values live in `.env` files.
+
+Per-persona config (prebuilt voice, multi-line instructions, opening line,
+VAD tuning) lives in the typed module **`lib/realtime/gemini-agent.ts`** — a
+shared `BASE` (model + activity detection) plus a per-persona map of Gemini
+voice + prompt + greeting, resolved by `resolveGeminiAgent(personaId)`. Voice
+casting is auditioned in AI Studio; Gemini's VAD sensitivity knobs are coarse
+two-level enums rather than xAI's numeric threshold.
+
+Protocol notes that shape `lib/realtime/use-gemini-session.ts`: mic PCM16
+streams as `realtimeInput.audio` with the AudioContext's native rate declared
+in the MIME type (Google resamples to 16 kHz); output audio is **fixed 24 kHz**,
+so the shared `PlaybackQueue` is constructed with an explicit buffer rate; one
+server message can bundle audio + transcriptions + turn flags, so every
+`serverContent` field is handled independently; barge-in is server-VAD driven
+via `serverContent.interrupted`; and the greeting is elicited through
+`realtimeInput.text` (`sendClientContent` is history-seeding only on current
+Live models).
+
+Pick the **GOOGLE** row under Providers, choose a persona, and press CALL —
+it mints a token, opens the WebSocket, sends the persona `setup`, streams both
+transcripts (input/output transcription enabled in setup), and grounds answers
+with the built-in `googleSearch` tool. Sessions are capped by Google at ~10 min
+of connection (15 min audio) — fine for a console call; session resumption is
+not wired.
+
 ## Wiring the fal.ai PersonaPlex provider (full-duplex)
 
 The **FAL.AI** row runs [NVIDIA PersonaPlex](https://huggingface.co/nvidia/personaplex-7b-v1)

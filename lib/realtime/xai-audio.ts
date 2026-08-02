@@ -119,9 +119,17 @@ export class PlaybackQueue {
   private playing = false;
   private current: AudioBufferSourceNode | null = null;
   private _level = 0;
+  private bufferRate: number;
 
-  constructor(ctx: AudioContext) {
+  /**
+   * @param bufferRate sample rate of the incoming PCM chunks. Defaults to the
+   * context rate (xAI/OpenAI negotiate the native rate); engines with a fixed
+   * output rate (Gemini: 24 kHz) pass it here and Web Audio resamples each
+   * AudioBuffer to the context rate on playback.
+   */
+  constructor(ctx: AudioContext, bufferRate?: number) {
     this.ctx = ctx;
+    this.bufferRate = bufferRate ?? ctx.sampleRate;
   }
 
   enqueue(chunk: Float32Array): void {
@@ -140,7 +148,7 @@ export class PlaybackQueue {
       this._level = 0;
       return;
     }
-    const buffer = this.ctx.createBuffer(1, chunk.length, this.ctx.sampleRate);
+    const buffer = this.ctx.createBuffer(1, chunk.length, this.bufferRate);
     buffer.getChannelData(0).set(chunk);
     const source = this.ctx.createBufferSource();
     source.buffer = buffer;

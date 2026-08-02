@@ -41,7 +41,7 @@ function mockCaption(state: CallState): string {
  *   - undefined → the design's mock lifecycle (timers + TRANSCRIPT_SCRIPT)
  *   - "elevenlabs" → real conversation via `@elevenlabs/react`
  *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
- *   - "openai" → real gpt-realtime-2 voice via WebRTC (useOpenaiSession)
+ *   - "openai" → real gpt-realtime voice via WebRTC (useOpenaiSession)
  *   - "gemini" → real Gemini Live voice via a direct WebSocket (useGeminiSession)
  *   - "fal" → full-duplex PersonaPlex via a direct WebSocket (useFalSession)
  *   - "moshi" → full-duplex PersonaPlex on the LOCAL MLX server (useMoshiSession)

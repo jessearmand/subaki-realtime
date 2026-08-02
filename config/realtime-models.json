@@ -1,0 +1,6 @@
+{
+  "openai": {
+    "model": "gpt-realtime-2.1",
+    "transcriptionModel": "gpt-realtime-whisper"
+  }
+}

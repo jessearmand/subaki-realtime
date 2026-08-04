@@ -21,6 +21,12 @@ import type { CallState, SessionTurn } from "./types";
 // Local WS proxy that adds the Mistral Bearer header the browser can't set.
 // Public (non-secret) URL; override with NEXT_PUBLIC_MISTRAL_STT_WS.
 const STT_WS_URL = process.env.NEXT_PUBLIC_MISTRAL_STT_WS ?? "ws://localhost:3001";
+// A dropped Mistral STT session is re-established this many times before the
+// call is demoted to the Web Speech fallback for good. Reconnecting keeps
+// Silero turn-taking; the fallback endpoints with Chrome's aggressive ~1 s
+// silence gate, which users perceive as early turn cuts.
+const MAX_STT_RECONNECTS = 2;
+const STT_RECONNECT_DELAY_MS = 500;
 
 export interface CascadeSession {
   callState: CallState;
@@ -95,6 +101,9 @@ export function useCascadeSession(
   active: boolean,
   persona?: Persona,
   lmModelId?: string,
+  /** Push-to-talk: disable Silero auto turn-end — only the Send button ends a
+   *  turn. Applies live (mid-call) via MistralStt.setAutoEndTurns. */
+  pushToTalk = false,
 ): CascadeSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
@@ -109,7 +118,14 @@ export function useCascadeSession(
   const agentRef = useRef(agent);
   agentRef.current = agent;
 
+  const pushToTalkRef = useRef(pushToTalk);
+  pushToTalkRef.current = pushToTalk;
+
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  // Web Speech push-to-talk: finals buffered here until Send flushes them
+  // (Web Speech endpoints on its own, so PTT must hold its results back).
+  const webFinalRef = useRef("");
+  const webFlushRef = useRef(false);
   // Mistral realtime STT (preferred). Falls back to Web Speech if the proxy or
   // mic is unavailable, in which case usingMistralRef flips to false.
   const sttRef = useRef<MistralStt | null>(null);
@@ -123,6 +139,10 @@ export function useCascadeSession(
   // Breaks the startListening ↔ onUserTurn recursion (each is declared before
   // the other needs it); startListening calls through the ref.
   const onUserTurnRef = useRef<(t: string) => void>(() => {});
+  // STT reconnect budget for the current call, and a ref so the STT onError
+  // handler can re-invoke the function that creates the session.
+  const sttRetriesRef = useRef(0);
+  const startSttRef = useRef<() => MistralStt | null>(() => null);
 
   const stateRef = useRef<CallState>("idle");
   const setState = useCallback((s: CallState) => {
@@ -162,11 +182,31 @@ export function useCascadeSession(
         else interim += r[0].transcript;
       }
       if (interim) setCaption(interim);
-      if (finalText.trim()) onUserTurnRef.current(finalText.trim());
+      if (finalText.trim()) {
+        if (pushToTalkRef.current) {
+          // Web Speech endpoints on its own; in push-to-talk, hold finals until
+          // the Send button flushes them instead of replying immediately.
+          webFinalRef.current = `${webFinalRef.current} ${finalText}`.trim();
+          setCaption(webFinalRef.current);
+        } else {
+          onUserTurnRef.current(finalText.trim());
+        }
+      }
     };
     rec.onerror = () => {};
     // Chrome stops recognition on silence; restart it while we're still listening.
     rec.onend = () => {
+      // Send pressed in push-to-talk: emit the buffered turn (stop() has forced
+      // out any pending final by now) instead of restarting.
+      if (webFlushRef.current) {
+        webFlushRef.current = false;
+        const text = webFinalRef.current.trim();
+        webFinalRef.current = "";
+        if (text) {
+          onUserTurnRef.current(text);
+          return;
+        }
+      }
       if (stateRef.current === "listening" && !speakingRef.current) {
         try {
           rec.start();
@@ -187,12 +227,16 @@ export function useCascadeSession(
   // Enter the listening state on whichever STT path is active: resume the open
   // Mistral session, or (fallback) (re)start Web Speech.
   const beginListening = useCallback(() => {
+    const hint = pushToTalkRef.current ? "listening — send ends your turn" : "listening…";
     if (usingMistralRef.current && sttRef.current) {
       sttRef.current.resume();
-      setCaption("listening…");
+      setCaption(hint);
       setState("listening");
       return;
     }
+    webFinalRef.current = "";
+    webFlushRef.current = false;
+    setCaption(hint);
     startListening();
   }, [setState, startListening]);
 
@@ -368,36 +412,59 @@ export function useCascadeSession(
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
   }, [stopRecognition, teardownStt]);
 
-  const start = useCallback(() => {
-    if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
-    messagesRef.current = [];
-    setTurns([]);
-    setState("connecting");
-    setCaption("connecting…");
-
-    // Bring up the STT leg in parallel with the opening line: the Mistral
-    // realtime WS, or batch recording for the local backend (mode from
-    // config/voice-models.json). The mic stays paused (endListening on the
-    // greeting turn) until the greeting finishes and beginListening() resumes it.
+  // Build + start the Mistral STT leg: the realtime WS, or batch recording for
+  // the local backend (mode from config/voice-models.json). Called at call
+  // start and again (through startSttRef) to reconnect a dropped session;
+  // returns the fresh instance so the reconnect path can resume() it.
+  const startStt = useCallback((): MistralStt => {
     usingMistralRef.current = true;
     const sttBackend = resolveSttBackend(DEFAULT_STT_BACKEND_ID);
     const stt = new MistralStt({
       wsUrl: STT_WS_URL,
       mode: sttBackend?.mode ?? "realtime",
       sttBackend: DEFAULT_STT_BACKEND_ID,
+      autoEndTurns: !pushToTalkRef.current,
       onPartial: (text) => {
         if (stateRef.current === "listening") setCaption(text);
       },
       onFinal: (text) => {
         if (!speakingRef.current && !mutedRef.current) onUserTurnRef.current(text);
       },
-      onError: () => {
+      // A successful (re)connect refunds the retry budget, so a session that
+      // drops again much later gets its own reconnect attempts.
+      onReady: () => {
+        sttRetriesRef.current = 0;
+      },
+      onError: (message) => {
         // Shut down the failed Mistral leg (mic stream, AudioContext, VAD,
-        // socket) before dropping to the browser Web Speech fallback —
-        // otherwise both capture paths run side by side for the rest of the call.
+        // socket) first — otherwise capture paths pile up across reconnects.
         teardownStt();
+        if (stateRef.current === "idle" || stateRef.current === "ended") return;
+        const attempt = sttRetriesRef.current + 1;
+        if (attempt <= MAX_STT_RECONNECTS) {
+          sttRetriesRef.current = attempt;
+          console.warn(
+            `[cascade] Mistral STT leg failed (${message}) — reconnecting ${attempt}/${MAX_STT_RECONNECTS}`,
+          );
+          setTimeout(() => {
+            if (stateRef.current === "idle" || stateRef.current === "ended" || sttRef.current) {
+              return;
+            }
+            const fresh = startSttRef.current();
+            // Re-enter listening on the fresh session; the in-progress turn's
+            // partial transcript is lost (acceptable for a rare drop).
+            if (fresh && stateRef.current === "listening") fresh.resume();
+          }, STT_RECONNECT_DELAY_MS);
+          return;
+        }
+        // Loud on purpose: the fallback swaps Silero turn-taking for Chrome's
+        // aggressive ~1 s endpointing, which users perceive as early cuts —
+        // a silent demotion here masquerades as a VAD tuning problem.
+        console.warn(
+          `[cascade] Mistral STT leg failed (${message}) after ${MAX_STT_RECONNECTS} reconnects — falling back to Web Speech (browser endpointing, no Silero turn-taking)`,
+        );
         if (stateRef.current === "listening") {
-          setCaption("— STT proxy unavailable, using browser speech —");
+          setCaption("— STT unavailable, using browser speech —");
           startListening();
         }
       },
@@ -408,11 +475,27 @@ export function useCascadeSession(
       // Mic denied / AudioContext failure: release whatever start() got to.
       teardownStt();
     });
+    return stt;
+  }, [startListening, teardownStt]);
+  startSttRef.current = startStt;
+
+  const start = useCallback(() => {
+    if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
+    messagesRef.current = [];
+    sttRetriesRef.current = 0;
+    setTurns([]);
+    setState("connecting");
+    setCaption("connecting…");
+
+    // Bring up the STT leg in parallel with the opening line. The mic stays
+    // paused (endListening on the greeting turn) until the greeting finishes
+    // and beginListening() resumes it.
+    startStt();
 
     // Opening line: ask the LM for a greeting, then drop into listening. The
     // elicitation prompt goes to the LM only — never into the visible transcript.
     onUserTurn(agentRef.current.firstMessage, { visible: false });
-  }, [onUserTurn, setState, startListening, teardownStt]);
+  }, [onUserTurn, setState, startStt]);
 
   const stop = useCallback(() => {
     teardown();
@@ -431,12 +514,22 @@ export function useCascadeSession(
   }, [beginListening, setState]);
 
   // Manual end-of-turn ("send" button): end the current turn immediately instead
-  // of waiting for the silence gate. For Web Speech, stop() forces a final result.
+  // of waiting for the silence gate. For Web Speech, stop() forces a final result;
+  // in push-to-talk the flush flag makes onend emit the buffered turn.
   const sendTurn = useCallback(() => {
     if (stateRef.current !== "listening") return;
-    if (usingMistralRef.current && sttRef.current) sttRef.current.endTurnNow();
-    else recognitionRef.current?.stop();
+    if (usingMistralRef.current && sttRef.current) {
+      sttRef.current.endTurnNow();
+    } else {
+      webFlushRef.current = true;
+      recognitionRef.current?.stop();
+    }
   }, []);
+
+  // Push-to-talk toggled mid-call: flip auto turn-end on the live STT session.
+  useEffect(() => {
+    sttRef.current?.setAutoEndTurns(!pushToTalk);
+  }, [pushToTalk]);
 
   const setMuted = useCallback((m: boolean) => {
     mutedRef.current = m;

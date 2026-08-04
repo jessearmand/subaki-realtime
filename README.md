@@ -267,6 +267,7 @@ separately** (see below):
 # in fnox (run via `fnox exec -- bun run dev` / `mise run dev`)
 HF_TOKEN=hf_...            # LM backend "hf"  (HF Inference router, any served model)
 MISTRAL_API_KEY=...        # STT, TTS, and LM backend "mistral" (mistral-small-latest)
+TINKER_API_KEY=...         # LM backend "tinker" (Thinking Machines Inkling models)
 ```
 
 **Realtime STT runs through a WS proxy.** Mistral's realtime-transcription
@@ -299,7 +300,10 @@ client-side, with two ways to end a turn:
   Per-frame speech probability drives a hysteresis state machine; `onSpeechEnd`
   ends the turn. This replaced an energy/RMS gate that sat below most rooms' noise
   floor and never fired. Tunables (in `mistral-stt.ts`): `VAD_REDEMPTION_MS` (the
-  "let me finish" window), `VAD_POSITIVE`/`VAD_NEGATIVE`, `VAD_MIN_SPEECH_MS`. The
+  "let me finish" window, 1400 ms), `VAD_POSITIVE`/`VAD_NEGATIVE`,
+  `VAD_MIN_SPEECH_MS`, and `FLUSH_GRACE_MS` (1000 ms — must cover the session's
+  `target_streaming_delay_ms`, since the transcript trails the audio by up to
+  that much and a shorter grace emits turns with their last words missing). The
   ~2 MB model (snakers4/silero-vad, 64-sample context + 512 frame @ 16 kHz) and the
   ORT WASM both load from jsDelivr at call-start, pinned to `SILERO_TAG` /
   `ORT_VERSION` in `silero-vad.ts` — no model binary in the repo. If it fails to
@@ -307,6 +311,11 @@ client-side, with two ways to end a turn:
 - **Manual send.** A **Send-turn** button (the arrow-into-bar glyph, enabled only
   while listening) ends your turn instantly via `endTurnNow()` — the dependable
   override when you want to barge ahead.
+- **Push-to-talk (Settings → BEHAVIOUR).** Auto turn-end is otherwise *always*
+  armed — Send is an override, not a mode. The PUSH-TO-TALK toggle disables
+  Silero's end-of-speech action entirely (for both the realtime and local batch
+  STT legs — turn boundaries are always client-side; neither Mistral nor the
+  local server detects turns), so only Send ends a turn. Applies live mid-call.
 
 The proxy URL is `NEXT_PUBLIC_MISTRAL_STT_WS` (default `ws://localhost:3001`). **If
 the proxy is down or the mic is denied, STT automatically falls back to browser
@@ -352,6 +361,15 @@ list is fetched. To change the model every cascade persona uses, edit `default`:
   public URL live in the file.
 - **Per-persona override**: give a persona an `lmModelId` (a catalog id) in
   `cascade-agent.ts` to pin it to a different model than the global default.
+- **Backend dialect knobs (`extraBody`)**: a backend can carry an `extraBody`
+  object merged verbatim into the upstream request. The `tinker` backend
+  (Thinking Machines' OpenAI-compatible endpoint, `TINKER_API_KEY` in fnox) uses
+  it to send `reasoning_effort: "none"` — Inkling is a hybrid reasoning model
+  that would otherwise think at effort 0.9 before the first spoken token. Its
+  reasoning streams on a separate `reasoning_content` field the client ignores,
+  so chain-of-thought can never reach TTS. The catalog carries all six Inkling
+  variants (base / 256K `:peft:262144` / serverless `:sampling-nvfp4`, each in
+  regular and Small).
 - **Local backend (keyless)**: the `local` backend points at an OpenAI-compatible
   server on `localhost:8001` with an **empty `envKey`** — no Authorization header
   is sent, no fnox secret needed. Serve it with **`mise run lm-local`**

@@ -17,6 +17,11 @@ export interface Tweaks {
    * own playback and truncates itself; headphone users can opt in.
    */
   voiceBargeIn: boolean;
+  /**
+   * Push-to-talk (cascade engine): disable Silero auto turn-end so only the
+   * Send button ends your turn. OFF by default — silence ends the turn.
+   */
+  pushToTalk: boolean;
 }
 
 export const TWEAK_DEFAULTS: Tweaks = {
@@ -26,6 +31,7 @@ export const TWEAK_DEFAULTS: Tweaks = {
   transcript: "drawer",
   providerPreview: true,
   voiceBargeIn: false,
+  pushToTalk: false,
 };
 
 // Camellia crimson is the Tsubaki default; burnt orange (#C2410C) stays selectable.

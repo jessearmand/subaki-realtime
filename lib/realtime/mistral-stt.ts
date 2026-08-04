@@ -30,13 +30,22 @@ import { encodeWavPcm16 } from "./wav";
 
 const SAMPLE_RATE = 16000;
 const PROC_FRAMES = 2048; // ~128 ms per audio block; a multiple of Silero's 512
-const FLUSH_GRACE_MS = 350; // wait after flush to collect trailing deltas
+// Wait after flush to collect trailing deltas. Must cover the session's
+// target_streaming_delay_ms (1000): the transcript trails the audio by up to
+// that much, so a shorter grace emits the turn with its last words missing.
+const FLUSH_GRACE_MS = 1000;
 // Silero turn-detection tunables (forwarded to SileroVad). Bump REDEMPTION_MS if
 // it still ends turns too early; raise the thresholds if a noisy room over-triggers.
-const VAD_REDEMPTION_MS = 900; // silence after speech that ends the turn
-const VAD_MIN_SPEECH_MS = 250; // shortest run that counts as a real turn
+// Values tuned from real traces (localStorage tsubaki.vad-debug=1): soft/trailing
+// speech scores 0.15–0.45 while true room silence sits at ≤0.05, so the release
+// threshold must sit *below* the soft-speech band — at 0.25 it counted audible
+// trailing clauses as silence and cut turns mid-sentence. Short words ("yes")
+// only clear the onset threshold for ~5 frames, so MIN_SPEECH above ~200 ms
+// silently drops them as misfires.
+const VAD_REDEMPTION_MS = 1400; // silence after speech that ends the turn
+const VAD_MIN_SPEECH_MS = 160; // shortest run that counts as a real turn
 const VAD_POSITIVE = 0.3; // speech-probability onset threshold
-const VAD_NEGATIVE = 0.25; // speech-probability release threshold
+const VAD_NEGATIVE = 0.15; // speech-probability release threshold (below the soft-speech band)
 // Batch mode: cap the per-turn recording (memory guard — 16 kHz mono Float32 is
 // ~64 KB/s, so 120 s ≈ 7.5 MB). Beyond the cap the turn stops growing.
 const BATCH_MAX_TURN_S = 120;
@@ -51,6 +60,10 @@ export interface MistralSttOptions {
   mode?: "realtime" | "batch";
   /** Catalog backend id forwarded to /api/stt in batch mode. */
   sttBackend?: string;
+  /** When false (push-to-talk), Silero end-of-speech no longer ends the turn —
+   *  only `endTurnNow()` (the Send button) does. Defaults to true; toggle
+   *  mid-session with `setAutoEndTurns`. */
+  autoEndTurns?: boolean;
   /** Running transcript of the in-progress turn (drive the live caption). */
   onPartial: (text: string) => void;
   /** A completed user turn (silence detected after speech). */
@@ -75,6 +88,10 @@ export class MistralStt {
   private muted = false;
   private closed = false;
   private ready = false;
+  // Auto turn-end (Silero onSpeechEnd → endTurn). Gated here rather than by not
+  // loading the VAD, so push-to-talk can toggle mid-session and speech-start
+  // still cancels a pending emit either way.
+  private autoEnd = true;
 
   // Per-turn transcript + emit state.
   private turnText = "";
@@ -92,6 +109,7 @@ export class MistralStt {
 
   constructor(opts: MistralSttOptions) {
     this.opts = opts;
+    this.autoEnd = opts.autoEndTurns ?? true;
   }
 
   /** Open the mic + proxy WebSocket and configure the session. Resolves once
@@ -268,9 +286,16 @@ export class MistralStt {
     }
   }
 
-  /** Silero saw end-of-speech ⇒ end the turn (flush + emit). */
+  /** Silero saw end-of-speech ⇒ end the turn (flush + emit) — unless
+   *  push-to-talk has auto turn-end disabled. */
   private onSpeechEnd(): void {
-    if (this.listening && !this.muted && !this.emitting) this.endTurn();
+    if (this.autoEnd && this.listening && !this.muted && !this.emitting) this.endTurn();
+  }
+
+  /** Enable/disable auto turn-end (the push-to-talk toggle). Applies
+   *  immediately, including mid-turn. */
+  setAutoEndTurns(v: boolean): void {
+    this.autoEnd = v;
   }
 
   /** Manually end the current turn now (the "send" button), bypassing the

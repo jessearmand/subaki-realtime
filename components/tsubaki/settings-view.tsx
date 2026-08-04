@@ -12,6 +12,8 @@ export function SettingsView({
   onMutedChange,
   bargeIn,
   onBargeInChange,
+  pushToTalk,
+  onPushToTalkChange,
 }: {
   accent: string;
   tools: Tool[];
@@ -21,6 +23,9 @@ export function SettingsView({
   /** Voice barge-in — user speech interrupts the agent (OpenAI engine). */
   bargeIn: boolean;
   onBargeInChange: (v: boolean) => void;
+  /** Push-to-talk — only the Send button ends a turn (cascade engine). */
+  pushToTalk: boolean;
+  onPushToTalkChange: (v: boolean) => void;
 }) {
   const [device, setDevice] = useState("");
   const outputs = useAudioOutputDevices();
@@ -28,7 +33,6 @@ export function SettingsView({
   const [latency, setLatency] = useState(220);
   const [vad, setVad] = useState(0.65);
   const [denoise, setDenoise] = useState(true);
-  const [pushToTalk, setPushToTalk] = useState(false);
 
   // Default the output selection to the first real device once enumerated.
   useEffect(() => {
@@ -129,8 +133,8 @@ export function SettingsView({
           <FieldRow label="INTERRUPTIONS" hint="voice barge-in · headphones only">
             <SwitchRow value={bargeIn} onChange={onBargeInChange} />
           </FieldRow>
-          <FieldRow label="PUSH-TO-TALK">
-            <SwitchRow value={pushToTalk} onChange={setPushToTalk} />
+          <FieldRow label="PUSH-TO-TALK" hint="cascade · send button ends your turn">
+            <SwitchRow value={pushToTalk} onChange={onPushToTalkChange} />
           </FieldRow>
         </section>
 

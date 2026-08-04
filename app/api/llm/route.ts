@@ -58,7 +58,10 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "model and messages are required." }, { status: 400 });
   }
 
+  // Backend-specific dialect fields (e.g. Tinker's reasoning_effort) come first so
+  // the core request fields below can never be overridden by catalog data.
   const upstreamBody: Record<string, unknown> = {
+    ...backend.extraBody,
     model: body.model,
     messages: body.messages,
     stream: true,

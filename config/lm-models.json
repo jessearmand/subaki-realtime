@@ -1,5 +1,5 @@
 {
-  "note": "LM catalog for the cascade (STT -> LM -> TTS) engine. Change `default` to switch the model every cascade persona uses; add entries to `models` to make more available (no live API list needed). A persona can also pin a model via `lmModelId` in lib/realtime/cascade-agent.ts. `backends[*].envKey` names a fnox/env secret read server-side in app/api/llm/route.ts — values never reach the browser; an empty envKey marks a keyless backend (local server) and no Authorization header is sent. `supportsThinking` sends chat_template_kwargs.enable_thinking:false (reasoning models); leave false for APIs that reject unknown fields (Mistral 422s, and the HF router now rejects it with wrong_api_format). HF models pick an inference provider with a `:provider` suffix (e.g. `:fastest`, `:cerebras`). The `local` backend expects `mise run lm-local` (llama-server, port 8001); its model id must match the server's --alias. See README 'Configuring the cascade LM'.",
+  "note": "LM catalog for the cascade (STT -> LM -> TTS) engine. Change `default` to switch the model every cascade persona uses; add entries to `models` to make more available (no live API list needed). A persona can also pin a model via `lmModelId` in lib/realtime/cascade-agent.ts. `backends[*].envKey` names a fnox/env secret read server-side in app/api/llm/route.ts — values never reach the browser; an empty envKey marks a keyless backend (local server) and no Authorization header is sent. `supportsThinking` sends chat_template_kwargs.enable_thinking:false (reasoning models); leave false for APIs that reject unknown fields (Mistral 422s, and the HF router now rejects it with wrong_api_format). `extraBody` merges backend-specific fields into the upstream request (the tinker backend uses it to send reasoning_effort:none — Inkling is a hybrid reasoning model and would otherwise think at effort 0.9 before the first spoken token; its reasoning streams on reasoning_content, which the client ignores). HF models pick an inference provider with a `:provider` suffix (e.g. `:fastest`, `:cerebras`). Tinker model ids come from https://tinker-docs.thinkingmachines.ai/tinker/models.json; `:peft:262144` = 256K context, `:sampling-nvfp4` = the serverless-inference tier (beta, Inkling only). The `local` backend expects `mise run lm-local` (llama-server, port 8001); its model id must match the server's --alias. See README 'Configuring the cascade LM'.",
   "default": "gemma-4-31b",
   "backends": {
     "hf": {
@@ -16,6 +16,12 @@
       "url": "http://localhost:8001/v1/chat/completions",
       "envKey": "",
       "supportsThinking": true
+    },
+    "tinker": {
+      "url": "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1/chat/completions",
+      "envKey": "TINKER_API_KEY",
+      "supportsThinking": false,
+      "extraBody": { "reasoning_effort": "none" }
     }
   },
   "models": [
@@ -48,6 +54,54 @@
       "label": "Gemma 4 12B QAT · local",
       "backend": "local",
       "model": "unsloth/gemma-4-12b-it-qat-GGUF",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling",
+      "label": "Inkling · Tinker",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling-256k",
+      "label": "Inkling 256K · Tinker",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling:peft:262144",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling-small",
+      "label": "Inkling Small · Tinker",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling-Small",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling-small-256k",
+      "label": "Inkling Small 256K · Tinker",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling-Small:peft:262144",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling-serverless",
+      "label": "Inkling · Tinker serverless",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling:peft:262144:sampling-nvfp4",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling-small-serverless",
+      "label": "Inkling Small · Tinker serverless",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling-Small:peft:262144:sampling-nvfp4",
       "temperature": 0.7,
       "maxTokens": 200
     }

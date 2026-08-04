@@ -90,7 +90,7 @@ caption instead of connecting.
 
 ## Wiring the real OpenAI provider
 
-OpenAI's realtime API (`gpt-realtime-2`) connects over **WebRTC** — the browser's
+OpenAI's realtime API (`gpt-realtime-2.1`) connects over **WebRTC** — the browser's
 peer connection carries the audio both ways, so there's no hand-rolled PCM
 pipeline. A short-lived **ephemeral key** is minted server-side at
 `POST /api/openai/token`; the browser then POSTs its SDP offer straight to
@@ -105,7 +105,10 @@ Per-persona config (voice, multi-line instructions, opening line, reasoning
 effort, turn-detection) lives in the typed module **`lib/realtime/openai-agent.ts`**
 — a shared `BASE` (model / reasoning / `gpt-realtime-whisper` input transcription /
 turn-detection) plus a per-persona map of OpenAI voice + prompt + greeting,
-resolved by `resolveOpenaiAgent(personaId)`. The persona `instructions` follow a
+resolved by `resolveOpenaiAgent(personaId)`. The model ids themselves live in
+**`config/realtime-models.json`** (read by `lib/realtime/realtime-model-config.ts`),
+the single source shared by the agent `BASE`, the `/api/openai/token` mint route,
+and the Providers UI label — bump the model there and every consumer follows. The persona `instructions` follow a
 light slice of OpenAI's Realtime 2.0 prompt skeleton (Role, Personality & Tone,
 Pacing, Unclear Audio, Variety).
 
@@ -408,6 +411,7 @@ app/api/tts/               TTS route (per-clause MP3; Mistral or local mlx-audio
 app/api/stt/               batch STT route (per-turn WAV → local mlx-audio transcription)
 config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
 config/voice-models.json   cascade TTS/STT catalog (cloud/local backends + persona voice map)
+config/realtime-models.json  fixed realtime model ids (OpenAI session + mint + UI label) — edit to bump
 scripts/mistral-stt-proxy.ts  standalone bun WS proxy: browser ↔ Mistral realtime STT (adds Bearer header)
 components/ui/             ElevenLabs + shadcn components (copied, editable)
 components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
@@ -418,8 +422,9 @@ lib/data.ts                personas, providers (with engine discriminator), tool
 lib/realtime/              types (CallState, SessionApi), use-realtime-session (dispatcher),
                            use-xai-session (Grok WS engine), xai-audio (PCM16 + playback),
                            xai-agent (per-persona Grok config: voice + prompt + greeting),
-                           use-openai-session (gpt-realtime-2 WebRTC engine),
+                           use-openai-session (gpt-realtime-2.1 WebRTC engine),
                            openai-agent (per-persona OpenAI config: voice + prompt + greeting),
+                           realtime-model-config (loads config/realtime-models.json — model ids),
                            use-cascade-session (STT→LM→TTS engine), cascade-agent (per-persona),
                            lm-config (loads config/lm-models.json — backends + model catalog),
                            voice-config (loads config/voice-models.json — TTS/STT backends),

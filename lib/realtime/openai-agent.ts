@@ -1,5 +1,6 @@
 // OpenAI realtime agent configuration — the source of truth for what each
-// persona sounds and behaves like on the real `gpt-realtime-2` engine.
+// persona sounds and behaves like on the real gpt-realtime engine (model id
+// pinned in `config/realtime-models.json`).
 //
 // Ported from `xai-agent.ts` (same authoring model: shared transport in BASE,
 // per-persona overrides for voice + prompt + greeting) and adapted to OpenAI's
@@ -19,6 +20,10 @@
 // resource the token is scoped to (import from config, NOT oauth.ts — that
 // module is server-only via node:fs/node:crypto).
 import { FIRECRAWL_MCP_URL } from "@/lib/firecrawl/config";
+import {
+  OPENAI_REALTIME_MODEL,
+  OPENAI_TRANSCRIPTION_MODEL,
+} from "@/lib/realtime/realtime-model-config";
 
 export type OpenaiVoice =
   | "marin"
@@ -60,8 +65,8 @@ export interface McpToolConfig {
   /** Narrow the imported tool surface — the server sees any data the model sends. */
   allowed_tools?: string[];
   require_approval?: "always" | "never";
-  // NOTE: the docs also list `server_description`, but gpt-realtime-2 rejects
-  // it ("Unknown parameter") — don't add it back without checking the model.
+  // NOTE: the docs also list `server_description`, but the gpt-realtime models
+  // reject it ("Unknown parameter") — don't add it back without checking.
 }
 
 /** Classic function tool — the app executes it and returns function_call_output. */
@@ -195,10 +200,10 @@ const BASE: Pick<
   OpenaiAgentConfig,
   "model" | "reasoningEffort" | "transcription" | "tools" | "turnDetection"
 > = {
-  model: "gpt-realtime-2",
+  model: OPENAI_REALTIME_MODEL,
   // "low" is OpenAI's recommended default for production voice agents.
   reasoningEffort: "low",
-  transcription: { model: "gpt-realtime-whisper", language: "en", delay: "low" },
+  transcription: { model: OPENAI_TRANSCRIPTION_MODEL, language: "en", delay: "low" },
   tools: [],
   // Global fallback for any persona that doesn't override turnDetection.
   turnDetection: VAD_RELAXED,

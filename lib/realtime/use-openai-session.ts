@@ -1,6 +1,7 @@
 "use client";
 
-// Real OpenAI `gpt-realtime-2` voice engine over a browser WebRTC peer connection.
+// Real OpenAI gpt-realtime voice engine (model pinned in config/realtime-models.json)
+// over a browser WebRTC peer connection.
 //
 // Architecture (no relay server): mint an ephemeral key at /api/openai/token,
 // then negotiate WebRTC directly with OpenAI — POST the local SDP offer to

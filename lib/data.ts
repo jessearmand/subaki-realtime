@@ -1,6 +1,8 @@
 // Sample data ported from the design bundle (screens.jsx).
 // Single source of truth for personas, providers, tools and the mock transcript.
 
+import { OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
+
 export interface Persona {
   id: string;
   name: string;
@@ -121,7 +123,7 @@ export const PROVIDERS: Provider[] = [
   {
     id: "openai",
     name: "OPENAI",
-    model: "gpt-realtime-2",
+    model: OPENAI_REALTIME_MODEL,
     exec: "remote",
     note: "Best general performance.",
     engine: "openai",

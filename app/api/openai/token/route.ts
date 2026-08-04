@@ -6,16 +6,20 @@
 //   POST https://api.openai.com/v1/realtime/calls
 //     Authorization: Bearer <ephemeral key>, Content-Type: application/sdp
 // Full per-persona config is applied client-side via `session.update`, so the
-// mint body stays minimal here.
+// mint body stays minimal here. The model id comes from
+// `config/realtime-models.json` (via realtime-model-config), the same source
+// the client's `session.update` uses — so mint scope and session config can't
+// silently disagree.
 //
 // Dev only: OPENAI_API_KEY is provided via fnox (`fnox exec -- bun run dev`).
+
+import { OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
 
 export const runtime = "nodejs";
 // Never cache a freshly-minted secret.
 export const dynamic = "force-dynamic";
 
 const CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
-const MODEL = "gpt-realtime-2";
 
 export async function POST(): Promise<Response> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -35,7 +39,7 @@ export async function POST(): Promise<Response> {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ session: { type: "realtime", model: MODEL } }),
+      body: JSON.stringify({ session: { type: "realtime", model: OPENAI_REALTIME_MODEL } }),
     });
   } catch (err) {
     return Response.json(

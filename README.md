@@ -185,238 +185,40 @@ not wired.
 ## Wiring the fal.ai PersonaPlex provider (full-duplex)
 
 The **FAL.AI** row runs [NVIDIA PersonaPlex](https://huggingface.co/nvidia/personaplex-7b-v1)
-hosted on fal.ai ([`fal-ai/personaplex/realtime`](https://fal.ai/models/fal-ai/personaplex/realtime))
-— a **full-duplex** speech-to-speech model that listens while it speaks. Unlike
-every other engine there is no VAD and no turn events: the model opens the call
-with its own greeting, barge-in is native (just talk over it), and INTERRUPT is
-effectively a no-op. There is no user-side transcript (no ASR in the path); the
-agent transcript streams from the model's inner-monologue text tokens.
+hosted on fal.ai — a **full-duplex** speech-to-speech model that listens while
+it speaks (the model greets first, barge-in is native, no user-side ASR). The
+browser opens a direct WebSocket to `wss://fal.run/fal-ai/personaplex/realtime`
+(msgpack frames, PCM16 @ 24 kHz) with a JWT minted at `POST /api/fal/token`.
+Keep `FAL_API_KEY` in **fnox** and run `mise run dev`; use headphones.
 
-Transport is a direct browser→fal WebSocket
-(`wss://fal.run/fal-ai/personaplex/realtime`) carrying **msgpack** binary frames
-with raw PCM16 audio bytes at a fixed 24 kHz both ways (the server silently
-ignores JSON text frames) — the `AudioContext` is constructed at 24 kHz so the
-browser resamples at the edges. A short-lived JWT is minted server-side at
-`POST /api/fal/token`; the secret `FAL_API_KEY` never reaches the client.
-
-Keep `FAL_API_KEY` in **fnox** and run via `fnox exec -- bun run dev` /
-`mise run dev`. No `FAL_*` values live in `.env` files. Pricing is
-$0.001/compute-second, billed while the socket is open.
-
-Per-persona config (voice preset + role prompt + sampling) lives in the typed
-module **`lib/realtime/fal-agent.ts`** — PersonaPlex is conditioned per session
-by one of 18 voice presets (`NATF0–3`, `NATM0–3`, `VARF0–4`, `VARM0–4`) and a
-short role-play prompt (no instruction-following scaffold), resolved by
-`resolveFalAgent(personaId)`.
-
-Two full-duplex quirks are handled in `lib/realtime/use-fal-session.ts`:
-
-- **Greeting gate** (`lib/realtime/greeting-gate.ts`): the mic is replaced with
-  silence until the model finishes its opening greeting, and `autoGainControl`
-  is off — otherwise amplified room tone makes the model interrupt its own
-  greeting mid-sentence. (Same logic we validated server-side in the local MLX
-  fork; see `docs/personaplex-local-inference.md`.)
-- **Continuous timeline**: mute and the gate send silence chunks instead of
-  pausing sends — the model tracks the conversation as two synchronized audio
-  streams, so the input clock must never stop.
-
-Use headphones — the model hears everything the mic hears, including its own
-voice from speakers. Pick the **FAL.AI** row under Providers, choose a persona,
-and press CALL. Without `FAL_API_KEY` set, CALL shows a clear "FAL_API_KEY is not set"
-caption instead of connecting.
+Full setup, per-persona config, greeting-gate/continuous-timeline rules, and
+gotchas: [.claude/skills/fal-personaplex-provider/SKILL.md](.claude/skills/fal-personaplex-provider/SKILL.md).
 
 ## Wiring the local KYUTAI provider (full-duplex, on-device)
 
 The **KYUTAI** row runs the same PersonaPlex architecture fully **on-device**:
 the [kyutai/personaplex-rl-seamless](https://huggingface.co/kyutai/personaplex-rl-seamless)
-RL fine-tune (better turn-taking/backchanneling; non-commercial RL delta) served
-by our [personaplex-mlx fork](https://github.com/jessearmand/personaplex-mlx)
-(`tsubaki-server` branch) at q8 on Apple Silicon. Start the server, then the app:
+RL fine-tune served by our [personaplex-mlx fork](https://github.com/jessearmand/personaplex-mlx)
+(`tsubaki-server` branch) at q8 on Apple Silicon. No API key — the browser
+connects straight to `ws://localhost:8998/api/chat` (raw PCM16 @ 24 kHz via
+`format=pcm`). Start with `mise run personaplex-local`, then `mise run dev`.
 
-```bash
-mise run personaplex-local   # personaplex-mlx local_web on :8998 (kyutai RL, q8)
-mise run dev
-```
-
-`PERSONAPLEX_HF_REPO=nvidia/personaplex-7b-v1 mise run personaplex-local` serves
-the base checkpoint instead; `PERSONAPLEX_DIR`/`PERSONAPLEX_PORT` override the
-checkout path (default `~/Develop/personaplex-mlx`) and port. No API key — the
-browser connects straight to `ws://localhost:8998/api/chat` with the persona's
-`voice_prompt`/`text_prompt` as query params and **`format=pcm`**, our fork's
-codec-free wire mode (raw PCM16 @ 24 kHz in the tag-prefixed binary frames; see
-the fork's README for the protocol).
-
-Engine: `lib/realtime/use-moshi-session.ts`. Persona conditioning (voice preset
-+ role prompt) is **shared with the fal engine** via
-`lib/realtime/personaplex-personas.ts`, so an A/B between KYUTAI and FAL.AI
-varies only the serving stack. Differences from the fal engine: no token route,
-and the greeting mic-gate runs **server-side** (our fork has it on by default)
-instead of in the browser. Everything else matches — model greets first,
-barge-in is native, mute streams silence (the local model's steps are
-input-driven, so the mic clock must never stop), headphones recommended.
+Full setup, env overrides, the wire protocol, and the full-duplex rules:
+[.claude/skills/kyutai-local-provider/SKILL.md](.claude/skills/kyutai-local-provider/SKILL.md).
 
 ## Wiring the Cascade provider (STT → LM → TTS)
 
 The **MISTRAL** row runs a turn-based cascade instead of a single full-duplex
-model: **Mistral realtime STT** → **`/api/llm`** (LM) → **`/api/mistral/tts`**
-(Voxtral TTS). Per-persona prompt/voice live in `lib/realtime/cascade-agent.ts`
-(voices are Mistral slugs like `en_paul_neutral`); the **LM model is configured
-separately** (see below):
+model: **Mistral realtime STT** (via the bun WS proxy in
+`scripts/mistral-stt-proxy.ts`) → **`/api/llm`** (catalog-driven, streaming) →
+**`/api/tts`** (per clause). Turn boundaries are client-side (Silero VAD, the
+Send button, or push-to-talk). `mise run dev` starts everything (secrets in
+**fnox**: `MISTRAL_API_KEY`, `HF_TOKEN`, `TINKER_API_KEY`); the LM catalog is
+`config/lm-models.json`, the TTS/STT catalog `config/voice-models.json`, and a
+fully-local stack runs via `mise run local-stack`.
 
-```bash
-# in fnox (run via `fnox exec -- bun run dev` / `mise run dev`)
-HF_TOKEN=hf_...            # LM backend "hf"  (HF Inference router, any served model)
-MISTRAL_API_KEY=...        # STT, TTS, and LM backend "mistral" (mistral-small-latest)
-TINKER_API_KEY=...         # LM backend "tinker" (Thinking Machines Inkling models)
-```
-
-**Realtime STT runs through a WS proxy.** Mistral's realtime-transcription
-endpoint (`voxtral-mini-transcribe-realtime-2602`) is a WebSocket that
-authenticates with an `Authorization: Bearer` header on the handshake — and a
-browser `WebSocket` cannot set request headers. So a tiny **bun WS proxy**
-(`scripts/mistral-stt-proxy.ts`) sits between them: the browser connects to it
-header-lessly, and it opens the authenticated upstream socket and pipes frames
-both ways. `MISTRAL_API_KEY` never reaches the client.
-
-`mise run dev` starts this proxy for you (and stops it with the server). To run
-it on its own:
-
-```bash
-mise run stt-proxy        # = fnox exec -- bun run scripts/mistral-stt-proxy.ts (:3001)
-mise run stop-stt-proxy   # stop it (port STT_PROXY_PORT, default 3001)
-```
-
-If the proxy isn't running when you press CALL on MISTRAL, the browser logs a
-`ws://localhost:3001 … ERR_CONNECTION_REFUSED` error and STT falls back to Web
-Speech — harmless, but `mise run dev` avoids it by starting the proxy up front.
-
-The browser captures the mic at 16 kHz PCM16, streams it to the proxy, and turns
-Mistral's `transcription.text.delta` events into user turns. Turn boundaries are
-client-side, with two ways to end a turn:
-
-- **Auto (Silero VAD).** `lib/realtime/silero-vad.ts` runs **Silero VAD** in the
-  browser via `onnxruntime-web` (WASM) — a neural voice-activity detector that
-  answers *"did the user stop talking?"* (Mistral answers *"what did they say?"*).
-  Per-frame speech probability drives a hysteresis state machine; `onSpeechEnd`
-  ends the turn. This replaced an energy/RMS gate that sat below most rooms' noise
-  floor and never fired. Tunables (in `mistral-stt.ts`): `VAD_REDEMPTION_MS` (the
-  "let me finish" window, 1400 ms), `VAD_POSITIVE`/`VAD_NEGATIVE`,
-  `VAD_MIN_SPEECH_MS`, and `FLUSH_GRACE_MS` (1000 ms — must cover the session's
-  `target_streaming_delay_ms`, since the transcript trails the audio by up to
-  that much and a shorter grace emits turns with their last words missing). The
-  ~2 MB model (snakers4/silero-vad, 64-sample context + 512 frame @ 16 kHz) and the
-  ORT WASM both load from jsDelivr at call-start, pinned to `SILERO_TAG` /
-  `ORT_VERSION` in `silero-vad.ts` — no model binary in the repo. If it fails to
-  load (offline / CDN down), transcription still works — use Send.
-- **Manual send.** A **Send-turn** button (the arrow-into-bar glyph, enabled only
-  while listening) ends your turn instantly via `endTurnNow()` — the dependable
-  override when you want to barge ahead.
-- **Push-to-talk (Settings → BEHAVIOUR).** Auto turn-end is otherwise *always*
-  armed — Send is an override, not a mode. The PUSH-TO-TALK toggle disables
-  Silero's end-of-speech action entirely (for both the realtime and local batch
-  STT legs — turn boundaries are always client-side; neither Mistral nor the
-  local server detects turns), so only Send ends a turn. Applies live mid-call.
-
-The proxy URL is `NEXT_PUBLIC_MISTRAL_STT_WS` (default `ws://localhost:3001`). **If
-the proxy is down or the mic is denied, STT automatically falls back to browser
-Web Speech** (Chrome-only), so the cascade still works with just the dev server.
-
-`/api/llm` streams an OpenAI-compatible chat completion from the chosen backend,
-keeping the key server-side; backends that `supportsThinking` run with thinking off
-by default (`chat_template_kwargs`) so reasoning models answer immediately — but
-both current backends set it false, since Mistral 422s on the field and the HF
-router now rejects it with `wrong_api_format`. `/api/mistral/tts` returns
-per-clause MP3 from `voxtral-mini-tts-2603`. Without the LM backend's token the
-agent turn shows "— LM error —"; without `MISTRAL_API_KEY` TTS falls back to
-browser speechSynthesis.
-
-### Configuring the cascade LM
-
-The LM model isn't hard-coded — it's a catalog in **`config/lm-models.json`**, read
-by both the server route (`app/api/llm`) and the client agent
-(`lib/realtime/cascade-agent.ts`) via `lib/realtime/lm-config.ts`. No live model
-list is fetched. To change the model every cascade persona uses, edit `default`:
-
-```jsonc
-{
-  "default": "mistral-small",          // ← the active model id
-  "backends": {
-    "hf":      { "url": "https://router.huggingface.co/v1/chat/completions", "envKey": "HF_TOKEN",        "supportsThinking": false },
-    "mistral": { "url": "https://api.mistral.ai/v1/chat/completions",        "envKey": "MISTRAL_API_KEY", "supportsThinking": false }
-  },
-  "models": [
-    { "id": "gemma-4-31b", "label": "...", "backend": "hf",      "model": "google/gemma-4-31B-it:fastest", "temperature": 0.7, "maxTokens": 200 },
-    { "id": "mistral-small", "label": "...", "backend": "mistral", "model": "mistral-small-latest", "temperature": 0.7, "maxTokens": 200 }
-  ]
-}
-```
-
-- **Add a model**: append to `models` (any model the backend serves — e.g. another
-  HF-router repo) and point `default` at its `id`. HF-router models can pin an
-  inference provider with a `:provider` suffix on the model id (`:fastest`,
-  `:cerebras`, …).
-- **Add a backend**: add an entry to `backends` (OpenAI-compatible `url` + the
-  `envKey` naming its fnox secret); reference it from a model's `backend`. The key
-  value stays in fnox and is read server-side only — only the env var *name* and the
-  public URL live in the file.
-- **Per-persona override**: give a persona an `lmModelId` (a catalog id) in
-  `cascade-agent.ts` to pin it to a different model than the global default.
-- **Backend dialect knobs (`extraBody`)**: a backend can carry an `extraBody`
-  object merged verbatim into the upstream request. The `tinker` backend
-  (Thinking Machines' OpenAI-compatible endpoint, `TINKER_API_KEY` in fnox) uses
-  it to send `reasoning_effort: "none"` — Inkling is a hybrid reasoning model
-  that would otherwise think at effort 0.9 before the first spoken token. Its
-  reasoning streams on a separate `reasoning_content` field the client ignores,
-  so chain-of-thought can never reach TTS. The catalog carries all six Inkling
-  variants (base / 256K `:peft:262144` / serverless `:sampling-nvfp4`, each in
-  regular and Small).
-- **Local backend (keyless)**: the `local` backend points at an OpenAI-compatible
-  server on `localhost:8001` with an **empty `envKey`** — no Authorization header
-  is sent, no fnox secret needed. Serve it with **`mise run lm-local`**
-  (llama-server: gemma-4-12B QAT GGUF + MTP speculative decoding; weights under
-  `~/Develop/voice-cascade/models/gemma-4-12B/`, override with
-  `LM_LOCAL_MODEL_DIR` / `LM_LOCAL_PORT`), stop with `mise run stop-lm-local`.
-  The catalog entry's `model` must match the server's `--alias`. Then pick
-  **Gemma 4 12B QAT · local** in the Providers LM picker. See
-  [docs/voxtral-local-inference.md](docs/voxtral-local-inference.md) for the full
-  local-cascade roadmap (STT/TTS legs).
-
-### Configuring the cascade voice legs (TTS + STT)
-
-The TTS and STT legs have their own catalog, **`config/voice-models.json`**
-(read via `lib/realtime/voice-config.ts`), with a `mistral` (cloud) and a
-`local` backend each. `default` picks the backend per leg; override per
-dev-session without editing config:
-
-```bash
-NEXT_PUBLIC_TTS_BACKEND=local NEXT_PUBLIC_STT_BACKEND=local mise run dev
-```
-
-- **TTS** — `/api/tts` resolves the backend server-side: Mistral
-  (`voxtral-mini-tts-2603`, returns `{audio_data}` base64) or the local
-  mlx-audio server (`Voxtral-4B-TTS-2603` 6-bit, raw MP3 bytes). The backend's
-  `voiceMap` translates each persona's Mistral `voice_id` slug
-  (`gb_jane_neutral`, …) to a local preset (`casual_female`, …) — recast persona
-  voices there, not in code.
-- **STT** — two capture modes. `mistral` = realtime WS via the Bun proxy (live
-  partial captions). `local` = **batch**: Silero VAD still owns turn boundaries;
-  the finished turn's PCM is posted as one WAV to `/api/stt`, which forwards to
-  the local mlx-audio `/v1/audio/transcriptions` (`Voxtral-Mini-4B-Realtime`
-  4-bit). No live captions in batch mode.
-- **Local server**: **`mise run audio-local`** serves both legs (mlx-audio
-  server on :8002 from `~/Develop/mlx-audio/.venv`; `MLX_AUDIO_DIR` /
-  `AUDIO_LOCAL_PORT` overrides), `mise run stop-audio-local` stops it. Models
-  load lazily on the first request (~5 s cold, ~7 GB resident for both).
-- **Fully local cascade** = **`mise run local-stack`** (one terminal: both
-  servers, Ctrl-C tears both down; `mise run stop-local-stack` from anywhere),
-  the local LM picked in Providers, and both `NEXT_PUBLIC_*_BACKEND=local`.
-  Voxtral TTS weights are **CC-BY-NC** (dev/eval only).
-
-At runtime, the **Providers** view shows an **LM MODEL** picker inset under any
-provider whose engine has a multi-model catalog (just the cascade today) — pick a
-model there and it persists (localStorage `tsubaki.lm-model`) and applies on the
-next turn. Precedence: that runtime pick > a persona's `lmModelId` > the catalog
-`default`. Providers with a single fixed model show no inset.
+Full setup, VAD tuning, catalogs, and the local stack:
+[.claude/skills/cascade-provider/SKILL.md](.claude/skills/cascade-provider/SKILL.md).
 
 ## Architecture
 

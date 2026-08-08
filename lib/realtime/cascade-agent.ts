@@ -5,9 +5,10 @@
 // The LM runs server-side via /api/llm (HF Inference router or Mistral); only the
 // declarative config lives here. Secrets (HF_TOKEN, MISTRAL_API_KEY) stay in fnox.
 //
-// STT is browser-native (Web Speech, MVP); TTS uses Mistral via /api/mistral/tts
-// (`ttsVoice` = a Mistral voice_id slug, e.g. en_paul_neutral) with a browser
-// speechSynthesis fallback when the key/route is unavailable.
+// STT is Mistral realtime (WS proxy) or local batch, with Web Speech as the
+// fallback; TTS goes through /api/tts (`ttsVoice` = a Mistral voice_id slug,
+// e.g. en_paul_neutral) with a browser speechSynthesis fallback when the
+// key/route is unavailable.
 //
 // The LM model/backend default comes from the catalog in `config/lm-models.json`
 // (via lib/realtime/lm-config) — change the model there, not here. A persona can

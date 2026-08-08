@@ -49,6 +49,11 @@ const VAD_NEGATIVE = 0.15; // speech-probability release threshold (below the so
 // Batch mode: cap the per-turn recording (memory guard — 16 kHz mono Float32 is
 // ~64 KB/s, so 120 s ≈ 7.5 MB). Beyond the cap the turn stops growing.
 const BATCH_MAX_TURN_S = 120;
+// Zombie-stream watchdog (realtime mode): if the VAD attests at least this much
+// real speech in a turn but the flush yields zero transcript text, the Mistral
+// WS has stopped delivering deltas without closing (no onclose/onerror fires) —
+// report it as a session error so the caller's reconnect logic kicks in.
+const EMPTY_TURN_MIN_SPEECH_MS = 1000;
 
 export interface MistralSttOptions {
   /** WebSocket URL of the local proxy (e.g. ws://localhost:3001). */
@@ -98,6 +103,10 @@ export class MistralStt {
   private emitting = false;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private inputRms = 0;
+  // VAD-attested speech length of the turn being emitted (0 for manual sends
+  // that beat the VAD) — the zombie-stream watchdog's evidence that real speech
+  // happened even though no transcript text arrived.
+  private lastSpeechMs = 0;
 
   // Batch mode: the turn's recorded PCM (Float32 blocks at SAMPLE_RATE).
   private turnChunks: Float32Array[] = [];
@@ -164,7 +173,7 @@ export class MistralStt {
       redemptionMs: VAD_REDEMPTION_MS,
       minSpeechMs: VAD_MIN_SPEECH_MS,
       onSpeechStart: () => this.onSpeechStart(),
-      onSpeechEnd: () => this.onSpeechEnd(),
+      onSpeechEnd: (speechMs) => this.onSpeechEnd(speechMs),
       // VAD failure is non-fatal: don't tear down Mistral STT (and don't fall
       // back to Web Speech, which is the thing we moved away from) — just lose
       // auto turn-detection. The manual "send" button still ends turns.
@@ -287,8 +296,10 @@ export class MistralStt {
   }
 
   /** Silero saw end-of-speech ⇒ end the turn (flush + emit) — unless
-   *  push-to-talk has auto turn-end disabled. */
-  private onSpeechEnd(): void {
+   *  push-to-talk has auto turn-end disabled. Records the attested speech
+   *  length either way, so a later manual Send still benefits from it. */
+  private onSpeechEnd(speechMs: number): void {
+    this.lastSpeechMs = speechMs;
     if (this.autoEnd && this.listening && !this.muted && !this.emitting) this.endTurn();
   }
 
@@ -321,9 +332,18 @@ export class MistralStt {
     if (this.flushTimer) clearTimeout(this.flushTimer);
     this.flushTimer = setTimeout(() => {
       const text = this.turnText.trim();
+      const speechMs = this.lastSpeechMs;
       this.resetTurn();
       this.emitting = false;
-      if (text) this.opts.onFinal(text);
+      if (text) {
+        this.opts.onFinal(text);
+      } else if (this.ready && speechMs >= EMPTY_TURN_MIN_SPEECH_MS) {
+        // Zombie stream: the VAD heard a real turn but no deltas arrived — the
+        // upstream WS is silently dead. Surface it so the caller reconnects.
+        this.opts.onError?.(
+          `no transcription for a ${speechMs} ms speech turn — STT stream presumed dead`,
+        );
+      }
     }, FLUSH_GRACE_MS);
   }
 
@@ -365,6 +385,7 @@ export class MistralStt {
     this.turnText = "";
     this.turnChunks = [];
     this.turnSamples = 0;
+    this.lastSpeechMs = 0;
   }
 
   /** Resume capturing the user (call when entering the listening state). */

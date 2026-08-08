@@ -302,14 +302,32 @@ export function useCascadeSession(
   // Run one assistant turn: stream the LM reply and speak it clause by clause.
   // `visible: false` keeps the user text out of the transcript — the greeting
   // bootstrap is an internal instruction to the LM, not something the user said.
+  //
+  // Dead-air continuation: the mic is NOT gated at turn end — it stays live
+  // while the LM thinks and is paused only when the first TTS clause is about
+  // to play (`gateMic`). Speech completed in that window arrives as a fresh
+  // onFinal → this function runs again, aborts the in-flight turn (whose
+  // never-heard partial reply is dropped), and merges the new text into the
+  // pending user message. Without this, anything said while a slow model
+  // thinks (e.g. a serverless cold start) lands on a paused mic and vanishes.
   const onUserTurn = useCallback(
     async (userText: string, { visible = true } = {}) => {
-      endListening();
-      speakingRef.current = true;
+      // Supersede any in-flight turn first (dead-air continuation) so its
+      // cleanup sees the abort before this turn's messages are appended.
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
       if (visible) {
         setTurns((prev) => [...prev, { id: `u${prev.length}`, who: "user", text: userText }]);
       }
-      messagesRef.current.push({ role: "user", content: userText });
+      // Merge consecutive user texts into one message (a continuation follows
+      // a user message whose reply was dropped) — some chat APIs reject
+      // non-alternating roles.
+      const msgs = messagesRef.current;
+      const lastMsg = msgs[msgs.length - 1];
+      if (lastMsg?.role === "user") lastMsg.content = `${lastMsg.content}\n${userText}`;
+      else msgs.push({ role: "user", content: userText });
       setState("speaking");
 
       const a = agentRef.current;
@@ -317,17 +335,29 @@ export function useCascadeSession(
       liveTurnId.current = agentTurnId;
       setTurns((prev) => [...prev, { id: agentTurnId, who: "agent", text: "", live: true }]);
 
-      abortRef.current?.abort();
-      const ac = new AbortController();
-      abortRef.current = ac;
-
       let buf = "";
       let full = "";
+      let audioStarted = false;
       const speakQueue: Promise<void> = Promise.resolve();
       let chain = speakQueue;
 
+      // Close the dead-air window: pause capture when the first clause starts
+      // TTS synthesis (just ahead of it becoming audible — the gate must lead
+      // playback so speaker bleed never reaches the mic). From here on user
+      // speech is barge-in territory, not continuation.
+      const gateMic = () => {
+        if (audioStarted) return;
+        audioStarted = true;
+        endListening();
+        speakingRef.current = true;
+      };
+
       const enqueue = (clause: string) => {
-        chain = chain.then(() => (ac.signal.aborted ? undefined : speakClause(clause, ac.signal)));
+        chain = chain.then(() => {
+          if (ac.signal.aborted) return;
+          gateMic();
+          return speakClause(clause, ac.signal);
+        });
       };
 
       try {
@@ -382,6 +412,14 @@ export function useCascadeSession(
         if (buf.trim()) enqueue(buf.trim());
       } catch {
         // aborted or network error — fall through to cleanup
+      }
+
+      if (ac.signal.aborted && !audioStarted) {
+        // Superseded during dead-air: the user never heard this reply — drop
+        // it from the transcript and keep it out of the LM history so the
+        // continuation turn answers the full utterance fresh.
+        setTurns((prev) => prev.filter((x) => x.id !== agentTurnId));
+        return;
       }
 
       messagesRef.current.push({ role: "assistant", content: full });
@@ -453,7 +491,10 @@ export function useCascadeSession(
             const fresh = startSttRef.current();
             // Re-enter listening on the fresh session; the in-progress turn's
             // partial transcript is lost (acceptable for a rare drop).
-            if (fresh && stateRef.current === "listening") fresh.resume();
+            if (fresh && stateRef.current === "listening") {
+              fresh.resume();
+              setCaption("— speech-to-text reconnected, please repeat —");
+            }
           }, STT_RECONNECT_DELAY_MS);
           return;
         }

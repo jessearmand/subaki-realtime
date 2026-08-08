@@ -49,7 +49,8 @@ export interface SileroOptions {
   /** Shortest run of speech that counts as a real turn (else a misfire). */
   minSpeechMs?: number;
   onSpeechStart?: () => void;
-  onSpeechEnd?: () => void;
+  /** End of a real turn; `speechMs` is how much actual speech the VAD counted. */
+  onSpeechEnd?: (speechMs: number) => void;
   onMisfire?: () => void;
   onError?: (message: string) => void;
 }
@@ -204,7 +205,7 @@ export class SileroVad {
             `${real ? "speech-end" : "misfire"} after ${speechMs} ms speech — trace (1 frame = 32 ms, newest last): [${this.trace.join(",")}]`,
           );
           if (this.debug) this.trace = [];
-          if (real) this.cb.onSpeechEnd?.();
+          if (real) this.cb.onSpeechEnd?.(speechMs);
           else this.cb.onMisfire?.();
         }
       } else {

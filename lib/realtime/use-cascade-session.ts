@@ -27,6 +27,9 @@ const STT_WS_URL = process.env.NEXT_PUBLIC_MISTRAL_STT_WS ?? "ws://localhost:300
 // silence gate, which users perceive as early turn cuts.
 const MAX_STT_RECONNECTS = 2;
 const STT_RECONNECT_DELAY_MS = 500;
+// A handshake alone does not prove the replacement session is healthy. Keep it
+// alive for this long (or complete a transcript) before refunding its retries.
+const STT_RECONNECT_STABLE_MS = 5_000;
 
 export interface CascadeSession {
   callState: CallState;
@@ -145,6 +148,7 @@ export function useCascadeSession(
   // handler can re-invoke the function that creates the session.
   const sttRetriesRef = useRef(0);
   const startSttRef = useRef<() => MistralStt | null>(() => null);
+  const sttStableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stateRef = useRef<CallState>("idle");
   const sendTurnEnabledRef = useRef(false);
@@ -156,6 +160,19 @@ export function useCascadeSession(
     sendTurnEnabledRef.current = enabled;
     setSendTurnEnabledState(enabled);
   }, []);
+  const clearSttStableTimer = useCallback(() => {
+    if (!sttStableTimerRef.current) return;
+    clearTimeout(sttStableTimerRef.current);
+    sttStableTimerRef.current = null;
+  }, []);
+  const markSttHealthy = useCallback(
+    (stt: MistralStt) => {
+      if (sttRef.current !== stt) return;
+      clearSttStableTimer();
+      sttRetriesRef.current = 0;
+    },
+    [clearSttStableTimer],
+  );
 
   const stopRecognition = useCallback(() => {
     const rec = recognitionRef.current;
@@ -445,10 +462,11 @@ export function useCascadeSession(
   onUserTurnRef.current = onUserTurn;
 
   const teardownStt = useCallback(() => {
+    clearSttStableTimer();
     sttRef.current?.stop();
     sttRef.current = null;
     usingMistralRef.current = false;
-  }, []);
+  }, [clearSttStableTimer]);
 
   // Full hang-up: abort the in-flight LM turn and silence every audio path.
   const teardown = useCallback(() => {
@@ -477,12 +495,16 @@ export function useCascadeSession(
         if (stateRef.current === "listening") setCaption(text);
       },
       onFinal: (text) => {
+        markSttHealthy(stt);
         if (!speakingRef.current && !mutedRef.current) onUserTurnRef.current(text);
       },
-      // A successful (re)connect refunds the retry budget, so a session that
-      // drops again much later gets its own reconnect attempts.
+      // Readiness starts a probation window. Only a stable connection (or a
+      // completed transcript above) refunds attempts, so handshake-close loops
+      // still exhaust the retry budget and reach Web Speech fallback.
       onReady: () => {
-        sttRetriesRef.current = 0;
+        if (sttRetriesRef.current === 0) return;
+        clearSttStableTimer();
+        sttStableTimerRef.current = setTimeout(() => markSttHealthy(stt), STT_RECONNECT_STABLE_MS);
       },
       onError: (message) => {
         // Shut down the failed Mistral leg (mic stream, AudioContext, VAD,
@@ -530,7 +552,7 @@ export function useCascadeSession(
       setSendTurnEnabled(false);
     });
     return stt;
-  }, [setSendTurnEnabled, startListening, teardownStt]);
+  }, [clearSttStableTimer, markSttHealthy, setSendTurnEnabled, startListening, teardownStt]);
   startSttRef.current = startStt;
 
   const start = useCallback(() => {

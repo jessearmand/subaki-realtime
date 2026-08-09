@@ -59,6 +59,7 @@ export function useRealtimeSession({
   persona,
   lmModelId,
   voiceBargeIn,
+  pushToTalk,
 }: {
   provider: Provider;
   persona?: Persona;
@@ -66,6 +67,8 @@ export function useRealtimeSession({
   lmModelId?: string;
   /** OpenAI-only: let user speech interrupt the agent (settings INTERRUPTIONS toggle). */
   voiceBargeIn?: boolean;
+  /** Cascade-only: only the Send button ends a turn (settings PUSH-TO-TALK toggle). */
+  pushToTalk?: boolean;
 }): SessionApi {
   const engine = provider.engine;
   const isReal = !!engine;
@@ -110,7 +113,7 @@ export function useRealtimeSession({
   const xai = useXaiSession(engine === "xai", persona);
   const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false);
   const gemini = useGeminiSession(engine === "gemini", persona);
-  const cascade = useCascadeSession(engine === "cascade", persona, lmModelId);
+  const cascade = useCascadeSession(engine === "cascade", persona, lmModelId, pushToTalk ?? false);
   const fal = useFalSession(engine === "fal", persona);
   const moshi = useMoshiSession(engine === "moshi", persona);
   // Whichever custom engine is active owns the session; null ⇒ ElevenLabs/mock.
@@ -279,6 +282,7 @@ export function useRealtimeSession({
 
   // Manual end-of-turn — only the half-duplex cascade STT exposes one.
   const canSendTurn = engine === "cascade";
+  const sendTurnEnabled = canSendTurn && cascade.sendTurnEnabled;
   const sendTurn = useCallback(() => {
     if (engine === "cascade") cascade.sendTurn();
   }, [engine, cascade]);
@@ -329,6 +333,7 @@ export function useRealtimeSession({
       interrupt,
       sendTurn,
       canSendTurn,
+      sendTurnEnabled,
       getInputVolume: custom ? custom.getInputVolume : getInputVolume,
       getOutputVolume: custom ? custom.getOutputVolume : getOutputVolume,
     }),
@@ -346,6 +351,7 @@ export function useRealtimeSession({
       interrupt,
       sendTurn,
       canSendTurn,
+      sendTurnEnabled,
       getInputVolume,
       getOutputVolume,
     ],

@@ -49,7 +49,8 @@ export interface SileroOptions {
   /** Shortest run of speech that counts as a real turn (else a misfire). */
   minSpeechMs?: number;
   onSpeechStart?: () => void;
-  onSpeechEnd?: () => void;
+  /** End of a real turn; `speechMs` is how much actual speech the VAD counted. */
+  onSpeechEnd?: (speechMs: number) => void;
   onMisfire?: () => void;
   onError?: (message: string) => void;
 }
@@ -85,6 +86,16 @@ export class SileroVad {
   private speechFrames = 0;
   private paused = true;
   private closed = false;
+
+  // Debug tracing (localStorage "tsubaki.vad-debug" = "1"): keeps a rolling
+  // per-frame probability trace and logs it on every state transition, so
+  // thresholds can be tuned against a real room instead of guessed. The trace
+  // shows *why* a turn ended: trailing speech scoring below `neg` (threshold
+  // problem) vs a genuinely long pause (redemption-window problem).
+  private readonly debug: boolean =
+    typeof window !== "undefined" && window.localStorage?.getItem("tsubaki.vad-debug") === "1";
+  private trace: number[] = [];
+  private static readonly TRACE_FRAMES = 600; // ≈ 19 s @ 32 ms/frame
 
   private constructor(
     ort: typeof import("onnxruntime-web"),
@@ -164,11 +175,16 @@ export class SileroVad {
   }
 
   private onProb(p: number): void {
+    if (this.debug) {
+      this.trace.push(Math.round(p * 100) / 100);
+      if (this.trace.length > SileroVad.TRACE_FRAMES) this.trace.shift();
+    }
     if (p >= this.pos) {
       if (!this.speaking) {
         this.speaking = true;
         this.speechFrames = 0;
         this.redemption = 0;
+        this.debugLog(`speech-start (p=${p.toFixed(2)})`);
         this.cb.onSpeechStart?.();
       }
       this.speechFrames++;
@@ -176,20 +192,37 @@ export class SileroVad {
     } else if (this.speaking) {
       if (p < this.neg) {
         this.redemption++;
+        if (this.debug && this.redemption === Math.round(this.redemptionFrames / 2)) {
+          this.debugLog(`redemption 50% (${Math.round(this.redemption * FRAME_MS)} ms below neg)`);
+        }
         if (this.redemption >= this.redemptionFrames) {
           const real = this.speechFrames >= this.minSpeechFrames;
+          const speechMs = Math.round(this.speechFrames * FRAME_MS);
           this.speaking = false;
           this.redemption = 0;
           this.speechFrames = 0;
-          if (real) this.cb.onSpeechEnd?.();
+          this.debugLog(
+            `${real ? "speech-end" : "misfire"} after ${speechMs} ms speech — trace (1 frame = 32 ms, newest last): [${this.trace.join(",")}]`,
+          );
+          if (this.debug) this.trace = [];
+          if (real) this.cb.onSpeechEnd?.(speechMs);
           else this.cb.onMisfire?.();
         }
       } else {
         // Between thresholds while speaking: sustain, cancel the redemption dip.
+        if (this.debug && this.redemption > 0) {
+          this.debugLog(
+            `redemption cancelled at ${Math.round(this.redemption * FRAME_MS)} ms (p=${p.toFixed(2)})`,
+          );
+        }
         this.redemption = 0;
         this.speechFrames++;
       }
     }
+  }
+
+  private debugLog(msg: string): void {
+    if (this.debug) console.info(`[vad] ${msg}`);
   }
 
   /** Clear the turn/state machine (keeps the loaded session). */

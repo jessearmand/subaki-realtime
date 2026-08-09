@@ -34,7 +34,7 @@ export function CallView({
   providerModel: string;
   tools: Tool[];
 }) {
-  const { callState, caption, muted, elapsed, canSendTurn } = session;
+  const { callState, caption, muted, elapsed, canSendTurn, sendTurnEnabled } = session;
   // Animation identity for the caption: while a turn is actively streaming
   // (live: true — cascade/xai/openai engines), key by the turn id so token
   // updates mutate the node in place. Everywhere else (mock script, status
@@ -88,7 +88,7 @@ export function CallView({
               {/* Manual-turn "hold" ring — a held, slowly-rotating dashed ring that
                   reads differently from auto pulse rings: this engine ends the turn
                   only when the user presses SEND (cascade STT, half-duplex). */}
-              {canSendTurn && callState === "listening" && <div className="tb-orb-hold" />}
+              {canSendTurn && sendTurnEnabled && <div className="tb-orb-hold" />}
             </div>
             {(callState === "listening" || callState === "interrupted") && (
               <Bars callState={callState} count={10} />
@@ -102,7 +102,7 @@ export function CallView({
                 </span>
               )}
             </div>
-            {canSendTurn && callState === "listening" && (
+            {canSendTurn && sendTurnEnabled && (
               <div className="tb-call-manual-hint">MANUAL TURN · PRESS SEND TO REPLY</div>
             )}
           </div>
@@ -142,9 +142,9 @@ export function CallView({
           {canSendTurn && (
             <Btn
               small
-              primed={callState === "listening"}
+              primed={sendTurnEnabled}
               onClick={session.sendTurn}
-              disabled={callState !== "listening"}
+              disabled={!sendTurnEnabled}
               aria-label="Send turn"
             >
               <SendGlyph />

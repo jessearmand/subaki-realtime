@@ -18,6 +18,10 @@ export interface LmBackendConfig {
   /** Send chat_template_kwargs.enable_thinking:false (reasoning models). Must be
    *  false for APIs that reject unknown fields (e.g. Mistral). */
   supportsThinking: boolean;
+  /** Extra fields merged verbatim into the upstream chat-completions body — for
+   *  backend-specific dialect knobs (e.g. Tinker's reasoning_effort). Cannot
+   *  override model/messages/stream. */
+  extraBody?: Record<string, unknown>;
 }
 
 export interface LmModel {

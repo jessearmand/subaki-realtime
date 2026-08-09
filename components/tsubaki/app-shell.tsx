@@ -40,6 +40,7 @@ export function AppShell() {
     persona,
     lmModelId,
     voiceBargeIn: tweaks.voiceBargeIn,
+    pushToTalk: tweaks.pushToTalk,
   });
   // What the UI shows as the active model — tracks the LM picker for cascade.
   const providerModel = providerModelLabel(provider, lmModelId);
@@ -94,6 +95,8 @@ export function AppShell() {
               }}
               bargeIn={tweaks.voiceBargeIn}
               onBargeInChange={(v) => setTweak("voiceBargeIn", v)}
+              pushToTalk={tweaks.pushToTalk}
+              onPushToTalkChange={(v) => setTweak("pushToTalk", v)}
             />
           )}
         </main>

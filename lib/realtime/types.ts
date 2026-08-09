@@ -30,6 +30,8 @@ export interface SessionApi {
   sendTurn: () => void;
   /** Whether this engine has a manual end-of-turn (only the cascade STT does). */
   canSendTurn: boolean;
+  /** Whether the manual end-of-turn is currently usable while capture remains active. */
+  sendTurnEnabled: boolean;
   getInputVolume: () => number;
   getOutputVolume: () => number;
 }

@@ -282,6 +282,7 @@ export function useRealtimeSession({
 
   // Manual end-of-turn — only the half-duplex cascade STT exposes one.
   const canSendTurn = engine === "cascade";
+  const sendTurnEnabled = canSendTurn && cascade.sendTurnEnabled;
   const sendTurn = useCallback(() => {
     if (engine === "cascade") cascade.sendTurn();
   }, [engine, cascade]);
@@ -332,6 +333,7 @@ export function useRealtimeSession({
       interrupt,
       sendTurn,
       canSendTurn,
+      sendTurnEnabled,
       getInputVolume: custom ? custom.getInputVolume : getInputVolume,
       getOutputVolume: custom ? custom.getOutputVolume : getOutputVolume,
     }),
@@ -349,6 +351,7 @@ export function useRealtimeSession({
       interrupt,
       sendTurn,
       canSendTurn,
+      sendTurnEnabled,
       getInputVolume,
       getOutputVolume,
     ],

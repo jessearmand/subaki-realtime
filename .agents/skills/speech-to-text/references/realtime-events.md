@@ -17,13 +17,13 @@ Send audio data for transcription.
 }
 ```
 
-| Field           | Type    | Required | Description                                                    |
-| --------------- | ------- | -------- | -------------------------------------------------------------- |
-| `message_type`  | string  | Yes      | Always `"input_audio_chunk"`                                   |
-| `audio_base_64` | string  | Yes      | Base64-encoded PCM audio data                                  |
-| `commit`        | boolean | Yes      | Whether to commit after this chunk                             |
-| `sample_rate`   | number  | No       | Sample rate in Hz (8000-48000)                                 |
-| `previous_text` | string  | No       | Context from prior transcript (first chunk only, max 50 chars) |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `message_type` | string | Yes | Always `"input_audio_chunk"` |
+| `audio_base_64` | string | Yes | Base64-encoded PCM audio data |
+| `commit` | boolean | Yes | Whether to commit after this chunk |
+| `sample_rate` | number | No | Sample rate in Hz (8000-48000) |
+| `previous_text` | string | No | Context from prior transcript (first chunk only, max 50 chars) |
 
 ### commit
 
@@ -53,6 +53,7 @@ Connection established successfully.
     "language_code": "en",
     "model_id": "scribe_v2_realtime",
     "commit_strategy": "manual",
+    "enable_logging": true,
     "include_timestamps": true
   }
 }
@@ -69,10 +70,10 @@ Interim transcription results, updates frequently as audio is processed.
 }
 ```
 
-| Field          | Type   | Description                   |
-| -------------- | ------ | ----------------------------- |
-| `message_type` | string | `"partial_transcript"`        |
-| `text`         | string | Current partial transcription |
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_type` | string | `"partial_transcript"` |
+| `text` | string | Current partial transcription |
 
 ### committed_transcript
 
@@ -85,10 +86,10 @@ Final transcription after commit.
 }
 ```
 
-| Field          | Type   | Description              |
-| -------------- | ------ | ------------------------ |
+| Field | Type | Description |
+|-------|------|-------------|
 | `message_type` | string | `"committed_transcript"` |
-| `text`         | string | Finalized transcription  |
+| `text` | string | Finalized transcription |
 
 ### committed_transcript_with_timestamps
 
@@ -100,24 +101,53 @@ Final transcription with word-level timing. Sent after `committed_transcript` wh
   "text": "Hello, how are you today?",
   "language_code": "en",
   "words": [
-    { "text": "Hello", "start": 0.0, "end": 0.32, "type": "word" },
-    { "text": " ", "start": 0.32, "end": 0.35, "type": "spacing" },
-    { "text": "how", "start": 0.4, "end": 0.55, "type": "word" }
+    {"text": "Hello", "start": 0.0, "end": 0.32, "type": "word"},
+    {"text": " ", "start": 0.32, "end": 0.35, "type": "spacing"},
+    {"text": "how", "start": 0.40, "end": 0.55, "type": "word"}
   ]
 }
 ```
 
-| Field                | Type   | Description                                 |
-| -------------------- | ------ | ------------------------------------------- |
-| `message_type`       | string | `"committed_transcript_with_timestamps"`    |
-| `text`               | string | Full transcription text                     |
-| `language_code`      | string | Detected language code                      |
-| `words`              | array  | Word-level timing data                      |
-| `words[].text`       | string | The word or token                           |
-| `words[].start`      | number | Start time in seconds                       |
-| `words[].end`        | number | End time in seconds                         |
-| `words[].type`       | string | `"word"`, `"spacing"`, or `"audio_event"`   |
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_type` | string | `"committed_transcript_with_timestamps"` |
+| `text` | string | Full transcription text |
+| `language_code` | string | Detected language code |
+| `words` | array | Word-level timing data |
+| `words[].text` | string | The word or token |
+| `words[].start` | number | Start time in seconds |
+| `words[].end` | number | End time in seconds |
+| `words[].type` | string | `"word"`, `"spacing"`, or `"audio_event"` |
 | `words[].speaker_id` | string | Speaker identifier (if diarization enabled) |
+
+### committed_transcript_entities
+
+Entities detected in a committed segment when the connection includes `entity_detection`.
+
+```json
+{
+  "message_type": "committed_transcript_entities",
+  "text": "My name is Alice.",
+  "entities": [
+    {
+      "text": "Alice",
+      "entity_type": "name_given",
+      "start_char": 11,
+      "end_char": 16
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_type` | string | `"committed_transcript_entities"` |
+| `text` | string | Committed transcript segment scanned for entities |
+| `entities` | array | Detected entities; empty when none are found |
+| `entities[].text` | string | Text identified as an entity |
+| `entities[].entity_type` | string | Detected entity type |
+| `entities[].start_char` | integer | Start character offset in `text` |
+| `entities[].end_char` | integer | End character offset in `text` |
 
 ## Error Events
 
@@ -134,20 +164,20 @@ Sent when an error occurs.
 
 ### Error Codes
 
-| Code                          | Description                               |
-| ----------------------------- | ----------------------------------------- |
-| `auth_error`                  | Invalid API key or token                  |
-| `quota_exceeded`              | Usage limit reached                       |
-| `input_error`                 | Unsupported audio format or invalid input |
-| `rate_limited`                | Too many requests                         |
-| `commit_throttled`            | Commits sent too frequently               |
-| `session_time_limit_exceeded` | Session exceeded max duration             |
-| `unaccepted_terms`            | Terms not accepted in dashboard           |
-| `resource_exhausted`          | Server capacity reached                   |
-| `queue_overflow`              | Server queue capacity reached             |
-| `chunk_size_exceeded`         | Audio chunk too large                     |
-| `insufficient_audio_activity` | Not enough speech detected                |
-| `transcriber_error`           | Internal processing error                 |
+| Code | Description |
+|------|-------------|
+| `auth_error` | Invalid API key or token |
+| `quota_exceeded` | Usage limit reached |
+| `input_error` | Unsupported audio format or invalid input |
+| `rate_limited` | Too many requests |
+| `commit_throttled` | Commits sent too frequently |
+| `session_time_limit_exceeded` | Session exceeded max duration |
+| `unaccepted_terms` | Terms not accepted in dashboard |
+| `resource_exhausted` | Server capacity reached |
+| `queue_overflow` | Server queue capacity reached |
+| `chunk_size_exceeded` | Audio chunk too large |
+| `insufficient_audio_activity` | Not enough speech detected |
+| `transcriber_error` | Internal processing error |
 
 ## Connection Events
 

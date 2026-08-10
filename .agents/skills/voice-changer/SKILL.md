@@ -1,13 +1,9 @@
 ---
 name: voice-changer
-description: Transform the voice in an audio recording into a different target voice while preserving emotion, timing, and delivery using the ElevenLabs Voice Changer (speech-to-speech) API. Use when converting one voice to another, changing the speaker/narrator of an existing recording, dubbing a voice-over in a different voice, creating character voices from a scratch performance, anonymizing a speaker, or any "voice conversion / voice transfer / speech-to-speech" task. Make sure to use this skill whenever the user mentions voice changing, voice conversion, speech-to-speech, swapping a voice in audio, re-voicing a clip, or applying a different voice to an existing recording — even if they don't explicitly say "voice changer".
+description: Transform the voice in an audio recording into a different target voice while preserving emotion, timing, and delivery using the ElevenLabs Voice Changer (speech-to-speech) API. Use when converting one voice to another, changing the speaker/narrator of an existing recording, dubbing a voice-over in a different voice, creating character voices from a scratch performance, anonymizing a speaker, or any "voice conversion / voice transfer / speech-to-speech" task. Make sure to use this skill whenever the user mentions voice changing, voice conversion, speech-to-speech, swapping a voice in audio, re-voicing a clip, or applying a different voice to an existing recording — even if they don't explicitly say "voice changer". Do not use this skill to create or clone a new voice from a voice sample — that is voice cloning (IVC/PVC), a separate feature; this skill only converts an existing recording into an existing voice_id.
 license: MIT
 compatibility: Requires internet access and an ElevenLabs API key (ELEVENLABS_API_KEY).
-metadata:
-  {
-    "openclaw":
-      { "requires": { "env": ["ELEVENLABS_API_KEY"] }, "primaryEnv": "ELEVENLABS_API_KEY" },
-  }
+metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv": "ELEVENLABS_API_KEY"}}
 ---
 
 # ElevenLabs Voice Changer
@@ -74,25 +70,25 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-speech/JBFqnCBsd6RMkjVDRZzb
 
 ## Parameters
 
-| Parameter                    | Type              | Default                 | Description                                                                                                |
-| ---------------------------- | ----------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `voice_id`                   | string (required) | —                       | Target voice to speak in. Use a pre-made voice ID, a cloned voice, or a voice from the library             |
-| `audio`                      | file (required)   | —                       | Source audio whose performance (emotion, timing, delivery) will be preserved                               |
-| `model_id`                   | string            | `eleven_english_sts_v2` | `eleven_multilingual_sts_v2` for 29 languages, `eleven_english_sts_v2` for English-only                    |
-| `output_format`              | string            | `mp3_44100_128`         | See output formats table below                                                                             |
-| `voice_settings`             | JSON string       | —                       | Override stored voice settings for this request only                                                       |
-| `seed`                       | integer           | —                       | Best-effort deterministic sampling (0 – 4294967295)                                                        |
-| `remove_background_noise`    | boolean           | `false`                 | Run the isolation model on the input before conversion                                                     |
-| `file_format`                | string            | `other`                 | `other` for any encoded audio, or `pcm_s16le_16` for 16-bit PCM mono @ 16kHz little-endian (lower latency) |
-| `optimize_streaming_latency` | int (query)       | —                       | 0–4. Trade quality for latency. `4` is fastest but disables the text normalizer                            |
-| `enable_logging`             | boolean (query)   | `true`                  | Set to `false` for zero-retention mode (enterprise only — disables history/stitching)                      |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `voice_id` | string (required) | — | Target voice to speak in. Use a pre-made voice ID, a cloned voice, or a voice from the library |
+| `audio` | file (required) | — | Source audio whose performance (emotion, timing, delivery) will be preserved |
+| `model_id` | string | `eleven_english_sts_v2` | `eleven_multilingual_sts_v2` for 29 languages, `eleven_english_sts_v2` for English-only |
+| `output_format` | string | `mp3_44100_128` | See output formats table below |
+| `voice_settings` | JSON string | — | Override stored voice settings for this request only |
+| `seed` | integer | — | Best-effort deterministic sampling (0 – 4294967295) |
+| `remove_background_noise` | boolean | `false` | Run the isolation model on the input before conversion |
+| `file_format` | string | `other` | `other` for any encoded audio, or `pcm_s16le_16` for 16-bit PCM mono @ 16kHz little-endian (lower latency) |
+| `optimize_streaming_latency` | int (query) | — | 0–4. Trade quality for latency. `4` is fastest but disables the text normalizer |
+| `enable_logging` | boolean (query) | `true` | Set to `false` for zero-retention mode (enterprise only — disables history/stitching) |
 
 ## Models
 
-| Model ID                     | Languages | Best For                                                                               |
-| ---------------------------- | --------- | -------------------------------------------------------------------------------------- |
-| `eleven_multilingual_sts_v2` | 29        | Recommended for everything — often outperforms the English model even on English audio |
-| `eleven_english_sts_v2`      | English   | API default — English-only fallback                                                    |
+| Model ID | Languages | Best For |
+|----------|-----------|----------|
+| `eleven_multilingual_sts_v2` | 29 | Recommended for everything — often outperforms the English model even on English audio |
+| `eleven_english_sts_v2` | English | API default — English-only fallback |
 
 Only models whose `can_do_voice_conversion` property is true can be used here. Voice Changer does not currently have a low-latency "flash/turbo" tier — if you need one, keep `pcm_s16le_16` input, an `opus_*` / low-bitrate `mp3_*` output, and raise `optimize_streaming_latency`.
 
@@ -105,7 +101,6 @@ English (US, UK, AU, CA), Japanese, Chinese, German, Hindi, French (FR, CA), Kor
 Use any voice ID from pre-made voices, your cloned voices, or the voice library.
 
 **Popular voices:**
-
 - `JBFqnCBsd6RMkjVDRZzb` — George (male, narrative)
 - `EXAVITQu4vr4xnSDxMaL` — Sarah (female, soft)
 - `onwK4e9ZLuTAKqWW03F9` — Daniel (male, authoritative)
@@ -199,19 +194,19 @@ Pair this with `optimize_streaming_latency` (0–4) as a query param for further
 
 ## Output Formats
 
-| Format          | Description                                       |
-| --------------- | ------------------------------------------------- |
+| Format | Description |
+|--------|-------------|
 | `mp3_44100_128` | MP3 44.1kHz 128kbps (default) — good for web/apps |
-| `mp3_44100_192` | MP3 44.1kHz 192kbps (Creator+) — higher quality   |
-| `mp3_44100_64`  | MP3 44.1kHz 64kbps — smaller files                |
-| `mp3_22050_32`  | MP3 22.05kHz 32kbps — smallest MP3                |
-| `pcm_16000`     | Raw PCM 16kHz — real-time pipelines               |
-| `pcm_24000`     | Raw PCM 24kHz — good streaming balance            |
-| `pcm_44100`     | Raw PCM 44.1kHz (Pro+) — CD quality               |
-| `pcm_48000`     | Raw PCM 48kHz (Pro+) — highest quality            |
-| `ulaw_8000`     | μ-law 8kHz — Twilio / telephony                   |
-| `alaw_8000`     | A-law 8kHz — telephony                            |
-| `opus_48000_64` | Opus 48kHz 64kbps — efficient streaming           |
+| `mp3_44100_192` | MP3 44.1kHz 192kbps (Creator+) — higher quality |
+| `mp3_44100_64` | MP3 44.1kHz 64kbps — smaller files |
+| `mp3_22050_32` | MP3 22.05kHz 32kbps — smallest MP3 |
+| `pcm_16000` | Raw PCM 16kHz — real-time pipelines |
+| `pcm_24000` | Raw PCM 24kHz — good streaming balance |
+| `pcm_44100` | Raw PCM 44.1kHz (Pro+) — CD quality |
+| `pcm_48000` | Raw PCM 48kHz (Pro+) — highest quality |
+| `ulaw_8000` | μ-law 8kHz — Twilio / telephony |
+| `alaw_8000` | A-law 8kHz — telephony |
+| `opus_48000_64` | Opus 48kHz 64kbps — efficient streaming |
 
 ## Deterministic Output
 
@@ -232,7 +227,7 @@ The conversion quality is bounded by the input recording — the model can only 
 
 - **Be expressive.** Whisper, shout, laugh, cry — the model preserves all of it. Flat input gives you flat output.
 - **Watch microphone gain.** Too quiet and the model under-detects phonemes; too loud and clipping bleeds into the conversion. Aim for healthy peaks, no clipping.
-- **Accent and cadence transfer from the source, not the target.** If you read in an American accent and target the British "George" voice, you get George's timbre with an American accent. To dub _into_ a different accent or language, record someone speaking in that target accent/language and convert into a cloned/library voice.
+- **Accent and cadence transfer from the source, not the target.** If you read in an American accent and target the British "George" voice, you get George's timbre with an American accent. To dub *into* a different accent or language, record someone speaking in that target accent/language and convert into a cloned/library voice.
 - **Clean up noise first.** Either pass `remove_background_noise=True` or run the source through the voice-isolator skill before conversion. Noise hurts more here than in TTS.
 - **Split long recordings.** Anything over 5 minutes must be chunked. Cut at natural pauses, convert each piece, and concatenate the resulting audio.
 
@@ -259,7 +254,6 @@ except Exception as e:
 ```
 
 Common errors:
-
 - **401**: Invalid API key
 - **422**: Invalid parameters (check `voice_id`, `model_id`, or `file_format` vs the supplied audio)
 - **429**: Rate limit exceeded

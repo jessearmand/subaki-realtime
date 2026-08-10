@@ -3,11 +3,7 @@ name: voice-isolator
 description: Remove background noise and isolate vocals/speech from audio using ElevenLabs Voice Isolator (audio isolation) API. Use when cleaning up noisy recordings, removing music or background ambience from dialogue, isolating speech from field recordings, preparing audio for transcription, extracting vocals, or any "denoise / clean up / isolate voice" task.
 license: MIT
 compatibility: Requires internet access and an ElevenLabs API key (ELEVENLABS_API_KEY).
-metadata:
-  {
-    "openclaw":
-      { "requires": { "env": ["ELEVENLABS_API_KEY"] }, "primaryEnv": "ELEVENLABS_API_KEY" },
-  }
+metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv": "ELEVENLABS_API_KEY"}}
 ---
 
 # ElevenLabs Voice Isolator
@@ -59,10 +55,10 @@ curl -X POST "https://api.elevenlabs.io/v1/audio-isolation" \
 
 ## Parameters
 
-| Parameter     | Type            | Default | Description                                                                                                |
-| ------------- | --------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| `audio`       | file (required) | —       | Audio file with vocals/speech to isolate                                                                   |
-| `file_format` | string          | `other` | `other` for any encoded audio, or `pcm_s16le_16` for 16-bit PCM mono @ 16kHz little-endian (lower latency) |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `audio` | file (required) | — | Audio file with vocals/speech to isolate |
+| `file_format` | string | `other` | `other` for any encoded audio, or `pcm_s16le_16` for 16-bit PCM mono @ 16kHz little-endian (lower latency) |
 
 ## Isolating from a URL
 
@@ -116,7 +112,6 @@ except Exception as e:
 ```
 
 Common errors:
-
 - **401**: Invalid API key
 - **422**: Invalid parameters (e.g. wrong `file_format` for the supplied audio)
 - **429**: Rate limit exceeded

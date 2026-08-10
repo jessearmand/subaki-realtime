@@ -32,7 +32,6 @@ npm install @elevenlabs/elevenlabs-js
 ```
 
 **Import changes:**
-
 ```javascript
 // OLD (deprecated)
 import { ElevenLabsClient } from "elevenlabs";
@@ -86,6 +85,6 @@ Or use the `setup-api-key` skill for guided setup.
 
 ## Environment Variables
 
-| Variable             | Description                        |
-| -------------------- | ---------------------------------- |
+| Variable | Description |
+|----------|-------------|
 | `ELEVENLABS_API_KEY` | Your ElevenLabs API key (required) |

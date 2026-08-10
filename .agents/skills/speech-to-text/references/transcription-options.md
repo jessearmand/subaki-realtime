@@ -2,31 +2,49 @@
 
 ## Request Parameters
 
-| Parameter                | Type             | Required | Description                                                                                                                                                          |
-| ------------------------ | ---------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `file`                   | file             | Yes      | Audio or video file to transcribe                                                                                                                                    |
-| `model_id`               | string           | Yes      | `scribe_v2` (or legacy `scribe_v1`) for batch transcription                                                                                                          |
-| `language_code`          | string           | No       | Language hint (ISO 639-1 or ISO 639-3, e.g., `en` or `eng`)                                                                                                          |
-| `timestamps_granularity` | string           | No       | `none`, `word`, or `character` (default: `word`)                                                                                                                     |
-| `diarize`                | boolean          | No       | Enable speaker diarization (default: `false`; up to 32 speakers)                                                                                                     |
-| `detect_speaker_roles`   | boolean          | No       | Label diarized speakers as `agent` and `customer` instead of `speaker_0`, `speaker_1`, etc. Requires `diarize=true` and cannot be used with `use_multi_channel=true` |
-| `num_speakers`           | integer          | No       | Maximum speakers to detect (up to 32 for batch)                                                                                                                      |
-| `diarization_threshold`  | number           | No       | Tune diarization sensitivity (default: ~0.22; only when `diarize=true` and `num_speakers` is not set)                                                                |
-| `keyterms`               | array            | No       | Terms to bias transcription (up to 100 terms; each ≤50 chars, ≤5 words)                                                                                              |
-| `tag_audio_events`       | boolean          | No       | Detect non-speech sounds like laughter, applause (default: `true`)                                                                                                   |
-| `entity_detection`       | string or array  | No       | Detect entities (e.g., `pii`, `phi`, `pci`, `offensive_language`)                                                                                                    |
-| `no_verbatim`            | boolean          | No       | If `true`, removes filler words, false starts, and non-speech sounds (supported with `scribe_v2`)                                                                    |
-| `use_multi_channel`      | boolean          | No       | Split multichannel audio into separate transcripts (default: `false`; max 5 channels, max 1 hour)                                                                    |
-| `cloud_storage_url`      | string           | No       | HTTPS URL to transcribe instead of uploading a file (max 2GB)                                                                                                        |
-| `source_url`             | string           | No       | URL of an audio or video file to transcribe, including hosted media, YouTube, TikTok, and other video services                                                       |
-| `webhook`                | boolean          | No       | Process async and send result to webhook (default: `false`)                                                                                                          |
-| `webhook_id`             | string           | No       | Target specific webhook (only when `webhook=true`)                                                                                                                   |
-| `webhook_metadata`       | string or object | No       | Custom metadata included in webhook responses (max 16KB)                                                                                                             |
-| `temperature`            | double           | No       | Output randomness (0.0-2.0); defaults vary by model                                                                                                                  |
-| `seed`                   | integer          | No       | Deterministic output (0-2147483647); same seed = same result                                                                                                         |
-| `additional_formats`     | array            | No       | Export transcript as `docx`, `html`, `pdf`, `srt`, `txt`, or `segmented_json`                                                                                        |
-| `file_format`            | string           | No       | `pcm_s16le_16` (for lower latency) or `other` (default)                                                                                                              |
-| `enable_logging`         | boolean          | No       | Set `false` for zero retention mode (enterprise only; default: `true`)                                                                                               |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file` | file | Yes | Audio or video file to transcribe |
+| `model_id` | string | Yes | `scribe_v2` for batch transcription |
+| `token` | string | No | Single-use authentication token from `POST /v1/single-use-token/batch_scribe`. Alternative to API key or bearer authentication for frontend clients; expires after 15 minutes and is consumed on use. |
+| `language_code` | string | No | Language hint (ISO 639-1 or ISO 639-3, e.g., `en` or `eng`) |
+| `timestamps_granularity` | string | No | `none`, `word`, or `character` (default: `word`) |
+| `diarize` | boolean | No | Enable speaker diarization (default: `false`; up to 32 speakers) |
+| `use_speaker_library` | boolean | No | Match diarized speakers against registered speaker profiles in the workspace speaker library. Requires `diarize=true` |
+| `detect_speaker_roles` | boolean | No | Label diarized speakers as `agent` and `customer` instead of `speaker_0`, `speaker_1`, etc. Requires `diarize=true` and cannot be used with `use_multi_channel=true` |
+| `num_speakers` | integer | No | Maximum speakers to detect (up to 32 for batch) |
+| `diarization_threshold` | number | No | Tune diarization sensitivity (default: ~0.22; only when `diarize=true` and `num_speakers` is not set) |
+| `keyterms` | array | No | Terms to bias transcription (up to 100 terms; each ≤50 chars, ≤5 words) |
+| `tag_audio_events` | boolean | No | Detect non-speech sounds like laughter, applause (default: `true`) |
+| `entity_detection` | string or array | No | Detect entities (e.g., `pii`, `phi`, `pci`, `offensive_language`) |
+| `no_verbatim` | boolean | No | If `true`, removes filler words, false starts, and non-speech sounds (supported with `scribe_v2`) |
+| `use_multi_channel` | boolean | No | Split multichannel audio into separate transcripts (default: `false`; max 5 channels, max 1 hour) |
+| `multichannel_output_style` | string | No | `separate` (default) returns one transcript per channel under `transcripts`; `combined` returns one merged transcript sorted by word start time with `channel_index` on each word. Requires timestamps and is only used with `use_multi_channel=true` |
+| `cloud_storage_url` | string | No | HTTPS URL to transcribe instead of uploading a file (max 2GB) |
+| `source_url` | string | No | URL of an audio or video file to transcribe, including hosted media, YouTube, TikTok, and other video services |
+| `webhook` | boolean | No | Process async and send result to webhook (default: `false`) |
+| `webhook_id` | string | No | Target specific webhook (only when `webhook=true`) |
+| `webhook_metadata` | string or object | No | Custom metadata included in webhook responses (max 16KB) |
+| `temperature` | double | No | Output randomness (0.0-2.0); defaults vary by model |
+| `seed` | integer | No | Deterministic output (0-2147483647); same seed = same result |
+| `additional_formats` | array | No | Export transcript as `docx`, `html`, `pdf`, `srt`, `txt`, or `segmented_json` |
+| `file_format` | string | No | `pcm_s16le_16` (for lower latency) or `other` (default) |
+| `enable_logging` | boolean | No | Set `false` for zero retention mode (enterprise only; default: `true`) |
+
+## Single-Use Token Authentication
+
+Generate a batch Scribe token on a trusted backend, then pass it as the `token` query parameter
+from the frontend. Do not expose the API key to the client.
+
+```bash
+TOKEN=$(curl -s -X POST \
+  "https://api.elevenlabs.io/v1/single-use-token/batch_scribe" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" | jq -r '.token')
+
+curl -X POST "https://api.elevenlabs.io/v1/speech-to-text?token=$TOKEN" \
+  -F "file=@audio.mp3" \
+  -F "model_id=scribe_v2"
+```
 
 ## Python Example
 
@@ -117,7 +135,8 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
   -F "file=@call.mp3" \
   -F "model_id=scribe_v2" \
   -F "diarize=true" \
-  -F "detect_speaker_roles=true"
+  -F "detect_speaker_roles=true" \
+  -F "use_speaker_library=true"
 ```
 
 ## Cloud Storage URL
@@ -192,37 +211,38 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
 
 ## Response Fields
 
-| Field                  | Type   | Description                                                                            |
-| ---------------------- | ------ | -------------------------------------------------------------------------------------- |
-| `text`                 | string | Full transcription text                                                                |
-| `language_code`        | string | Detected language (ISO 639-1 or ISO 639-3)                                             |
-| `language_probability` | float  | Confidence in detection (0-1)                                                          |
-| `audio_duration_secs`  | float  | Duration of the transcribed audio in seconds                                           |
-| `words`                | array  | Word-level timestamps (if requested)                                                   |
-| `words[].text`         | string | The transcribed word or spacing                                                        |
-| `words[].start`        | float  | Start time in seconds                                                                  |
-| `words[].end`          | float  | End time in seconds                                                                    |
-| `words[].type`         | string | `word`, `spacing`, or `audio_event`                                                    |
-| `words[].speaker_id`   | string | Speaker identifier (if diarization enabled)                                            |
-| `transcription_id`     | string | Unique identifier for this transcription                                               |
-| `additional_formats`   | array  | Exported transcript formats (if requested)                                             |
-| `entities`             | array  | Detected entities with text, type, and character offsets (if entity_detection enabled) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | Full transcription text |
+| `language_code` | string | Detected language (ISO 639-1 or ISO 639-3) |
+| `language_probability` | float | Confidence in detection (0-1) |
+| `audio_duration_secs` | float | Duration of the transcribed audio in seconds |
+| `words` | array | Word-level timestamps (if requested) |
+| `words[].text` | string | The transcribed word or spacing |
+| `words[].start` | float | Start time in seconds |
+| `words[].end` | float | End time in seconds |
+| `words[].type` | string | `word`, `spacing`, or `audio_event` |
+| `words[].speaker_id` | string | Speaker identifier (if diarization enabled) |
+| `words[].channel_index` | integer or null | Channel index for multichannel audio; null for single-channel transcriptions |
+| `transcription_id` | string | Unique identifier for this transcription |
+| `additional_formats` | array | Exported transcript formats (if requested) |
+| `entities` | array | Detected entities with text, type, and character offsets (if entity_detection enabled) |
 
 ## Supported Languages (90+)
 
 Common languages (ISO 639-3 codes):
 
-| Code  | Language   | Code  | Language |
-| ----- | ---------- | ----- | -------- |
-| `eng` | English    | `jpn` | Japanese |
-| `spa` | Spanish    | `kor` | Korean   |
-| `fra` | French     | `zho` | Mandarin |
-| `deu` | German     | `ara` | Arabic   |
-| `ita` | Italian    | `hin` | Hindi    |
-| `por` | Portuguese | `tur` | Turkish  |
-| `nld` | Dutch      | `swe` | Swedish  |
-| `pol` | Polish     | `dan` | Danish   |
-| `rus` | Russian    | `fin` | Finnish  |
+| Code | Language | Code | Language |
+|------|----------|------|----------|
+| `eng` | English | `jpn` | Japanese |
+| `spa` | Spanish | `kor` | Korean |
+| `fra` | French | `zho` | Mandarin |
+| `deu` | German | `ara` | Arabic |
+| `ita` | Italian | `hin` | Hindi |
+| `por` | Portuguese | `tur` | Turkish |
+| `nld` | Dutch | `swe` | Swedish |
+| `pol` | Polish | `dan` | Danish |
+| `rus` | Russian | `fin` | Finnish |
 
 Full list: Afrikaans, Amharic, Armenian, Azerbaijani, Belarusian, Bengali, Bosnian, Bulgarian, Burmese, Cantonese, Catalan, Cebuano, Croatian, Czech, Estonian, Filipino, Georgian, Greek, Gujarati, Hausa, Hebrew, Hungarian, Icelandic, Indonesian, Irish, Javanese, Kannada, Kazakh, Khmer, Kyrgyz, Lao, Latvian, Lithuanian, Luxembourgish, Macedonian, Malay, Malayalam, Maltese, Māori, Marathi, Mongolian, Nepali, Norwegian, Odia, Pashto, Persian, Punjabi, Romanian, Serbian, Shona, Sindhi, Slovak, Slovenian, Somali, Swahili, Tamil, Tajik, Telugu, Thai, Ukrainian, Urdu, Uzbek, Vietnamese, Welsh, Wolof, Xhosa, Yoruba, Zulu.
 
@@ -232,8 +252,7 @@ Full list: Afrikaans, Amharic, Armenian, Azerbaijani, Belarusian, Bengali, Bosni
 **Video:** MP4, AVI, MKV, MOV, WMV, FLV, WebM, MPEG, 3GPP
 
 **Limits:**
-
-- Maximum file size: 3GB (file upload) or 2GB (cloud storage URL)
+- Maximum file size: 5.0GB (file upload) or 2GB (cloud storage URL)
 - Maximum duration: 10 hours (standard) or 1 hour (multichannel mode)
 
 ## Use Cases

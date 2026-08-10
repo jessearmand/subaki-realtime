@@ -43,6 +43,13 @@ mise run stop      # stop the server on PORT (default 3000)
 with the server) so the cascade engine works out of the box — see the Cascade
 section below.
 
+The default fnox profile holds only the app's provider keys.
+`CLAUDE_CODE_OAUTH_TOKEN` (remote-control / CI use of Claude Code) sits in a
+separate `remote` profile — run `fnox -P remote exec -- <cmd>` when you need it.
+Keeping it out of the default profile matters: an OAuth token in the environment
+overrides Claude Code's stored Claude Max login, so `fnox exec -- claude` would
+otherwise silently authenticate as a token instead of your subscription.
+
 Other scripts:
 
 ```bash

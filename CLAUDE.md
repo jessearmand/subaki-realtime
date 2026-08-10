@@ -44,6 +44,11 @@ This is all a **dev environment — no production yet**. `ELEVENLABS_API_KEY` li
 
 Before writing any ElevenLabs API code, read the matching skill in `.claude/skills/` (`agents`, `speech-engine`, `setup-api-key`, `text-to-speech`, `speech-to-text`, `voice-changer`, `voice-isolator`) — they carry current CLI/SDK usage. The real agent path (`agents` + `setup-api-key`) is **verified working** end-to-end against a public agent (`enable_auth:false`, connects via WebRTC with the agent ID alone — no signed-URL route). `package.json` pins `livekit-client` to `2.16.1` (skill's WebRTC workaround).
 
+- **CLI project files are disposable.** `agents.json` + `agent_configs/` (gitignored, canonical in the **main repo root**) mirror the platform; in a fresh worktree regenerate them with `elevenlabs agents init && elevenlabs agents pull` (`pull` prompts `Proceed? (y/N)` with no `--yes` flag — pipe `yes |`). Pulled configs are full platform snapshots (~400 lines); the versioned source of truth for the seven persona agents (prompts/casting/tuning) is `scripts/elevenlabs/gen-agent-configs.ts`, which emits lean configs — both forms push fine.
+- **Per-persona agent IDs** live in `lib/realtime/elevenlabs-agent.ts` (`PERSONA_AGENT_IDS`); unmapped personas fall back to `NEXT_PUBLIC_ELEVENLABS_AGENT_ID`.
+- **API key scopes are dashboard-managed**: a write failing 401 `missing_permissions` (e.g. `convai_write`, `add_voice_from_voice_library`) means the key needs rescoping in the dashboard, not an auth bug. The CLI also has its own stored login (`elevenlabs auth whoami`), separate from the fnox key.
+- **oxfmt ignores `.gitignore` inside git worktrees** (`.git`-as-file breaks its ignore detection), so generated JSON must already be check-clean — the generator handles this.
+
 ## Verifying UI
 
 Use the chrome-devtools MCP at 1440×900 and 390×844; drive nav with `evaluate_script` + `el.click()`. Type checks/tests verify code, not feature correctness — look at the rendered app.

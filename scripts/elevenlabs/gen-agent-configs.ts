@@ -41,9 +41,9 @@ interface PersonaSpec {
   /** Agent name on the ElevenLabs platform. */
   name: string;
   /**
-   * Voice already in the workspace. Interim casting from premade/professional
-   * workspace voices; swap to the shared-library casting in cast-voices.sh
-   * once the API key gains `add_voice_from_voice_library`.
+   * Workspace voice for the persona — the shared-library casting added by
+   * cast-voices.sh (library voices keep their catalog voice_id when added).
+   * Audition by ear and recast freely, then `elevenlabs agents push`.
    */
   voiceId: string;
   voiceNote: string;
@@ -60,8 +60,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "aria",
     name: "tsubaki-aria",
-    voiceId: "EST9Ui6982FZPSi7gCHi", // Elise – Warm, Natural and Engaging
-    voiceNote: "Elise",
+    voiceId: "ogwqBH5bbF03DSbNiRNN", // Savvy – Warm, Grounded & Natural (library)
+    voiceNote: "Savvy",
     eagerness: "patient",
     speed: 1.0,
     firstMessage:
@@ -77,8 +77,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "onyx",
     name: "tsubaki-onyx",
-    voiceId: "pNInz6obpgDQGcFmaJgB", // Adam – Dominant, Firm
-    voiceNote: "Adam",
+    voiceId: "gbG7jOLRw62v3JQ8cFWq", // Ben – Resonant, Steady & Authoritative (library)
+    voiceNote: "Ben",
     eagerness: "patient",
     speed: 0.9,
     firstMessage: "[calm] I am Onyx. The roots here are deep, and I have time. Speak plainly.",
@@ -92,8 +92,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "sage",
     name: "tsubaki-sage",
-    voiceId: "cjVigY5qzO86Huf0OWal", // Eric – Smooth, Trustworthy
-    voiceNote: "Eric",
+    voiceId: "mBqbvkxIFe5HjjaoiN4P", // Justin – Approachable Support (library)
+    voiceNote: "Justin",
     eagerness: "eager",
     speed: 1.05,
     firstMessage: "Sage here. What do you need?",
@@ -107,8 +107,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "nova",
     name: "tsubaki-nova",
-    voiceId: "Xb7hH8MSUJpSbSDYk0k2", // Alice – Clear, Engaging Educator (British)
-    voiceNote: "Alice",
+    voiceId: "oW8bn5YtBB89X2nJ0DT9", // Verity – Chatty, Fast-Paced Storyteller (British, library)
+    voiceNote: "Verity",
     eagerness: "eager",
     speed: 1.1,
     firstMessage:
@@ -123,8 +123,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "echo",
     name: "tsubaki-echo",
-    voiceId: "bD9maNcCuQQS75DGuteM", // Sadie – Calm, Gritty, Warm & Expressive
-    voiceNote: "Sadie",
+    voiceId: "j7KV53NgP8U4LRS2k2Gs", // Violet – Soft, Wistful and Inviting (library)
+    voiceNote: "Violet",
     eagerness: "patient",
     speed: 0.95,
     firstMessage: "[softly] I'm Echo. The night is quiet and I'm listening — what's on your mind?",
@@ -138,8 +138,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "cipher",
     name: "tsubaki-cipher",
-    voiceId: "JBFqnCBsd6RMkjVDRZzb", // George – Warm, Captivating Storyteller
-    voiceNote: "George",
+    voiceId: "EPqJ3pbzRRJKDULoCIQk", // Mark – Still Waters Run Deep (library)
+    voiceNote: "Mark",
     eagerness: "patient",
     speed: 0.93,
     firstMessage:
@@ -154,8 +154,8 @@ const PERSONAS: PersonaSpec[] = [
   {
     id: "vesper",
     name: "tsubaki-vesper",
-    voiceId: "pFZP5JQG7iQjIQuC4Bku", // Lily – Velvety Actress (British)
-    voiceNote: "Lily",
+    voiceId: "YDCfZMLWcUmsGvqHq0rS", // Blondie – Femme Fatale (British, library)
+    voiceNote: "Blondie",
     eagerness: "patient",
     speed: 0.95,
     firstMessage:
@@ -251,6 +251,9 @@ for (const p of PERSONAS) {
   };
   mkdirSync(OUT_DIR, { recursive: true });
   const file = join(OUT_DIR, `tsubaki-${p.id}.json`);
-  writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
+  // Collapse the short tags array the way oxfmt would — in git worktrees oxfmt
+  // fails to honor .gitignore, so generated JSON must already be check-clean.
+  const json = JSON.stringify(config, null, 2).replace(/\[\s+"tsubaki"\s+\]/, '["tsubaki"]');
+  writeFileSync(file, json + "\n");
   console.log(`wrote ${file} (voice: ${p.voiceNote}, eagerness: ${p.eagerness})`);
 }

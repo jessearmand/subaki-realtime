@@ -6,9 +6,9 @@
 # Requires ELEVENLABS_API_KEY with the `add_voice_from_voice_library` scope:
 #   fnox exec -- bash scripts/elevenlabs/cast-voices.sh
 #
-# After adding, point each agent at its library voice by swapping `voiceId` in
-# gen-agent-configs.ts, regenerating, and running `elevenlabs agents push`.
-# Casting is a starting point — audition each voice and recast by ear.
+# Library voices keep their catalog voice_id when added, so gen-agent-configs.ts
+# already references them. Casting is a starting point — audition each voice
+# and recast by ear (swap voiceId, regenerate, `elevenlabs agents push`).
 set -euo pipefail
 
 : "${ELEVENLABS_API_KEY:?set via fnox exec}"

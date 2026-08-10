@@ -91,15 +91,15 @@ Paste the printed IDs into `PERSONA_AGENT_IDS` in
 `lib/realtime/elevenlabs-agent.ts`; the selected persona then picks its agent,
 falling back to `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` for unmapped personas.
 
-The intended casting draws from the shared voice library
-(`GET /v1/shared-voices`); adding those voices to the workspace needs the
-`add_voice_from_voice_library` scope on the key:
+The casting draws from the shared voice library (`GET /v1/shared-voices`);
+the voices are added to the workspace (one per persona, keeping their catalog
+voice IDs) by:
 
 ```bash
 fnox exec -- bash scripts/elevenlabs/cast-voices.sh
 ```
 
-Until then the configs cast from voices already in the workspace. Audition by
+This needs the `add_voice_from_voice_library` scope on the key. Audition by
 ear and recast freely — edit `voiceId` in the generator, regenerate, and
 `elevenlabs agents push`.
 

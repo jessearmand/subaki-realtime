@@ -182,7 +182,7 @@ export const TRANSCRIPT_SCRIPT: TranscriptTurn[] = [
   { who: "user", text: "Walk me through what you can do." },
   {
     who: "agent",
-    text: "I can run a realtime voice session against six providers — OpenAI, ElevenLabs, Google, xAI, Mistral and fal.ai. Mid-call I can interrupt, swap voices, and call tools. Where do you want to start?",
+    text: "I can run a realtime voice session against seven providers — OpenAI, ElevenLabs, Google, xAI, Mistral, fal.ai and Kyutai. Mid-call I can interrupt, swap voices, and call tools. Where do you want to start?",
   },
   { who: "user", text: "Show me the persona library." },
   {

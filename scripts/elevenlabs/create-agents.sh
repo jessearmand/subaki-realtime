@@ -20,6 +20,10 @@ for p in aria onyx sage nova echo cipher vesper; do
   elevenlabs agents add "tsubaki-$p" --from-file "agent_configs/tsubaki-$p.json"
 done
 
+# `agents add` only registers the config in the local project; `agents push`
+# uploads to the platform and writes the assigned IDs back into agents.json.
+elevenlabs agents push
+
 echo
 echo "── Agent IDs (paste into lib/realtime/elevenlabs-agent.ts) ──"
 jq -r '.agents[] | select(.config | test("tsubaki-")) | "\(.config | sub(".*tsubaki-"; "") | sub(".json"; "")): \(.id)"' agents.json

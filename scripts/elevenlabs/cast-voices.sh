@@ -7,8 +7,8 @@
 #   fnox exec -- bash scripts/elevenlabs/cast-voices.sh
 #
 # Library voices keep their catalog voice_id when added, so gen-agent-configs.ts
-# already references them. Casting is a starting point — audition each voice
-# and recast by ear (swap voiceId, regenerate, `elevenlabs agents push`).
+# references them directly. This is the audition-chosen casting (character/
+# villain reads); recast by ear (swap voiceId, regenerate, `elevenlabs agents push`).
 set -euo pipefail
 
 : "${ELEVENLABS_API_KEY:?set via fnox exec}"
@@ -21,12 +21,12 @@ add() { # add <persona> <public_owner_id> <voice_id> <name>
   echo
 }
 
-add aria e3f59c5c065dae143d73d51c5a4a6fa45d1f39e239c78b3fc1557a641de97381 ogwqBH5bbF03DSbNiRNN "Tsubaki ARIA - Savvy (Warm, Grounded & Natural)"
-add onyx d55d097341fbb231b71970b6d0d067b6436adcf82866f78c127c07aea50c885a gbG7jOLRw62v3JQ8cFWq "Tsubaki ONYX - Ben (Resonant, Steady & Authoritative)"
-add sage 64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e mBqbvkxIFe5HjjaoiN4P "Tsubaki SAGE - Justin (Approachable Support)"
-add nova 5c83469454159b28dee4ec0b7c67e2aae7ffef719705aee500de21c4221c7ad2 oW8bn5YtBB89X2nJ0DT9 "Tsubaki NOVA - Verity (Chatty, Fast-Paced Storyteller)"
-add echo 8a95c14eec614c8dc201a67dc1d0a23cf6069820822686d3c635a48998c26fa4 j7KV53NgP8U4LRS2k2Gs "Tsubaki ECHO - Violet (Soft, Wistful and Inviting)"
-add cipher f059a227d4518f4d41099476f15929194274a13778d5dba20dba1091a15b4d7a EPqJ3pbzRRJKDULoCIQk "Tsubaki CIPHER - Mark (Still Waters Run Deep)"
+add aria 2b0d07a6ce09d07685ec4dabdf136a37762f1764f4de7d3b52d2a108940683c4 TC0Zp7WVFzhA8zpTlRqV "Tsubaki ARIA - Aria (Sultry Villain)"
+add onyx ae23ca715ed6b339e4ad22f2d45dd40b36a6449e031b4f8970bfe29524bd1bbc 3SF4rB1fGBMXU9xRM7pz "Tsubaki ONYX - Oxley (Eccentric, Distorted and Evil)"
+add sage cf9bd07551c5671599c30098fa8e3bbcdebd88067cfe543b11c17ddabbd50cd5 kPtEHAvRnjUJFv7SK9WI "Tsubaki SAGE - Glitch (Digital prankster)"
+add nova 89aa1f4768185949a1b12bf3aa6a9f31995d2cf8ff70e9051d4e2dfa758d1ab5 Se2Vw1WbHmGbBbyWTuu4 "Tsubaki NOVA - Allison (Inviting and Velvety)"
+add echo 76fb06688ef565775843b4efa41dd61de204a6cf28aa7ba86536140378d39188 tQ4MEZFJOzsahSEEZtHK "Tsubaki ECHO - Ivanna (Seductive & Intimate)"
+add cipher 18599001ec9126b66cf378225f5b839e6c127716f0f3dc7807450b275732de44 Vs5CmVCVJwW4odQS2pVf "Tsubaki CIPHER - Branok (Evil & Villainous)"
 add vesper 8ca83914d9feda1c71c14f6d7c289ea0ec01ccaa5bfd245c5c6d197de25f32a7 YDCfZMLWcUmsGvqHq0rS "Tsubaki VESPER - Blondie (Femme Fatale)"
 
 echo "Done. New workspace voice IDs: GET /v1/voices (or \`elevenlabs\` dashboard → Voices)."

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { CallState, SessionApi, SessionTurn } from "./types";
+import { resolveElevenLabsAgentId } from "./elevenlabs-agent";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
 import { useGeminiSession } from "./use-gemini-session";
@@ -219,7 +220,7 @@ export function useRealtimeSession({
     }
     if (engine === "elevenlabs") {
       if (callState === "idle" || callState === "ended") {
-        const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
+        const agentId = resolveElevenLabsAgentId(persona?.id);
         if (!agentId) {
           setCaption("— set NEXT_PUBLIC_ELEVENLABS_AGENT_ID —");
           return;
@@ -246,7 +247,7 @@ export function useRealtimeSession({
     } else {
       setCallState("ended");
     }
-  }, [engine, custom, callState, startSession, endSession]);
+  }, [engine, custom, callState, persona, startSession, endSession]);
 
   const hangup = useCallback(() => {
     if (custom) {

@@ -71,6 +71,38 @@ ELEVENLABS_API_KEY=your-api-key
 Then pick the **ELEVENLABS** row under Providers and press CALL — it grants the
 mic, streams a live transcript, and drives the orb/bars from real audio.
 
+### Per-persona agents
+
+ElevenLabs keeps the whole persona server-side, so each Tsubaki persona gets its
+own platform agent. The versioned source of truth (prompts, voice casting, turn
+eagerness, TTS speed) is **`scripts/elevenlabs/gen-agent-configs.ts`** — the
+ElevenLabs counterpart of `lib/realtime/xai-agent.ts`. The CLI project itself
+(`agents.json`, `agent_configs/`) stays gitignored at the repo root.
+
+From the repo root, with an API key that has the `convai_write` scope (the CLI's
+stored `elevenlabs auth login` or `fnox exec`):
+
+```bash
+bun run scripts/elevenlabs/gen-agent-configs.ts       # regenerate agent_configs/tsubaki-*.json
+fnox exec -- bash scripts/elevenlabs/create-agents.sh # create the 7 agents, print their IDs
+```
+
+Paste the printed IDs into `PERSONA_AGENT_IDS` in
+`lib/realtime/elevenlabs-agent.ts`; the selected persona then picks its agent,
+falling back to `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` for unmapped personas.
+
+The casting draws from the shared voice library (`GET /v1/shared-voices`);
+the voices are added to the workspace (one per persona, keeping their catalog
+voice IDs) by:
+
+```bash
+fnox exec -- bash scripts/elevenlabs/cast-voices.sh
+```
+
+This needs the `add_voice_from_voice_library` scope on the key. Audition by
+ear and recast freely — edit `voiceId` in the generator, regenerate, and
+`elevenlabs agents push`.
+
 ## Wiring the real xAI Grok provider
 
 xAI's realtime API is **WebSocket-only** (no native browser WebRTC). The browser

@@ -83,8 +83,8 @@ From the repo root, with an API key that has the `convai_write` scope (the CLI's
 stored `elevenlabs auth login` or `fnox exec`):
 
 ```bash
-bun run scripts/elevenlabs/gen-agent-configs.ts   # regenerate agent_configs/tsubaki-*.json
-bash scripts/elevenlabs/create-agents.sh          # create the 7 agents, print their IDs
+bun run scripts/elevenlabs/gen-agent-configs.ts       # regenerate agent_configs/tsubaki-*.json
+fnox exec -- bash scripts/elevenlabs/create-agents.sh # create the 7 agents, print their IDs
 ```
 
 Paste the printed IDs into `PERSONA_AGENT_IDS` in

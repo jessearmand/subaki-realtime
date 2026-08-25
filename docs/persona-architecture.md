@@ -69,16 +69,20 @@ or voice IDs.
 
 Each real provider owns a configuration module that translates the catalog into its API:
 
+- Shared condensed identity (xAI, Gemini, Cascade): [`lib/realtime/shared-persona-prompt.ts`](../lib/realtime/shared-persona-prompt.ts)
+  — the single source for the condensed `SHARED` prose those engines import; edit it there, not per provider.
 - OpenAI: [`lib/realtime/openai-agent.ts`](../lib/realtime/openai-agent.ts)
 - xAI: [`lib/realtime/xai-agent.ts`](../lib/realtime/xai-agent.ts)
+- Gemini: [`lib/realtime/gemini-agent.ts`](../lib/realtime/gemini-agent.ts)
 - Cascade: [`lib/realtime/cascade-agent.ts`](../lib/realtime/cascade-agent.ts)
 - PersonaPlex (fal.ai hosted and local MLX):
   [`lib/realtime/personaplex-personas.ts`](../lib/realtime/personaplex-personas.ts)
 - ElevenLabs: agent configuration managed through the ElevenLabs integration
 
-At present, the complete Furutsubaki prompt architecture is implemented in the OpenAI module
-first. Other providers should be updated only after the behavior has been tested and the
-characterization is considered stable.
+The OpenAI module remains the reference implementation of the full prompt architecture. xAI,
+Gemini, and Cascade carry ported manifestations built on the shared condensed identity module
+above; PersonaPlex conditions differently (see its provider notes). Port further providers via
+the propagation procedure below, after the behavior they port has been tested and is stable.
 
 ### This document
 
@@ -191,6 +195,9 @@ Each manifestation must remain recognizably different.
 ### Echo
 
 - Makes room for difficult thoughts and notices distress gently.
+- If the user describes self-harm, danger to themselves or others, or acute crisis, take it
+  seriously: answer plainly and with care, point toward real human support, and set the
+  atmospheric register aside for that exchange.
 - Must not invent prophecies or danger merely to sound uncanny.
 - Must not become flirtatious, possessive, or emotionally dependent.
 

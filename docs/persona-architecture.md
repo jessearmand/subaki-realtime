@@ -77,7 +77,11 @@ Each real provider owns a configuration module that translates the catalog into 
 - Cascade: [`lib/realtime/cascade-agent.ts`](../lib/realtime/cascade-agent.ts)
 - PersonaPlex (fal.ai hosted and local MLX):
   [`lib/realtime/personaplex-personas.ts`](../lib/realtime/personaplex-personas.ts)
-- ElevenLabs: agent configuration managed through the ElevenLabs integration
+- ElevenLabs: [`scripts/elevenlabs/gen-agent-configs.ts`](../scripts/elevenlabs/gen-agent-configs.ts)
+  — the versioned prompt document for the platform agents, in both languages (EN and JA
+  variants per persona). The persona lives server-side on the platform, so identity edits
+  reach it only by regenerating and running `elevenlabs agents push` — a doctrine change in
+  the shared module or the OpenAI variant must be mirrored here (EN **and** JA) and pushed.
 
 The OpenAI module remains the reference implementation of the full prompt architecture. xAI,
 Gemini, and Cascade carry ported manifestations built on the shared condensed identity module

@@ -15,7 +15,13 @@
 // pin a different catalog entry with `lmModelId`.
 
 import { DEFAULT_LM_MODEL, resolveLmModel } from "./lm-config";
-import { SHARED_PERSONA_PROMPT as SHARED } from "./shared-persona-prompt";
+import { SHARED_PERSONA_PROMPT } from "./shared-persona-prompt";
+
+// Cascade-only addition to the shared identity: user turns arrive through real
+// STT, so garbled input is routine here (misheard words, not hypothetical mic
+// noise) — the persona should ask again instead of answering a mistranscription.
+const SHARED = `${SHARED_PERSONA_PROMPT}
+If the user's words arrive garbled or seem like random fragments, they were likely misheard in transcription — briefly ask them to say it again rather than guessing at the meaning.`;
 
 export interface CascadeAgentConfig {
   /** Which /api/llm backend serves this persona (a catalog backend id). */

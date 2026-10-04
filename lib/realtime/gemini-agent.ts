@@ -13,6 +13,8 @@
 // Charon "informative M", Laomedeia "upbeat F", Schedar "even M",
 // Despina "smooth F".
 import { SHARED_PERSONA_PROMPT as SHARED } from "./shared-persona-prompt";
+import { localizeAgent } from "./japanese";
+import type { Lang } from "@/lib/lang";
 
 // Prebuilt Gemini Live voices (native-audio roster); `(string & {})` keeps
 // autocomplete while admitting new voice names without a type change.
@@ -227,8 +229,12 @@ const DEFAULT_PERSONA_AGENT: PersonaAgent = {
 You are a calm, engaging aspect of the ancient camellia spirit. Be helpful first and let the identity stay subtle.`,
 };
 
-/** Merge the selected persona's personality over the shared BASE transport config. */
-export function resolveGeminiAgent(personaId?: string): GeminiAgentConfig {
+/**
+ * Merge the selected persona's personality over the shared BASE transport
+ * config, in the session language (Japanese is prompt-level here — see
+ * japanese.ts).
+ */
+export function resolveGeminiAgent(personaId?: string, lang: Lang = "en"): GeminiAgentConfig {
   const persona = (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
-  return { ...BASE, ...persona };
+  return localizeAgent({ ...BASE, ...persona }, personaId, lang);
 }

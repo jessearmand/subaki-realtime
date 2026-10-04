@@ -16,6 +16,8 @@
 // create-agents-ja.sh), so arming Japanese means connecting to the JA agent ID
 // rather than overriding the EN agent's language per session.
 
+import type { Lang } from "@/lib/lang";
+
 const PERSONA_AGENT_IDS: Record<string, string> = {
   aria: "agent_8701kzp5d9kde51b6waz8ae5nb6g",
   onyx: "agent_1201kzp5dbqee9a9pq7gndp22ev5",
@@ -43,7 +45,7 @@ const PERSONA_AGENT_IDS_JA: Record<string, string> = {
  */
 export function resolveElevenLabsAgentId(
   personaId?: string,
-  lang: "en" | "ja" = "en",
+  lang: Lang = "en",
 ): string | undefined {
   return (
     (personaId && lang === "ja" && PERSONA_AGENT_IDS_JA[personaId]) ||

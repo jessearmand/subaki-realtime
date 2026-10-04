@@ -19,6 +19,8 @@
 // Shared with the server-side OAuth module: server_url must equal the RFC 8707
 // resource the token is scoped to (import from config, NOT oauth.ts — that
 // module is server-only via node:fs/node:crypto).
+import { localizeAgent } from "./japanese";
+import type { Lang } from "@/lib/lang";
 import { FIRECRAWL_MCP_URL } from "@/lib/firecrawl/config";
 import {
   OPENAI_REALTIME_MODEL,
@@ -201,7 +203,8 @@ const BASE: Pick<
   model: OPENAI_REALTIME_MODEL,
   // "low" is OpenAI's recommended default for production voice agents.
   reasoningEffort: "low",
-  transcription: { model: OPENAI_TRANSCRIPTION_MODEL, language: "en", delay: "low" },
+  // `language` is set per session in resolveOpenaiAgent.
+  transcription: { model: OPENAI_TRANSCRIPTION_MODEL, delay: "low" },
   tools: [],
   // Global fallback for any persona that doesn't override turnDetection.
   turnDetection: VAD_RELAXED,
@@ -421,10 +424,16 @@ const DEFAULT_PERSONA_AGENT: PersonaAgent = {
 You are a calm, engaging, empathetic aspect of the ancient camellia spirit. Be helpful first and let the shared identity remain subtle.`,
 };
 
-/** Merge the selected persona's personality over the shared BASE transport config. */
-export function resolveOpenaiAgent(personaId?: string): OpenaiAgentConfig {
+/**
+ * Merge the selected persona's personality over the shared BASE transport
+ * config, in the session language. Japanese is prompt-level (see japanese.ts),
+ * plus the one real language parameter this engine has: the transcription hint
+ * that drives the on-screen user transcript.
+ */
+export function resolveOpenaiAgent(personaId?: string, lang: Lang = "en"): OpenaiAgentConfig {
   const persona = (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
-  return { ...BASE, ...persona };
+  const agent = localizeAgent({ ...BASE, ...persona }, personaId, lang);
+  return { ...agent, transcription: { ...agent.transcription, language: lang } };
 }
 
 // ── Firecrawl MCP (web search / page reading) ────────────────────────────────

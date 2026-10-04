@@ -2,10 +2,14 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { Hr, FieldRow, SwitchRow, ToolRow } from "./primitives";
 import { MicSelector } from "@/components/ui/mic-selector";
 import { useAudioOutputDevices } from "@/hooks/use-audio-output-devices";
+import { LangSwitch } from "./lang-switch";
 import type { Tool } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 
 export function SettingsView({
   accent,
+  lang,
+  setLang,
   tools,
   setTools,
   muted,
@@ -16,6 +20,9 @@ export function SettingsView({
   onPushToTalkChange,
 }: {
   accent: string;
+  /** Session language — interface and voice. */
+  lang: Lang;
+  setLang: (lang: Lang) => void;
   tools: Tool[];
   setTools: (updater: (prev: Tool[]) => Tool[]) => void;
   muted: boolean;
@@ -49,11 +56,20 @@ export function SettingsView({
         <div>
           <div className="tb-h-eyebrow">003 / CONFIGURATION</div>
           <h1 className="tb-h1">Settings.</h1>
-          <p className="tb-lede">Local audio chain, model behaviour, tools and safety.</p>
+          <p className="tb-lede">Language, local audio chain, model behaviour, tools and safety.</p>
         </div>
       </div>
 
       <div className="tb-settings-grid">
+        {/* GENERAL spans the full width so the 2×2 grid below keeps its order:
+            AUDIO IN | AUDIO OUT, BEHAVIOUR | TOOLS. */}
+        <section className="tb-settings-sec tb-settings-sec-wide">
+          <Hr label="GENERAL" />
+          <FieldRow label="LANGUAGE" hint="voice language · routes the agent">
+            <LangSwitch lang={lang} onChange={setLang} />
+          </FieldRow>
+        </section>
+
         <section className="tb-settings-sec">
           <Hr label="AUDIO IN" />
           <FieldRow label="INPUT DEVICE">

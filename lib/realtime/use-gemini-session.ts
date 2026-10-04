@@ -25,6 +25,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionTurn } from "./types";
 import { createMicCapture, type MicCapture } from "./mic-capture";
 import { resolveGeminiAgent } from "./gemini-agent";
@@ -68,7 +69,11 @@ type GeminiServerMessage = {
   goAway?: { timeLeft?: string };
 };
 
-export function useGeminiSession(active: boolean, persona?: Persona): GeminiSession {
+export function useGeminiSession(
+  active: boolean,
+  persona?: Persona,
+  lang: Lang = "en",
+): GeminiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
@@ -98,6 +103,9 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
   // Latest selected persona, read at start() time (avoids stale closures).
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  // Read at start(): the session language picks the prompt/greeting variant.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const teardown = useCallback(() => {
     if (interruptTimerRef.current) {
@@ -286,7 +294,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
 
       // 3) Resolve the active persona's agent config, then open the WS
       //    (the ephemeral token rides the access_token query param).
-      const agent = resolveGeminiAgent(personaRef.current?.id);
+      const agent = resolveGeminiAgent(personaRef.current?.id, langRef.current);
       const ws = new WebSocket(`${REALTIME_URL}?access_token=${encodeURIComponent(token)}`);
       wsRef.current = ws;
 

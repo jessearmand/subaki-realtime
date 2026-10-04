@@ -24,6 +24,8 @@
 // `resolveXaiAgent(personaId)` merges a persona over BASE.
 
 import { SHARED_PERSONA_PROMPT as SHARED } from "./shared-persona-prompt";
+import { localizeAgent } from "./japanese";
+import type { Lang } from "@/lib/lang";
 // The full built-in roster (see docs.x.ai voice table for tone + samples);
 // `(string & {})` keeps autocomplete while admitting custom-voice IDs from
 // POST /v1/custom-voices.
@@ -241,8 +243,12 @@ const DEFAULT_PERSONA_AGENT: PersonaAgent = {
 You are a calm, engaging aspect of the ancient camellia spirit. Be helpful first and let the identity stay subtle.`,
 };
 
-/** Merge the selected persona's personality over the shared BASE transport config. */
-export function resolveXaiAgent(personaId?: string): XaiAgentConfig {
+/**
+ * Merge the selected persona's personality over the shared BASE transport
+ * config, in the session language (Japanese is prompt-level here — see
+ * japanese.ts).
+ */
+export function resolveXaiAgent(personaId?: string, lang: Lang = "en"): XaiAgentConfig {
   const persona = (personaId && PERSONA_AGENTS[personaId]) || DEFAULT_PERSONA_AGENT;
-  return { ...BASE, ...persona };
+  return localizeAgent({ ...BASE, ...persona }, personaId, lang);
 }

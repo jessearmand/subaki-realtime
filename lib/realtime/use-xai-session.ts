@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionTurn } from "./types";
 import { createMicCapture, type MicCapture } from "./mic-capture";
 import { resolveXaiAgent } from "./xai-agent";
@@ -64,7 +65,7 @@ function extractToken(data: unknown): string | null {
   return null;
 }
 
-export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
+export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "en"): XaiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
@@ -93,6 +94,9 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   // Latest selected persona, read at start() time (avoids stale closures).
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  // Read at start(): the session language picks the prompt/greeting variant.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const teardown = useCallback(() => {
     if (interruptTimerRef.current) {
@@ -261,7 +265,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
 
       // 3) Resolve the active persona's agent config, then open the WS
       //    (token rides the subprotocol since browsers can't set WS headers).
-      const agent = resolveXaiAgent(personaRef.current?.id);
+      const agent = resolveXaiAgent(personaRef.current?.id, langRef.current);
       const ws = new WebSocket(`${REALTIME_BASE}?model=${encodeURIComponent(agent.model)}`, [
         `xai-client-secret.${token}`,
       ]);

@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionTurn } from "./types";
 import { FIRECRAWL_TOOL_GUIDANCE, firecrawlMcpTool, resolveOpenaiAgent } from "./openai-agent";
 import type { RealtimeToolConfig } from "./openai-agent";
@@ -86,6 +87,8 @@ export function useOpenaiSession(
    * headphone users opt in to interrupt the agent by speaking.
    */
   bargeIn: boolean = false,
+  /** Session language — picks the prompt/greeting variant and the transcription hint. */
+  lang: Lang = "en",
 ): OpenaiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
@@ -124,6 +127,8 @@ export function useOpenaiSession(
   stateRef.current = callState;
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const bargeInRef = useRef(bargeIn);
   bargeInRef.current = bargeIn;
 
@@ -315,7 +320,7 @@ export function useOpenaiSession(
     };
 
     void (async () => {
-      const agent = resolveOpenaiAgent(personaRef.current?.id);
+      const agent = resolveOpenaiAgent(personaRef.current?.id, langRef.current);
 
       // 0) Kick off the Firecrawl MCP token fetch now; awaited before the SDP
       // exchange so `configure()` (data-channel open, which is later still)
@@ -674,7 +679,7 @@ export function useOpenaiSession(
     // don't leave the mic silenced waiting for the current playback to drain.
     if (bargeIn) setMicGated(false);
     if (!configuredRef.current) return;
-    const agent = resolveOpenaiAgent(personaRef.current?.id);
+    const agent = resolveOpenaiAgent(personaRef.current?.id, langRef.current);
     send({
       type: "session.update",
       session: {

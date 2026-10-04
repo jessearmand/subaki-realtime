@@ -14,8 +14,10 @@ import { ScrollArea } from "./scroll-area";
 import { ToolsButton } from "./tools-button";
 import { StreamingText } from "./streaming-text";
 import { TranscriptDrawer } from "./transcript-drawer";
+import { LangSwitch } from "./lang-switch";
 import { STATE_LABEL, isLive, type SessionApi } from "@/lib/realtime/types";
-import type { Persona, Provider, Tool } from "@/lib/data";
+import type { Provider, ResolvedPersona, Tool } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { Tweaks } from "@/hooks/use-tweaks";
 
 export function CallView({
@@ -24,14 +26,22 @@ export function CallView({
   persona,
   provider,
   providerModel,
+  lang,
+  setLang,
+  compact,
   tools,
 }: {
   tweaks: Tweaks;
   session: SessionApi;
-  persona: Persona;
+  /** The armed persona, resolved to the session language. */
+  persona: ResolvedPersona;
   provider: Provider;
   /** Display model — tracks the cascade LM picker (see providerModelLabel). */
   providerModel: string;
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  /** Mobile layout — the language switch uses its short labels. */
+  compact?: boolean;
   tools: Tool[];
 }) {
   const { callState, caption, muted, elapsed, canSendTurn, sendTurnEnabled } = session;
@@ -69,6 +79,7 @@ export function CallView({
             )}
           </div>
           <div className="tb-call-meta-r">
+            <LangSwitch lang={lang} onChange={setLang} compact={compact} />
             <Tag mono>PERSONA · {persona.name}</Tag>
           </div>
         </div>

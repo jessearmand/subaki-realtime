@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionApi, SessionTurn } from "./types";
 import { resolveElevenLabsAgentId } from "./elevenlabs-agent";
 import { useXaiSession } from "./use-xai-session";
@@ -58,12 +59,19 @@ function mockCaption(state: CallState): string {
 export function useRealtimeSession({
   provider,
   persona,
+  lang = "en",
   lmModelId,
   voiceBargeIn,
   pushToTalk,
 }: {
   provider: Provider;
   persona?: Persona;
+  /**
+   * Session language. ElevenLabs routes it to a dedicated JA agent; xAI, OpenAI
+   * and Gemini apply it through the prompt. Read when a call starts — changing
+   * it mid-call needs a new session (see use-session-routing).
+   */
+  lang?: Lang;
   /** Cascade-only: overrides the catalog default LM model (from the Providers picker). */
   lmModelId?: string;
   /** OpenAI-only: let user speech interrupt the agent (settings INTERRUPTIONS toggle). */
@@ -111,9 +119,9 @@ export function useRealtimeSession({
   const { status, mode, isSpeaking, startSession, endSession } = conversation;
 
   // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
-  const xai = useXaiSession(engine === "xai", persona);
-  const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false);
-  const gemini = useGeminiSession(engine === "gemini", persona);
+  const xai = useXaiSession(engine === "xai", persona, lang);
+  const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false, lang);
+  const gemini = useGeminiSession(engine === "gemini", persona, lang);
   const cascade = useCascadeSession(engine === "cascade", persona, lmModelId, pushToTalk ?? false);
   const fal = useFalSession(engine === "fal", persona);
   const moshi = useMoshiSession(engine === "moshi", persona);
@@ -220,7 +228,7 @@ export function useRealtimeSession({
     }
     if (engine === "elevenlabs") {
       if (callState === "idle" || callState === "ended") {
-        const agentId = resolveElevenLabsAgentId(persona?.id);
+        const agentId = resolveElevenLabsAgentId(persona?.id, lang);
         if (!agentId) {
           setCaption("— set NEXT_PUBLIC_ELEVENLABS_AGENT_ID —");
           return;
@@ -247,7 +255,7 @@ export function useRealtimeSession({
     } else {
       setCallState("ended");
     }
-  }, [engine, custom, callState, persona, startSession, endSession]);
+  }, [engine, custom, callState, persona, lang, startSession, endSession]);
 
   const hangup = useCallback(() => {
     if (custom) {

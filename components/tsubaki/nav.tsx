@@ -1,4 +1,5 @@
-import type { Persona, Provider } from "@/lib/data";
+import type { Provider, ResolvedPersona } from "@/lib/data";
+import { LANG_LABEL } from "@/lib/lang";
 
 export type NavId = "call" | "personas" | "providers" | "settings";
 
@@ -19,7 +20,8 @@ export function Sidebar({
 }: {
   nav: NavId;
   setNav: (id: NavId) => void;
-  persona: Persona;
+  /** The armed persona, resolved to the session language. */
+  persona: ResolvedPersona;
   provider: Provider;
   /** Display model — tracks the cascade LM picker (see providerModelLabel). */
   providerModel: string;
@@ -42,7 +44,7 @@ export function Sidebar({
       ))}
       <div className="tb-side-foot">
         <div>
-          <b>{persona.name}</b>
+          <b>{persona.name}</b> · {LANG_LABEL[persona.lang]}
           <br />
           active persona
         </div>

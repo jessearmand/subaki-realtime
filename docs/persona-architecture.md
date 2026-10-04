@@ -251,6 +251,25 @@ Voice selection should support the manifestation, but voice availability must no
 character. A temporary or imperfect voice mapping is acceptable while the behavioral prompt is
 being settled.
 
+### Session language
+
+The session language (EN / 日本語) is one switch that every engine honours at its own level
+(`Provider.ja` in `lib/data.ts`):
+
+| Level | Engines | How Japanese is set |
+| --- | --- | --- |
+| `agent` | ElevenLabs | A dedicated JA platform agent per persona (`tsubaki-<id>-ja`): JA prompt and a cast native-speaker voice. Routed by agent ID in `elevenlabs-agent.ts`. |
+| `prompt` | xAI, OpenAI, Gemini | No session language parameter exists. `lib/realtime/japanese.ts` appends a language rule to the English persona prompt and swaps the opening direction for the persona's Japanese greeting (`Persona.ja.greet`). Same voice. OpenAI additionally sets its transcription hint to `ja`. |
+| none | Mistral cascade, fal.ai, Kyutai | No Japanese path (Voxtral TTS has no Japanese; PersonaPlex is English-only). |
+
+Routing lives in `hooks/use-session-routing.ts`: Japanese on a transport with no path fails over
+to the last transport a Japanese session ran on (else ElevenLabs); picking a no-path transport
+while Japanese is on drops the language to EN. Any transport or language change during a call
+ends it and opens a new session — a session is never kept alive across the change.
+
+The Japanese greetings in `Persona.ja.greet` must match the JA agents' `first_message` in
+`scripts/elevenlabs/gen-agent-configs.ts` (minus the eleven_v3 audio tag).
+
 ## Provider Notes
 
 ### OpenAI Realtime

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Tag, Hr, Spec } from "./primitives";
-import { PROVIDERS, type Provider } from "@/lib/data";
+import { PROVIDERS, type JaSupport, type Provider } from "@/lib/data";
 import { lmModelsForEngine, providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
 import {
   DEFAULT_STT_BACKEND_ID,
@@ -8,6 +8,32 @@ import {
   providerExecLabel,
 } from "@/lib/realtime/voice-config";
 import type { CSSProperties } from "react";
+
+const LANGUAGE_SUB: Record<JaSupport | "none", string> = {
+  agent: "dedicated JA agent · tsubaki-<id>-ja",
+  prompt: "JA via instructions · same voice",
+  none: "no Japanese path on this engine",
+};
+
+const JA_MARK: Record<JaSupport, { label: string; title: string }> = {
+  agent: {
+    label: "JA · AGENT",
+    title: "Dedicated Japanese agent per persona — JA prompt and a cast native-speaker voice",
+  },
+  prompt: {
+    label: "JA · PROMPT",
+    title: "Japanese set through the session instructions — same voice, no language parameter",
+  },
+};
+
+/** Marks a JA-capable transport and how it gets there (solid: agent, dashed: prompt). */
+function JaMark({ level }: { level: JaSupport }) {
+  return (
+    <span className={`tb-ja-mark tb-ja-mark-${level}`} title={JA_MARK[level].title}>
+      {JA_MARK[level].label}
+    </span>
+  );
+}
 
 export function ProvidersView({
   provider,
@@ -36,8 +62,8 @@ export function ProvidersView({
           <div className="tb-h-eyebrow">002 / TRANSPORT</div>
           <h1 className="tb-h1">Realtime providers.</h1>
           <p className="tb-lede">
-            All six backends accept the same audio stream. Switch mid-call without dropping the
-            session.
+            All seven backends accept the same audio stream. Switching transport ends the call and
+            opens a fresh session.
           </p>
         </div>
         <div className="tb-page-hd-r">
@@ -72,7 +98,10 @@ export function ProvidersView({
                   <td className="tb-table-radio">
                     <span className={on ? "on" : ""} style={radioStyle} />
                   </td>
-                  <td className="tb-table-vendor">{p.name}</td>
+                  <td className="tb-table-vendor">
+                    {p.name}
+                    {p.ja && <JaMark level={p.ja} />}
+                  </td>
                   <td className="tb-mono-num">{providerModelLabel(p, lmModelId)}</td>
                   <td>
                     <Tag mono dot>
@@ -140,6 +169,11 @@ export function ProvidersView({
             label="TURN DETECTION"
             value={isCascade ? "Silero VAD" : "server VAD"}
             sub={isCascade ? "neural · browser · send-turn" : "200 ms silence → end-of-turn"}
+          />
+          <Spec
+            label="LANGUAGE"
+            value={provider.ja ? "EN · JA" : "EN ONLY"}
+            sub={LANGUAGE_SUB[provider.ja ?? "none"]}
           />
           <Spec label="TOOL FORMAT" value="OpenAI-style fn-calls" sub="translated per provider" />
         </div>

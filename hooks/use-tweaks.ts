@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { JaSans, JaSerif } from "@/lib/ja-fonts";
 
 export type OrbStyle = "gradient" | "mono" | "particles";
 export type TranscriptMode = "caption" | "drawer" | "off";
@@ -22,6 +23,9 @@ export interface Tweaks {
    * Send button ends your turn. OFF by default — silence ends the turn.
    */
   pushToTalk: boolean;
+  /** Japanese fallback faces (see lib/ja-fonts.ts) — sans for UI, serif for display. */
+  jaSans: JaSans;
+  jaSerif: JaSerif;
 }
 
 export const TWEAK_DEFAULTS: Tweaks = {
@@ -32,6 +36,8 @@ export const TWEAK_DEFAULTS: Tweaks = {
   providerPreview: true,
   voiceBargeIn: false,
   pushToTalk: false,
+  jaSans: "noto",
+  jaSerif: "noto",
 };
 
 // Camellia crimson is the Tsubaki default; burnt orange (#C2410C) stays selectable.

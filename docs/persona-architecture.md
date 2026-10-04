@@ -267,6 +267,9 @@ to the last transport a Japanese session ran on (else ElevenLabs); picking a no-
 while Japanese is on drops the language to EN. Any transport or language change during a call
 ends it and opens a new session — a session is never kept alive across the change.
 
+The same switch is the UI locale: `lib/i18n.ts` holds every label in English and Japanese, read
+through `useT()`, and `.tsubaki[data-lang]` drives the Japanese typography in `globals.css`.
+
 The Japanese greetings in `Persona.ja.greet` must match the JA agents' `first_message` in
 `scripts/elevenlabs/gen-agent-configs.ts` (minus the eleven_v3 audio tag).
 

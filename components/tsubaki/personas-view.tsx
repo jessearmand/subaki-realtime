@@ -1,5 +1,6 @@
 import { Btn } from "./primitives";
 import { LangSwitch } from "./lang-switch";
+import { useT } from "./i18n-context";
 import { PERSONAS, resolvePersona, type Persona, type Provider } from "@/lib/data";
 import type { Lang } from "@/lib/lang";
 
@@ -21,6 +22,7 @@ function PersonaCard({
   accent: string;
   onSelect: (p: Persona) => void;
 }) {
+  const t = useT();
   const r = resolvePersona(p, lang);
   const ja = lang === "ja";
   // The cast JA voice belongs to the dedicated agent; on a prompt-level
@@ -37,8 +39,7 @@ function PersonaCard({
             boxShadow: on ? `0 0 0 4px color-mix(in srgb, ${accent} 22%, transparent)` : "none",
           }}
           role="img"
-          aria-label={on ? "Active persona" : "Inactive persona"}
-          title={on ? "Active" : "Inactive"}
+          aria-label={t(on ? "aria.activePersona" : "aria.inactivePersona")}
         />
       </div>
       <div className="tb-persona-name">
@@ -53,24 +54,26 @@ function PersonaCard({
         {r.accent} · {r.aspect}
       </div>
       <div className="tb-persona-traits">
-        {r.traits.map((t) => (
-          <span key={t} className="tb-trait">
-            {t}
+        {r.traits.map((trait) => (
+          <span key={trait} className="tb-trait">
+            {trait}
           </span>
         ))}
       </div>
       <p className="tb-persona-desc">{r.desc}</p>
       {ja && r.greet && (
         <div className="tb-ja-greet">
-          <span className="tb-ja-greet-l">FIRST MESSAGE</span>
+          <span className="tb-ja-greet-l">{t("personas.firstMessage")}</span>
           <span className="tb-ja-greet-t">{r.greet}</span>
         </div>
       )}
       {ja && (
         <div className="tb-ja-support">
-          <span className="tb-ja-support-l">{jaAgent ? "JA AGENT" : "JA VOICE"}</span>
+          <span className="tb-ja-support-l">
+            {t(jaAgent ? "personas.jaAgent" : "personas.jaPrompt")}
+          </span>
           <span className="tb-ja-support-v">
-            {provider.name} · {jaAgent ? `tsubaki-${p.id}-ja` : "via prompt · same voice"}
+            {provider.name} · {jaAgent ? `tsubaki-${p.id}-ja` : t("personas.jaPromptValue")}
           </span>
         </div>
       )}
@@ -98,24 +101,22 @@ export function PersonasView({
   setLang: (lang: Lang) => void;
   accent: string;
 }) {
+  const t = useT();
   return (
     <div className="tb-personas">
       <div className="tb-page-hd">
         <div>
-          <div className="tb-h-eyebrow">001 / VOICE LIBRARY</div>
-          <h1 className="tb-h1">Personas.</h1>
-          <p className="tb-lede">
-            One ancient camellia spirit. Seven named manifestations, each voiced in English and
-            Japanese. Selection persists across providers.
-          </p>
+          <div className="tb-h-eyebrow">{t("personas.eyebrow")}</div>
+          <h1 className="tb-h1">{t("personas.title")}</h1>
+          <p className="tb-lede">{t("personas.lede")}</p>
         </div>
         <div className="tb-page-hd-r">
           <span className="tb-lang-field">
-            <span className="tb-lang-field-l">LANG</span>
+            <span className="tb-lang-field-l">{t("lang.label")}</span>
             <LangSwitch lang={lang} onChange={setLang} />
           </span>
-          <Btn small>+ CLONE NEW</Btn>
-          <Btn small>IMPORT</Btn>
+          <Btn small>{t("personas.clone")}</Btn>
+          <Btn small>{t("personas.import")}</Btn>
         </div>
       </div>
 
@@ -135,12 +136,10 @@ export function PersonasView({
 
         <div className="tb-persona-card tb-persona-empty">
           <div className="tb-persona-num">+</div>
-          <div className="tb-persona-name">EMPTY SLOT</div>
-          <p className="tb-persona-desc">
-            Drop a 30-second voice sample to clone. Consent prompt is run end-to-end.
-          </p>
+          <div className="tb-persona-name">{t("slot.name")}</div>
+          <p className="tb-persona-desc">{t("slot.desc")}</p>
           <div className="tb-persona-drop">
-            <span>DRAG · .wav · .mp3 · ≤ 30s</span>
+            <span>{t("slot.drop")}</span>
           </div>
         </div>
       </div>

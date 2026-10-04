@@ -1,3 +1,4 @@
+import { useT } from "./i18n-context";
 import { LANGS, LANG_LABEL, type Lang } from "@/lib/lang";
 
 /**
@@ -17,8 +18,9 @@ export function LangSwitch({
   /** Narrow layouts: "JA" instead of "日本語". */
   compact?: boolean;
 }) {
+  const t = useT();
   return (
-    <span className="tb-lang-sw" role="group" aria-label="Language">
+    <span className="tb-lang-sw" role="group" aria-label={t("lang.aria")}>
       {LANGS.map((id) => (
         <button
           key={id}

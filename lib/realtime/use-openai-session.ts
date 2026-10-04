@@ -78,6 +78,23 @@ function analyserLevel(
   return Math.min(1, Math.sqrt(sum / buf.length) * VOL_GAIN);
 }
 
+/**
+ * "429 · You have no credits remaining." — the status plus OpenAI's own reason,
+ * so an account-side refusal (exhausted credits, rate limit) isn't mistaken
+ * for a bug in the session config. Falls back to the bare status.
+ */
+async function describeSetupFailure(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: { message?: string; code?: string } };
+    // First sentence only — the rest is typically a billing/docs URL.
+    const reason = body.error?.message?.split(/(?<=\.)\s/)[0] ?? body.error?.code;
+    if (reason) return `${res.status} · ${reason}`;
+  } catch {
+    // non-JSON error body
+  }
+  return String(res.status);
+}
+
 export function useOpenaiSession(
   active: boolean,
   persona?: Persona,
@@ -613,7 +630,7 @@ export function useOpenaiSession(
           },
         });
         if (!sdpRes.ok) {
-          fail(`— OpenAI call setup failed (${sdpRes.status}) —`);
+          fail(`— OpenAI call setup failed (${await describeSetupFailure(sdpRes)}) —`);
           return;
         }
         const answer: RTCSessionDescriptionInit = { type: "answer", sdp: await sdpRes.text() };

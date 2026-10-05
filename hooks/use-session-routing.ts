@@ -50,8 +50,10 @@ export interface SessionRouting {
   settleRestart: () => void;
 }
 
-// Let the old session finish tearing down (socket close, mic release) before
-// the new one opens.
+// Give the old session a beat to release the socket/mic before the new one
+// opens. Not a correctness guard: each engine hook tags its setup with a
+// per-start attempt token, so setup still in flight from the replaced call
+// backs off on its own however late it resolves.
 const RESTART_DELAY_MS = 600;
 const NOTICE_MS = { live: 5600, idle: 4200 };
 

@@ -91,6 +91,10 @@ export function useGeminiSession(
 
   const mutedRef = useRef(false);
   const endedRef = useRef(false);
+  // Bumped on every start(): async setup from an earlier, hung-up attempt
+  // checks it and backs off instead of resuming into the replacement session
+  // (endedRef alone is reset to false by the new start()).
+  const attemptRef = useRef(0);
   const inputRmsRef = useRef(0);
   const turnSeqRef = useRef(0);
   const agentTurnIdRef = useRef<string | null>(null);
@@ -153,12 +157,16 @@ export function useGeminiSession(
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
+    const attempt = ++attemptRef.current;
+    // True once this attempt was hung up, failed, or superseded by a newer start().
+    const ended = () => endedRef.current || attemptRef.current !== attempt;
     streamingRef.current = false;
     setTurns([]);
     setCallState("connecting");
     setCaption("establishing session…");
 
     const fail = (msg: string) => {
+      if (ended()) return; // already torn down — never touch a newer session
       endedRef.current = true;
       teardown();
       setCallState("ended");
@@ -190,7 +198,7 @@ export function useGeminiSession(
             autoGainControl: true,
           },
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up (or failed) while the mic prompt was open.
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -208,7 +216,7 @@ export function useGeminiSession(
             earlyBufRef.current?.push(audio);
           }
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up while the worklet module loaded.
           capture.stop();
           return;
@@ -241,7 +249,7 @@ export function useGeminiSession(
         fail("— no Gemini token returned —");
         return;
       }
-      if (endedRef.current) return; // hung up (or mic denied) during fetch
+      if (ended()) return; // hung up (or mic denied) during fetch
 
       // ── transcript helpers ──────────────────────────────────────────────
       // The setTurns updaters must stay PURE (no ref mutation inside): React
@@ -299,7 +307,7 @@ export function useGeminiSession(
       wsRef.current = ws;
 
       ws.onopen = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         // First message MUST be setup; the session is live on `setupComplete`.
         send({
           setup: {
@@ -406,7 +414,7 @@ export function useGeminiSession(
       ws.onmessage = (event) => {
         const data = event.data;
         parseChain = parseChain.then(async () => {
-          if (endedRef.current) return; // ignore late events after teardown
+          if (ended()) return; // ignore late events after teardown
           let raw: string;
           if (typeof data === "string") raw = data;
           else if (data instanceof Blob) raw = await data.text();
@@ -423,7 +431,7 @@ export function useGeminiSession(
       };
 
       ws.onerror = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");
@@ -431,7 +439,7 @@ export function useGeminiSession(
       };
 
       ws.onclose = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");

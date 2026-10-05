@@ -128,6 +128,10 @@ export function useOpenaiSession(
   // audio is playing so speaker leak can't reach the model at all.
   const micGatedRef = useRef(false);
   const endedRef = useRef(false);
+  // Bumped on every start(): async setup from an earlier, hung-up attempt
+  // checks it and backs off instead of resuming into the replacement session
+  // (endedRef alone is reset to false by the new start()).
+  const attemptRef = useRef(0);
   const configuredRef = useRef(false);
   const greetedRef = useRef(false);
 
@@ -291,6 +295,9 @@ export function useOpenaiSession(
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
+    const attempt = ++attemptRef.current;
+    // True once this attempt was hung up, failed, or superseded by a newer start().
+    const ended = () => endedRef.current || attemptRef.current !== attempt;
     configuredRef.current = false;
     greetedRef.current = false;
     setTurns([]);
@@ -298,6 +305,7 @@ export function useOpenaiSession(
     setCaption("establishing session…");
 
     const fail = (msg: string) => {
+      if (ended()) return; // already torn down — never touch a newer session
       endedRef.current = true;
       teardown();
       setCallState("ended");
@@ -373,7 +381,7 @@ export function useOpenaiSession(
         fail("— microphone permission denied —");
         return;
       }
-      if (endedRef.current) {
+      if (ended()) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -387,6 +395,7 @@ export function useOpenaiSession(
       // <audio> element so Chrome's echo canceller keeps its reference signal),
       // but a suspended context still means dead orb meters.
       if (ctx.state === "suspended") await ctx.resume();
+      if (ended()) return; // teardown already closed this context
       const inAnalyser = ctx.createAnalyser();
       inAnalyser.fftSize = 1024;
       ctx.createMediaStreamSource(stream).connect(inAnalyser);
@@ -480,12 +489,12 @@ export function useOpenaiSession(
       };
 
       dc.onopen = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         configure();
       };
 
       dc.onmessage = (event) => {
-        if (endedRef.current) return;
+        if (ended()) return;
         let msg: OpenaiEvent;
         try {
           msg = JSON.parse(typeof event.data === "string" ? event.data : "") as OpenaiEvent;
@@ -610,13 +619,13 @@ export function useOpenaiSession(
         fail("— no OpenAI token returned —");
         return;
       }
-      if (endedRef.current) return;
+      if (ended()) return;
 
       // Resolve Firecrawl access before the SDP exchange — the data channel
       // (whose open event triggers configure()) can't beat setRemoteDescription.
       const firecrawlAuth = await firecrawlAuthPromise;
       if (firecrawlAuth) tools = [firecrawlMcpTool(firecrawlAuth)];
-      if (endedRef.current) return;
+      if (ended()) return;
 
       try {
         const offer = await pc.createOffer();
@@ -634,7 +643,7 @@ export function useOpenaiSession(
           return;
         }
         const answer: RTCSessionDescriptionInit = { type: "answer", sdp: await sdpRes.text() };
-        if (endedRef.current) return;
+        if (ended()) return;
         await pc.setRemoteDescription(answer);
       } catch {
         fail("— could not establish WebRTC session —");

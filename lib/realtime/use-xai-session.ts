@@ -83,6 +83,10 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
 
   const mutedRef = useRef(false);
   const endedRef = useRef(false);
+  // Bumped on every start(): async setup from an earlier, hung-up attempt
+  // checks it and backs off instead of resuming into the replacement session
+  // (endedRef alone is reset to false by the new start()).
+  const attemptRef = useRef(0);
   const configuredRef = useRef(false);
   const inputRmsRef = useRef(0);
   const turnSeqRef = useRef(0);
@@ -143,6 +147,9 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
+    const attempt = ++attemptRef.current;
+    // True once this attempt was hung up, failed, or superseded by a newer start().
+    const ended = () => endedRef.current || attemptRef.current !== attempt;
     configuredRef.current = false;
     streamingRef.current = false;
     setTurns([]);
@@ -150,6 +157,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
     setCaption("establishing session…");
 
     const fail = (msg: string) => {
+      if (ended()) return; // already torn down — never touch a newer session
       endedRef.current = true;
       teardown();
       setCallState("ended");
@@ -181,7 +189,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
             autoGainControl: true,
           },
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up (or failed) while the mic prompt was open.
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -196,7 +204,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
           if (streamingRef.current) send({ type: "input_audio_buffer.append", audio });
           else earlyBufRef.current?.push(audio);
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up while the worklet module loaded.
           capture.stop();
           return;
@@ -229,7 +237,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
         fail("— no xAI token returned —");
         return;
       }
-      if (endedRef.current) return; // hung up (or mic denied) during fetch
+      if (ended()) return; // hung up (or mic denied) during fetch
 
       // ── transcript helpers ──────────────────────────────────────────────
       // The setTurns updaters must stay PURE (no ref mutation inside): React
@@ -290,7 +298,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
       };
 
       ws.onmessage = (event) => {
-        if (endedRef.current) return; // ignore late events after teardown
+        if (ended()) return; // ignore late events after teardown
         let msg: XaiEvent;
         try {
           msg = JSON.parse(typeof event.data === "string" ? event.data : "") as XaiEvent;
@@ -369,7 +377,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
       };
 
       ws.onerror = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");
@@ -377,7 +385,7 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
       };
 
       ws.onclose = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");

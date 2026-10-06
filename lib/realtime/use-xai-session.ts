@@ -360,10 +360,14 @@ export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "
             break;
           case "conversation.item.added":
           case "conversation.item.created": {
+            // Only spoken user turns reach the transcript. The console never
+            // sends typed text, so a text-only user item is our own greeting
+            // direction (the bootstrap above) echoed back — a prompt, not
+            // something the user said.
             const item = msg.item;
             if (item?.role === "user") {
-              const t = item.content?.find((c) => c.transcript || c.text);
-              if (t) pushUser((t.transcript ?? t.text ?? "").trim());
+              const spoken = item.content?.find((c) => c.transcript);
+              if (spoken?.transcript) pushUser(spoken.transcript.trim());
             }
             break;
           }

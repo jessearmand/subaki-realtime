@@ -58,8 +58,11 @@ Secrets live in **fnox** (`fnox.toml`, OS keychain-backed): `ELEVENLABS_API_KEY`
 | KYUTAI | `moshi` | Local WS :8998 | none | `kyutai-local-provider` skill |
 
 - **Personas are data, not env vars.** Each engine resolves model/voice/prompt from the selected persona at `start()` (`*-agent.ts`). The provider-neutral character model is `docs/persona-architecture.md`; the shared identity prompt is `shared-persona-prompt.ts`.
-- **Engine hooks read persona and language through refs at `start()`**, never through stale closures.
-- **Each `start()` gets its own attempt token** (`attemptRef` + `ended()`), and every async continuation checks it. A route change hangs up and restarts the same hook, so a shared `ended` boolean alone would let leftover setup from the old call resume into the new one. Any new engine must follow this pattern.
+- **Engine hooks read persona (and language, where they take it) through refs at `start()`**, never through stale closures.
+- **Per-start attempt tokens:** a language change mid-call hangs up and restarts the *same* hook. A shared `endedRef` boolean alone lets leftover setup from the old call resume into the new one, because the new `start()` resets it to `false`.
+  - **Fenced:** xAI, OpenAI and Gemini give each `start()` its own token (`attemptRef` + `ended()`), checked by every async continuation.
+  - **Not fenced yet:** fal and KYUTAI still rely on a shared `endedRef`, and the cascade has no per-start guard. Routing never restarts them in place, because they have no Japanese path and any route change moves the session to another hook. A fast manual hang-up → CALL could still hit the race.
+  - Add the token before giving an engine a Japanese path, and in any new engine.
 - Engine hooks emit status captions as **English sentinel strings**, and `localizeCaption` (`lib/i18n.ts`, `CAPTION_KEYS`) maps them to keys. Adding a caption means adding the sentinel to `CAPTION_KEYS` and its key to both tables; otherwise it shows in English during a Japanese session. Rarer error captions still pass through untranslated.
 
 ## Multilingual

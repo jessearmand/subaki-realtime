@@ -50,7 +50,7 @@ jobs:
                   claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
                   # The repo keeps its project instructions in AGENTS.md (no
-                  # CLAUDE.md), and this runner has no AGENTS.md plugin, so point
+                  # CLAUDE.md), and this runner has no agents-md mod, so point
                   # Claude at it explicitly.
                   claude_args: |
                       --append-system-prompt "Project instructions live in AGENTS.md at the repo root (there is no CLAUDE.md). Read it before acting and follow it."

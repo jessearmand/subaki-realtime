@@ -44,6 +44,7 @@ function TranscriptionComponent() {
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
     commitStrategy: CommitStrategy.VAD, // Auto-commit on silence for mic input
+    includeLanguageDetection: true,
     onPartialTranscript: (data) => {
       // Show live feedback as user speaks
       console.log("Partial:", data.text);
@@ -87,13 +88,13 @@ function TranscriptionComponent() {
 
 ### `scribe.status` Values
 
-| Status           | Meaning                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| `"disconnected"` | No active connection                                                                              |
-| `"connecting"`   | Connection is being established                                                                   |
-| `"connected"`    | Connected and ready to receive audio                                                              |
+| Status | Meaning |
+|--------|---------|
+| `"disconnected"` | No active connection |
+| `"connecting"` | Connection is being established |
+| `"connected"` | Connected and ready to receive audio |
 | `"transcribing"` | Actively processing speech (transitions from `"connected"` when audio is detected or VAD commits) |
-| `"error"`        | An error occurred                                                                                 |
+| `"error"` | An error occurred |
 
 > **Important:** When checking if the session is active, always check for both `"connected"` and `"transcribing"`. The status transitions to `"transcribing"` during speech processing, so checking only `"connected"` will cause UI elements (buttons, waveforms, indicators) to incorrectly reset mid-session.
 
@@ -118,6 +119,7 @@ async function startTranscription() {
     token,
     modelId: "scribe_v2_realtime",
     includeTimestamps: true,
+    includeLanguageDetection: true,
     keyterms: ["ElevenLabs", "Scribe"],
     noVerbatim: true,
     microphone: {
@@ -157,7 +159,7 @@ async function startTranscription() {
 }
 ```
 
-`keyterms` biases realtime recognition toward important terms. `noVerbatim` removes filler words, false starts, and disfluencies from committed transcripts.
+`keyterms` biases realtime recognition toward important terms. `noVerbatim` removes filler words, false starts, and disfluencies from committed transcripts. `includeLanguageDetection` returns the detected language code on committed transcript events that include timestamps.
 
 ## Manual Audio Chunking
 
@@ -183,14 +185,16 @@ scribe.commit();
 
 ## Microphone Options
 
-| Option             | Description               |
-| ------------------ | ------------------------- |
+| Option | Description |
+|--------|-------------|
 | `echoCancellation` | Remove echo from speakers |
-| `noiseSuppression` | Filter background noise   |
-| `autoGainControl`  | Normalize volume levels   |
+| `noiseSuppression` | Filter background noise |
+| `autoGainControl` | Normalize volume levels |
 
 ## Security
 
 - Never expose your API key to the client
 - Always generate single-use tokens on your backend
 - Use authentication middleware to protect token endpoints
+- For enterprise zero-retention sessions, set `enableLogging: false` in `Scribe.connect` or
+  `useScribe`; this disables history features for the session

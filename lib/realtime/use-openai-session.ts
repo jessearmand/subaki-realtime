@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionTurn } from "./types";
 import { FIRECRAWL_TOOL_GUIDANCE, firecrawlMcpTool, resolveOpenaiAgent } from "./openai-agent";
 import type { RealtimeToolConfig } from "./openai-agent";
@@ -77,6 +78,23 @@ function analyserLevel(
   return Math.min(1, Math.sqrt(sum / buf.length) * VOL_GAIN);
 }
 
+/**
+ * "429 · You have no credits remaining." — the status plus OpenAI's own reason,
+ * so an account-side refusal (exhausted credits, rate limit) isn't mistaken
+ * for a bug in the session config. Falls back to the bare status.
+ */
+async function describeSetupFailure(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: { message?: string; code?: string } };
+    // First sentence only — the rest is typically a billing/docs URL.
+    const reason = body.error?.message?.split(/(?<=\.)\s/)[0] ?? body.error?.code;
+    if (reason) return `${res.status} · ${reason}`;
+  } catch {
+    // non-JSON error body
+  }
+  return String(res.status);
+}
+
 export function useOpenaiSession(
   active: boolean,
   persona?: Persona,
@@ -86,6 +104,8 @@ export function useOpenaiSession(
    * headphone users opt in to interrupt the agent by speaking.
    */
   bargeIn: boolean = false,
+  /** Session language — picks the prompt/greeting variant and the transcription hint. */
+  lang: Lang = "en",
 ): OpenaiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
@@ -108,6 +128,10 @@ export function useOpenaiSession(
   // audio is playing so speaker leak can't reach the model at all.
   const micGatedRef = useRef(false);
   const endedRef = useRef(false);
+  // Bumped on every start(): async setup from an earlier, hung-up attempt
+  // checks it and backs off instead of resuming into the replacement session
+  // (endedRef alone is reset to false by the new start()).
+  const attemptRef = useRef(0);
   const configuredRef = useRef(false);
   const greetedRef = useRef(false);
 
@@ -124,6 +148,8 @@ export function useOpenaiSession(
   stateRef.current = callState;
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const bargeInRef = useRef(bargeIn);
   bargeInRef.current = bargeIn;
 
@@ -269,6 +295,9 @@ export function useOpenaiSession(
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
+    const attempt = ++attemptRef.current;
+    // True once this attempt was hung up, failed, or superseded by a newer start().
+    const ended = () => endedRef.current || attemptRef.current !== attempt;
     configuredRef.current = false;
     greetedRef.current = false;
     setTurns([]);
@@ -276,6 +305,7 @@ export function useOpenaiSession(
     setCaption("establishing session…");
 
     const fail = (msg: string) => {
+      if (ended()) return; // already torn down — never touch a newer session
       endedRef.current = true;
       teardown();
       setCallState("ended");
@@ -315,7 +345,7 @@ export function useOpenaiSession(
     };
 
     void (async () => {
-      const agent = resolveOpenaiAgent(personaRef.current?.id);
+      const agent = resolveOpenaiAgent(personaRef.current?.id, langRef.current);
 
       // 0) Kick off the Firecrawl MCP token fetch now; awaited before the SDP
       // exchange so `configure()` (data-channel open, which is later still)
@@ -351,7 +381,7 @@ export function useOpenaiSession(
         fail("— microphone permission denied —");
         return;
       }
-      if (endedRef.current) {
+      if (ended()) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -365,6 +395,7 @@ export function useOpenaiSession(
       // <audio> element so Chrome's echo canceller keeps its reference signal),
       // but a suspended context still means dead orb meters.
       if (ctx.state === "suspended") await ctx.resume();
+      if (ended()) return; // teardown already closed this context
       const inAnalyser = ctx.createAnalyser();
       inAnalyser.fftSize = 1024;
       ctx.createMediaStreamSource(stream).connect(inAnalyser);
@@ -458,12 +489,12 @@ export function useOpenaiSession(
       };
 
       dc.onopen = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         configure();
       };
 
       dc.onmessage = (event) => {
-        if (endedRef.current) return;
+        if (ended()) return;
         let msg: OpenaiEvent;
         try {
           msg = JSON.parse(typeof event.data === "string" ? event.data : "") as OpenaiEvent;
@@ -588,13 +619,13 @@ export function useOpenaiSession(
         fail("— no OpenAI token returned —");
         return;
       }
-      if (endedRef.current) return;
+      if (ended()) return;
 
       // Resolve Firecrawl access before the SDP exchange — the data channel
       // (whose open event triggers configure()) can't beat setRemoteDescription.
       const firecrawlAuth = await firecrawlAuthPromise;
       if (firecrawlAuth) tools = [firecrawlMcpTool(firecrawlAuth)];
-      if (endedRef.current) return;
+      if (ended()) return;
 
       try {
         const offer = await pc.createOffer();
@@ -608,11 +639,11 @@ export function useOpenaiSession(
           },
         });
         if (!sdpRes.ok) {
-          fail(`— OpenAI call setup failed (${sdpRes.status}) —`);
+          fail(`— OpenAI call setup failed (${await describeSetupFailure(sdpRes)}) —`);
           return;
         }
         const answer: RTCSessionDescriptionInit = { type: "answer", sdp: await sdpRes.text() };
-        if (endedRef.current) return;
+        if (ended()) return;
         await pc.setRemoteDescription(answer);
       } catch {
         fail("— could not establish WebRTC session —");
@@ -674,7 +705,7 @@ export function useOpenaiSession(
     // don't leave the mic silenced waiting for the current playback to drain.
     if (bargeIn) setMicGated(false);
     if (!configuredRef.current) return;
-    const agent = resolveOpenaiAgent(personaRef.current?.id);
+    const agent = resolveOpenaiAgent(personaRef.current?.id, langRef.current);
     send({
       type: "session.update",
       session: {

@@ -8,11 +8,11 @@ In real-time transcription, the model continuously refines its understanding as 
 
 ## Transcript Types
 
-| Type                          | Description                                                                                                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Partial**                   | Interim "best guess" results that update frequently as audio is processed. Use for live feedback (showing text as the user speaks), but don't save these - they may change. |
-| **Committed**                 | Final, stable results after a commit occurs. Use these as the source of truth for your application - they won't change.                                                     |
-| **Committed with Timestamps** | Same as committed, but includes word-level timing data for subtitles, karaoke, or lip-sync.                                                                                 |
+| Type | Description |
+|------|-------------|
+| **Partial** | Interim "best guess" results that update frequently as audio is processed. Use for live feedback (showing text as the user speaks), but don't save these - they may change. |
+| **Committed** | Final, stable results after a commit occurs. Use these as the source of truth for your application - they won't change. |
+| **Committed with Timestamps** | Same as committed, but includes word-level timing data for subtitles, karaoke, or lip-sync. |
 
 ## Manual Commit (Default)
 
@@ -70,7 +70,6 @@ await connection.send({
 ```
 
 This helps with:
-
 - Continuing conversations after reconnection
 - Providing context for better accuracy
 - Handling sentence fragments
@@ -90,10 +89,10 @@ const scribe = useScribe({
   modelId: "scribe_v2_realtime",
   commitStrategy: CommitStrategy.VAD,
   // Optional VAD tuning:
-  vadSilenceThresholdSecs: 1.5, // Silence duration before commit
-  vadThreshold: 0.4, // Speech detection sensitivity (0-1)
-  minSpeechDurationMs: 100, // Minimum speech length required
-  minSilenceDurationMs: 100, // Minimum silence length required
+  vadSilenceThresholdSecs: 1.5,    // Silence duration before commit
+  vadThreshold: 0.4,               // Speech detection sensitivity (0-1)
+  minSpeechDurationMs: 100,        // Minimum speech length required
+  minSilenceDurationMs: 100,       // Minimum silence length required
 });
 ```
 
@@ -105,22 +104,22 @@ const scribe = useScribe({
 const connection = await client.speechToText.realtime.connect({
   modelId: "scribe_v2_realtime",
   vad: {
-    silenceThresholdSecs: 1.5, // Silence duration before commit
-    threshold: 0.4, // Speech detection sensitivity (0-1)
-    minSpeechDurationMs: 100, // Minimum speech length required
-    minSilenceDurationMs: 100, // Minimum silence length required
+    silenceThresholdSecs: 1.5,    // Silence duration before commit
+    threshold: 0.4,               // Speech detection sensitivity (0-1)
+    minSpeechDurationMs: 100,     // Minimum speech length required
+    minSilenceDurationMs: 100,    // Minimum silence length required
   },
 });
 ```
 
 ### Parameters
 
-| Parameter              | Description                                           | Default |
-| ---------------------- | ----------------------------------------------------- | ------- |
-| `silenceThresholdSecs` | Seconds of silence before auto-commit                 | 1.5     |
-| `threshold`            | Speech detection sensitivity (lower = more sensitive) | 0.4     |
-| `minSpeechDurationMs`  | Ignore speech shorter than this                       | 100     |
-| `minSilenceDurationMs` | Ignore silence shorter than this                      | 100     |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `silenceThresholdSecs` | Seconds of silence before auto-commit | 1.5 |
+| `threshold` | Speech detection sensitivity (lower = more sensitive) | 0.4 |
+| `minSpeechDurationMs` | Ignore speech shorter than this | 100 |
+| `minSilenceDurationMs` | Ignore silence shorter than this | 100 |
 
 ### When to Use VAD
 
@@ -138,8 +137,8 @@ const connection = await client.speechToText.realtime.connect({
 
 ## Supported Audio Formats
 
-| Format      | Sample Rate  | Notes                     |
-| ----------- | ------------ | ------------------------- |
-| PCM 16-bit  | 16kHz        | Recommended, best balance |
-| PCM 16-bit  | 8kHz - 48kHz | Supported range           |
-| μ-law 8-bit | 8kHz         | Telephony compatibility   |
+| Format | Sample Rate | Notes |
+|--------|-------------|-------|
+| PCM 16-bit | 16kHz | Recommended, best balance |
+| PCM 16-bit | 8kHz - 48kHz | Supported range |
+| μ-law 8-bit | 8kHz | Telephony compatibility |

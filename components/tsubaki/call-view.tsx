@@ -14,8 +14,12 @@ import { ScrollArea } from "./scroll-area";
 import { ToolsButton } from "./tools-button";
 import { StreamingText } from "./streaming-text";
 import { TranscriptDrawer } from "./transcript-drawer";
-import { STATE_LABEL, isLive, type SessionApi } from "@/lib/realtime/types";
-import type { Persona, Provider, Tool } from "@/lib/data";
+import { LangSwitch } from "./lang-switch";
+import { useT } from "./i18n-context";
+import { localizeCaption } from "@/lib/i18n";
+import { isLive, type SessionApi } from "@/lib/realtime/types";
+import type { Provider, ResolvedPersona, Tool } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { Tweaks } from "@/hooks/use-tweaks";
 
 export function CallView({
@@ -24,17 +28,28 @@ export function CallView({
   persona,
   provider,
   providerModel,
+  lang,
+  setLang,
+  compact,
   tools,
 }: {
   tweaks: Tweaks;
   session: SessionApi;
-  persona: Persona;
+  /** The armed persona, resolved to the session language. */
+  persona: ResolvedPersona;
   provider: Provider;
   /** Display model — tracks the cascade LM picker (see providerModelLabel). */
   providerModel: string;
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  /** Mobile layout — the language switch uses its short labels. */
+  compact?: boolean;
   tools: Tool[];
 }) {
-  const { callState, caption, muted, elapsed, canSendTurn, sendTurnEnabled } = session;
+  const t = useT();
+  const { callState, muted, elapsed, canSendTurn, sendTurnEnabled } = session;
+  // Status captions come from the engines in English; show them in the session language.
+  const caption = localizeCaption(t, session.caption);
   // Animation identity for the caption: while a turn is actively streaming
   // (live: true — cascade/xai/openai engines), key by the turn id so token
   // updates mutate the node in place. Everywhere else (mock script, status
@@ -60,16 +75,19 @@ export function CallView({
         <div className="tb-call-meta">
           <div className="tb-call-meta-l">
             <Tag mono dot>
-              SESSION · {mm}:{ss}
+              {t("call.session")} · {mm}:{ss}
             </Tag>
             {tweaks.providerPreview && (
               <Tag mono>
-                VIA {provider.name} · {providerModel}
+                {t("call.via")} {provider.name} · {providerModel}
               </Tag>
             )}
           </div>
           <div className="tb-call-meta-r">
-            <Tag mono>PERSONA · {persona.name}</Tag>
+            <LangSwitch lang={lang} onChange={setLang} compact={compact} />
+            <Tag mono>
+              {t("call.persona")} · {persona.name}
+            </Tag>
           </div>
         </div>
 
@@ -95,7 +113,7 @@ export function CallView({
             )}
             <div className="tb-call-state">
               <span className={`tb-call-state-dot tb-state-${callState}`} />
-              <span className="tb-call-state-l">{STATE_LABEL[callState]}</span>
+              <span className="tb-call-state-l">{t(`call.state.${callState}`)}</span>
               {live && (
                 <span className="tb-call-state-sub">
                   — {persona.name.toLowerCase()} · {provider.name.toLowerCase()}
@@ -103,7 +121,7 @@ export function CallView({
               )}
             </div>
             {canSendTurn && sendTurnEnabled && (
-              <div className="tb-call-manual-hint">MANUAL TURN · PRESS SEND TO REPLY</div>
+              <div className="tb-call-manual-hint">{t("call.manualHint")}</div>
             )}
           </div>
 
@@ -127,7 +145,7 @@ export function CallView({
             small
             onClick={session.toggleMute}
             active={muted}
-            aria-label={muted ? "Unmute microphone" : "Mute microphone"}
+            aria-label={t(muted ? "aria.unmute" : "aria.mute")}
           >
             <MicGlyph muted={muted} />
           </Btn>
@@ -135,7 +153,7 @@ export function CallView({
             small
             onClick={session.interrupt}
             disabled={callState !== "speaking"}
-            aria-label="Interrupt agent"
+            aria-label={t("aria.interrupt")}
           >
             <InterruptGlyph />
           </Btn>
@@ -145,7 +163,7 @@ export function CallView({
               primed={sendTurnEnabled}
               onClick={session.sendTurn}
               disabled={!sendTurnEnabled}
-              aria-label="Send turn"
+              aria-label={t("aria.send")}
             >
               <SendGlyph />
             </Btn>
@@ -154,7 +172,7 @@ export function CallView({
             primary
             onClick={live ? session.hangup : session.start}
             danger={live}
-            aria-label={live ? "Hang up" : "Call"}
+            aria-label={t(live ? "aria.hangup" : "aria.call")}
           >
             {live ? <PhoneHangGlyph /> : <WaveGlyph />}
           </Btn>
@@ -163,7 +181,7 @@ export function CallView({
               small
               onClick={() => setTranscriptOpen((o) => !o)}
               active={transcriptOpen}
-              aria-label={transcriptOpen ? "Hide transcript" : "Show transcript"}
+              aria-label={t(transcriptOpen ? "aria.hideTranscript" : "aria.showTranscript")}
             >
               <ScrollGlyph />
             </Btn>

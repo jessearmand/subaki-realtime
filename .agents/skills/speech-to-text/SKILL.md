@@ -3,11 +3,7 @@ name: speech-to-text
 description: Transcribe audio to text using ElevenLabs Scribe v2. Use when converting audio/video to text, generating subtitles, transcribing meetings, or processing spoken content.
 license: MIT
 compatibility: Requires internet access and an ElevenLabs API key (ELEVENLABS_API_KEY).
-metadata:
-  {
-    "openclaw":
-      { "requires": { "env": ["ELEVENLABS_API_KEY"] }, "primaryEnv": "ELEVENLABS_API_KEY" },
-  }
+metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv": "ELEVENLABS_API_KEY"}}
 ---
 
 # ElevenLabs Speech-to-Text
@@ -54,10 +50,12 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
 
 ## Models
 
-| Model ID             | Description                              | Best For                                        |
-| -------------------- | ---------------------------------------- | ----------------------------------------------- |
-| `scribe_v2`          | State-of-the-art accuracy, 90+ languages | Batch transcription, subtitles, long-form audio |
-| `scribe_v2_realtime` | Low latency (~150ms)                     | Live transcription, voice agents                |
+| Model ID | Description | Best For |
+|----------|-------------|----------|
+| `scribe_v2` | State-of-the-art accuracy, 90+ languages | Batch transcription, subtitles, long-form audio |
+| `scribe_v2_realtime` | Low latency (~150ms) | Live transcription, voice agents |
+| `scribe_v2_realtime_turbo` | Realtime transcription variant | Live transcription |
+| `scribe_v2_realtime_lite` | Realtime transcription variant | Live transcription |
 
 ## Transcription with Timestamps
 
@@ -90,13 +88,29 @@ for word in result.words:
 
 For call recordings, the batch API can label diarized speakers as `agent` and `customer` by setting `detect_speaker_roles=true` alongside `diarize=true`. This option is not compatible with `use_multi_channel=true`.
 
+If your workspace has registered speaker profiles, set `use_speaker_library=true` with `diarize=true` to match detected speakers against the speaker library.
+
 ```bash
 curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
   -H "xi-api-key: $ELEVENLABS_API_KEY" \
   -F "file=@call.mp3" \
   -F "model_id=scribe_v2" \
   -F "diarize=true" \
-  -F "detect_speaker_roles=true"
+  -F "detect_speaker_roles=true" \
+  -F "use_speaker_library=true"
+```
+
+## Multichannel Audio
+
+Use `use_multi_channel=true` when each speaker is isolated on a separate audio channel. By default, the API returns one transcript per channel under `transcripts`; set `multichannel_output_style="combined"` to receive one transcript merged by timestamp, with `channel_index` on each word.
+
+```python
+result = client.speech_to_text.convert(
+    file=audio_file,
+    model_id="scribe_v2",
+    use_multi_channel=True,
+    multichannel_output_style="combined",
+)
 ```
 
 ## Keyterm Prompting
@@ -130,7 +144,7 @@ print(f"Detected: {result.language_code} ({result.language_probability:.0%})")
 **Audio:** MP3, WAV, M4A, FLAC, OGG, WebM, AAC, AIFF, Opus
 **Video:** MP4, AVI, MKV, MOV, WMV, FLV, WebM, MPEG, 3GPP
 
-**Limits:** Up to 3GB file size, 10 hours duration
+**Limits:** Up to 5.0GB file size, 10 hours duration
 
 ## Response Format
 
@@ -140,14 +154,13 @@ print(f"Detected: {result.language_code} ({result.language_probability:.0%})")
   "language_code": "eng",
   "language_probability": 0.98,
   "words": [
-    { "text": "The", "start": 0.0, "end": 0.15, "type": "word", "speaker_id": "speaker_0" },
-    { "text": " ", "start": 0.15, "end": 0.16, "type": "spacing", "speaker_id": "speaker_0" }
+    {"text": "The", "start": 0.0, "end": 0.15, "type": "word", "speaker_id": "speaker_0"},
+    {"text": " ", "start": 0.15, "end": 0.16, "type": "spacing", "speaker_id": "speaker_0"}
   ]
 }
 ```
 
 **Word types:**
-
 - `word` - An actual spoken word
 - `spacing` - Whitespace between words (useful for precise timing)
 - `audio_event` - Non-speech sounds the model detected (laughter, applause, music, etc.)
@@ -162,7 +175,6 @@ except Exception as e:
 ```
 
 Common errors:
-
 - **401**: Invalid API key
 - **422**: Invalid parameters
 - **429**: Rate limit exceeded
@@ -172,8 +184,8 @@ Common errors:
 Monitor usage via `request-id` response header:
 
 ```python
-response = client.speech_to_text.convert.with_raw_response(file=audio_file, model_id="scribe_v2")
-result = response.parse()
+response = client.speech_to_text.with_raw_response.convert(file=audio_file, model_id="scribe_v2")
+result = response.data
 print(f"Request ID: {response.headers.get('request-id')}")
 ```
 
@@ -225,6 +237,7 @@ function TranscriptionComponent() {
     commitStrategy: CommitStrategy.VAD, // Auto-commit on silence for mic input
     keyterms: ["ElevenLabs", "Scribe"],
     noVerbatim: true,
+    includeLanguageDetection: true,
     onPartialTranscript: (data) => console.log("Partial:", data.text),
     onCommittedTranscript: (data) => setTranscript((prev) => prev + data.text),
   });
@@ -245,10 +258,13 @@ function TranscriptionComponent() {
 
 ### Commit Strategies
 
-| Strategy   | Description                                                                                     |
-| ---------- | ----------------------------------------------------------------------------------------------- |
+| Strategy | Description |
+|----------|-------------|
 | **Manual** | You call `commit()` when ready - use for file processing or when you control the audio segments |
-| **VAD**    | Voice Activity Detection auto-commits when silence is detected - use for live microphone input  |
+| **VAD** | Voice Activity Detection auto-commits when silence is detected - use for live microphone input |
+
+Set `includeLanguageDetection: true` to receive the detected language code on committed transcript
+events that include timestamps.
 
 ```typescript
 // React: set commitStrategy on the hook (recommended for mic input)
@@ -280,12 +296,13 @@ const connection = await client.speechToText.realtime.connect({
 
 ### Event Types
 
-| Event                                  | Description                |
-| -------------------------------------- | -------------------------- |
-| `partial_transcript`                   | Live interim results       |
-| `committed_transcript`                 | Final results after commit |
-| `committed_transcript_with_timestamps` | Final with word timing     |
-| `error`                                | Error occurred             |
+| Event | Description |
+|-------|-------------|
+| `partial_transcript` | Live interim results |
+| `committed_transcript` | Final results after commit |
+| `committed_transcript_with_timestamps` | Final with word timing |
+| `committed_transcript_entities` | Entities detected in a committed segment |
+| `error` | Error occurred |
 
 See real-time references for complete documentation.
 

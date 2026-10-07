@@ -36,15 +36,6 @@ export interface SessionApi {
   getOutputVolume: () => number;
 }
 
-export const STATE_LABEL: Record<CallState, string> = {
-  idle: "IDLE",
-  connecting: "CONNECTING",
-  listening: "LISTENING",
-  speaking: "SPEAKING",
-  interrupted: "INTERRUPTED",
-  ended: "ENDED",
-};
-
 export function isLive(s: CallState): boolean {
   return s !== "idle" && s !== "ended";
 }

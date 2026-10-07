@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionTurn } from "./types";
 import { createMicCapture, type MicCapture } from "./mic-capture";
 import { resolveXaiAgent } from "./xai-agent";
@@ -64,7 +65,7 @@ function extractToken(data: unknown): string | null {
   return null;
 }
 
-export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
+export function useXaiSession(active: boolean, persona?: Persona, lang: Lang = "en"): XaiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
@@ -82,6 +83,10 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
 
   const mutedRef = useRef(false);
   const endedRef = useRef(false);
+  // Bumped on every start(): async setup from an earlier, hung-up attempt
+  // checks it and backs off instead of resuming into the replacement session
+  // (endedRef alone is reset to false by the new start()).
+  const attemptRef = useRef(0);
   const configuredRef = useRef(false);
   const inputRmsRef = useRef(0);
   const turnSeqRef = useRef(0);
@@ -93,6 +98,9 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   // Latest selected persona, read at start() time (avoids stale closures).
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  // Read at start(): the session language picks the prompt/greeting variant.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const teardown = useCallback(() => {
     if (interruptTimerRef.current) {
@@ -139,6 +147,9 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
+    const attempt = ++attemptRef.current;
+    // True once this attempt was hung up, failed, or superseded by a newer start().
+    const ended = () => endedRef.current || attemptRef.current !== attempt;
     configuredRef.current = false;
     streamingRef.current = false;
     setTurns([]);
@@ -146,6 +157,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
     setCaption("establishing session…");
 
     const fail = (msg: string) => {
+      if (ended()) return; // already torn down — never touch a newer session
       endedRef.current = true;
       teardown();
       setCallState("ended");
@@ -177,7 +189,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
             autoGainControl: true,
           },
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up (or failed) while the mic prompt was open.
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -192,7 +204,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
           if (streamingRef.current) send({ type: "input_audio_buffer.append", audio });
           else earlyBufRef.current?.push(audio);
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up while the worklet module loaded.
           capture.stop();
           return;
@@ -225,7 +237,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
         fail("— no xAI token returned —");
         return;
       }
-      if (endedRef.current) return; // hung up (or mic denied) during fetch
+      if (ended()) return; // hung up (or mic denied) during fetch
 
       // ── transcript helpers ──────────────────────────────────────────────
       // The setTurns updaters must stay PURE (no ref mutation inside): React
@@ -261,7 +273,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
 
       // 3) Resolve the active persona's agent config, then open the WS
       //    (token rides the subprotocol since browsers can't set WS headers).
-      const agent = resolveXaiAgent(personaRef.current?.id);
+      const agent = resolveXaiAgent(personaRef.current?.id, langRef.current);
       const ws = new WebSocket(`${REALTIME_BASE}?model=${encodeURIComponent(agent.model)}`, [
         `xai-client-secret.${token}`,
       ]);
@@ -286,7 +298,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       };
 
       ws.onmessage = (event) => {
-        if (endedRef.current) return; // ignore late events after teardown
+        if (ended()) return; // ignore late events after teardown
         let msg: XaiEvent;
         try {
           msg = JSON.parse(typeof event.data === "string" ? event.data : "") as XaiEvent;
@@ -348,10 +360,14 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
             break;
           case "conversation.item.added":
           case "conversation.item.created": {
+            // Only spoken user turns reach the transcript. The console never
+            // sends typed text, so a text-only user item is our own greeting
+            // direction (the bootstrap above) echoed back — a prompt, not
+            // something the user said.
             const item = msg.item;
             if (item?.role === "user") {
-              const t = item.content?.find((c) => c.transcript || c.text);
-              if (t) pushUser((t.transcript ?? t.text ?? "").trim());
+              const spoken = item.content?.find((c) => c.transcript);
+              if (spoken?.transcript) pushUser(spoken.transcript.trim());
             }
             break;
           }
@@ -365,7 +381,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       };
 
       ws.onerror = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");
@@ -373,7 +389,7 @@ export function useXaiSession(active: boolean, persona?: Persona): XaiSession {
       };
 
       ws.onclose = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");

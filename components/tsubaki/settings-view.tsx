@@ -1,11 +1,16 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Hr, FieldRow, SwitchRow, ToolRow } from "./primitives";
+import { Hr, FieldRow, PreviewTag, SwitchRow, ToolRow } from "./primitives";
+import { useT } from "./i18n-context";
 import { MicSelector } from "@/components/ui/mic-selector";
 import { useAudioOutputDevices } from "@/hooks/use-audio-output-devices";
+import { LangSwitch } from "./lang-switch";
 import type { Tool } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 
 export function SettingsView({
   accent,
+  lang,
+  setLang,
   tools,
   setTools,
   muted,
@@ -16,6 +21,9 @@ export function SettingsView({
   onPushToTalkChange,
 }: {
   accent: string;
+  /** Session language — interface and voice. */
+  lang: Lang;
+  setLang: (lang: Lang) => void;
   tools: Tool[];
   setTools: (updater: (prev: Tool[]) => Tool[]) => void;
   muted: boolean;
@@ -27,6 +35,7 @@ export function SettingsView({
   pushToTalk: boolean;
   onPushToTalkChange: (v: boolean) => void;
 }) {
+  const t = useT();
   const [device, setDevice] = useState("");
   const outputs = useAudioOutputDevices();
   const [out, setOut] = useState("");
@@ -41,22 +50,31 @@ export function SettingsView({
 
   const accentColor = { accentColor: accent } as CSSProperties;
   const toggleTool = (name: string) =>
-    setTools((prev) => prev.map((t) => (t.name === name ? { ...t, on: !t.on } : t)));
+    setTools((prev) => prev.map((x) => (x.name === name ? { ...x, on: !x.on } : x)));
 
   return (
     <div className="tb-settings">
       <div className="tb-page-hd">
         <div>
-          <div className="tb-h-eyebrow">003 / CONFIGURATION</div>
-          <h1 className="tb-h1">Settings.</h1>
-          <p className="tb-lede">Local audio chain, model behaviour, tools and safety.</p>
+          <div className="tb-h-eyebrow">{t("settings.eyebrow")}</div>
+          <h1 className="tb-h1">{t("settings.title")}</h1>
+          <p className="tb-lede">{t("settings.lede")}</p>
         </div>
       </div>
 
       <div className="tb-settings-grid">
+        {/* GENERAL spans the full width so the 2×2 grid below keeps its order:
+            AUDIO IN | AUDIO OUT, BEHAVIOUR | TOOLS. */}
+        <section className="tb-settings-sec tb-settings-sec-wide">
+          <Hr label={t("sec.general")} />
+          <FieldRow label={t("field.language")} hint={t("field.language.hint")}>
+            <LangSwitch lang={lang} onChange={setLang} />
+          </FieldRow>
+        </section>
+
         <section className="tb-settings-sec">
-          <Hr label="AUDIO IN" />
-          <FieldRow label="INPUT DEVICE">
+          <Hr label={t("sec.audioIn")} />
+          <FieldRow label={t("field.inputDevice")}>
             <MicSelector
               value={device}
               onValueChange={setDevice}
@@ -65,15 +83,15 @@ export function SettingsView({
               className="w-full sm:w-full"
             />
           </FieldRow>
-          <FieldRow label="LEVEL">
+          <FieldRow label={t("field.level")}>
             <div className="tb-meter">
               <span style={{ width: "58%", background: accent }} />
             </div>
           </FieldRow>
-          <FieldRow label="DENOISE">
+          <FieldRow label={t("field.denoise")}>
             <SwitchRow value={denoise} onChange={setDenoise} />
           </FieldRow>
-          <FieldRow label="VAD SENSITIVITY" hint={`${vad.toFixed(2)} · medium`}>
+          <FieldRow label={t("field.vad")} hint={t("field.vad.hint", { v: vad.toFixed(2) })}>
             <input
               type="range"
               min="0"
@@ -88,8 +106,8 @@ export function SettingsView({
         </section>
 
         <section className="tb-settings-sec">
-          <Hr label="AUDIO OUT" />
-          <FieldRow label="OUTPUT DEVICE">
+          <Hr label={t("sec.audioOut")} />
+          <FieldRow label={t("field.outputDevice")}>
             <select className="tb-select" value={out} onChange={(e) => setOut(e.target.value)}>
               {outputs.length === 0 ? (
                 <option value="">System default</option>
@@ -102,17 +120,17 @@ export function SettingsView({
               )}
             </select>
           </FieldRow>
-          <FieldRow label="VOLUME">
+          <FieldRow label={t("field.volume")}>
             <input type="range" defaultValue="70" className="tb-range" style={accentColor} />
           </FieldRow>
-          <FieldRow label="SPATIAL">
+          <FieldRow label={t("field.spatial")}>
             <SwitchRow value={false} onChange={() => {}} />
           </FieldRow>
         </section>
 
         <section className="tb-settings-sec">
-          <Hr label="BEHAVIOUR" />
-          <FieldRow label="LATENCY BUDGET" hint={`${latency} ms · balanced`}>
+          <Hr label={t("sec.behaviour")} />
+          <FieldRow label={t("field.latency")} hint={t("field.latency.hint", { ms: latency })}>
             <input
               type="range"
               min="80"
@@ -130,23 +148,30 @@ export function SettingsView({
               <span>600</span>
             </div>
           </FieldRow>
-          <FieldRow label="INTERRUPTIONS" hint="voice barge-in · headphones only">
+          <FieldRow label={t("field.interruptions")} hint={t("field.interruptions.hint")}>
             <SwitchRow value={bargeIn} onChange={onBargeInChange} />
           </FieldRow>
-          <FieldRow label="PUSH-TO-TALK" hint="cascade · send button ends your turn">
+          <FieldRow label={t("field.ptt")} hint={t("field.ptt.hint")}>
             <SwitchRow value={pushToTalk} onChange={onPushToTalkChange} />
           </FieldRow>
         </section>
 
         <section className="tb-settings-sec">
-          <Hr label="TOOLS" />
-          {tools.map((t) => (
+          <Hr
+            label={
+              <>
+                {t("sec.tools")}
+                <PreviewTag />
+              </>
+            }
+          />
+          {tools.map((tool) => (
             <ToolRow
-              key={t.name}
-              name={t.name}
-              label={t.label}
-              on={t.on}
-              onToggle={() => toggleTool(t.name)}
+              key={tool.name}
+              name={tool.name}
+              label={tool.label}
+              on={tool.on}
+              onToggle={() => toggleTool(tool.name)}
             />
           ))}
         </section>

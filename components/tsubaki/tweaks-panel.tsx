@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { SwitchRow } from "./primitives";
 import { ACCENTS, type OrbStyle, type Tweaks, type TranscriptMode } from "@/hooks/use-tweaks";
+import { JA_SANS, JA_SERIF, type JaFont } from "@/lib/ja-fonts";
 
 function Segmented<T extends string>({
   value,
@@ -26,6 +27,32 @@ function Segmented<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+/** Labelled dropdown — for options too long for a Segmented control. */
+function FontSelect<V extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: V;
+  options: JaFont<V>[];
+  onChange: (v: V) => void;
+}) {
+  return (
+    <label className="tb-tweaks-field">
+      <span>{label}</span>
+      <select className="tb-select" value={value} onChange={(e) => onChange(e.target.value as V)}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -96,6 +123,22 @@ export function TweaksPanel({
             ))}
           </div>
         </div>
+
+        {/* CJK fallbacks only — Latin stays Plex Mono / Newsreader. Visible once a
+            session is in 日本語. */}
+        <div className="tb-tweaks-sect">Japanese type</div>
+        <FontSelect
+          label="Sans (UI)"
+          value={tweaks.jaSans}
+          options={JA_SANS}
+          onChange={(v) => setTweak("jaSans", v)}
+        />
+        <FontSelect
+          label="Serif (display · captions)"
+          value={tweaks.jaSerif}
+          options={JA_SERIF}
+          onChange={(v) => setTweak("jaSerif", v)}
+        />
 
         <div className="tb-tweaks-sect">Orb</div>
         <Segmented<OrbStyle>

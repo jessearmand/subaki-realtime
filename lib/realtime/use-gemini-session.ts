@@ -25,6 +25,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Persona } from "@/lib/data";
+import type { Lang } from "@/lib/lang";
 import type { CallState, SessionTurn } from "./types";
 import { createMicCapture, type MicCapture } from "./mic-capture";
 import { resolveGeminiAgent } from "./gemini-agent";
@@ -68,7 +69,11 @@ type GeminiServerMessage = {
   goAway?: { timeLeft?: string };
 };
 
-export function useGeminiSession(active: boolean, persona?: Persona): GeminiSession {
+export function useGeminiSession(
+  active: boolean,
+  persona?: Persona,
+  lang: Lang = "en",
+): GeminiSession {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
   const [caption, setCaption] = useState("press CALL to begin");
@@ -86,6 +91,10 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
 
   const mutedRef = useRef(false);
   const endedRef = useRef(false);
+  // Bumped on every start(): async setup from an earlier, hung-up attempt
+  // checks it and backs off instead of resuming into the replacement session
+  // (endedRef alone is reset to false by the new start()).
+  const attemptRef = useRef(0);
   const inputRmsRef = useRef(0);
   const turnSeqRef = useRef(0);
   const agentTurnIdRef = useRef<string | null>(null);
@@ -98,6 +107,9 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
   // Latest selected persona, read at start() time (avoids stale closures).
   const personaRef = useRef(persona);
   personaRef.current = persona;
+  // Read at start(): the session language picks the prompt/greeting variant.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const teardown = useCallback(() => {
     if (interruptTimerRef.current) {
@@ -145,12 +157,16 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
   const start = useCallback(() => {
     if (stateRef.current !== "idle" && stateRef.current !== "ended") return;
     endedRef.current = false;
+    const attempt = ++attemptRef.current;
+    // True once this attempt was hung up, failed, or superseded by a newer start().
+    const ended = () => endedRef.current || attemptRef.current !== attempt;
     streamingRef.current = false;
     setTurns([]);
     setCallState("connecting");
     setCaption("establishing session…");
 
     const fail = (msg: string) => {
+      if (ended()) return; // already torn down — never touch a newer session
       endedRef.current = true;
       teardown();
       setCallState("ended");
@@ -182,7 +198,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
             autoGainControl: true,
           },
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up (or failed) while the mic prompt was open.
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -200,7 +216,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
             earlyBufRef.current?.push(audio);
           }
         });
-        if (endedRef.current) {
+        if (ended()) {
           // Hung up while the worklet module loaded.
           capture.stop();
           return;
@@ -233,7 +249,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
         fail("— no Gemini token returned —");
         return;
       }
-      if (endedRef.current) return; // hung up (or mic denied) during fetch
+      if (ended()) return; // hung up (or mic denied) during fetch
 
       // ── transcript helpers ──────────────────────────────────────────────
       // The setTurns updaters must stay PURE (no ref mutation inside): React
@@ -286,12 +302,12 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
 
       // 3) Resolve the active persona's agent config, then open the WS
       //    (the ephemeral token rides the access_token query param).
-      const agent = resolveGeminiAgent(personaRef.current?.id);
+      const agent = resolveGeminiAgent(personaRef.current?.id, langRef.current);
       const ws = new WebSocket(`${REALTIME_URL}?access_token=${encodeURIComponent(token)}`);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         // First message MUST be setup; the session is live on `setupComplete`.
         send({
           setup: {
@@ -398,7 +414,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
       ws.onmessage = (event) => {
         const data = event.data;
         parseChain = parseChain.then(async () => {
-          if (endedRef.current) return; // ignore late events after teardown
+          if (ended()) return; // ignore late events after teardown
           let raw: string;
           if (typeof data === "string") raw = data;
           else if (data instanceof Blob) raw = await data.text();
@@ -415,7 +431,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
       };
 
       ws.onerror = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");
@@ -423,7 +439,7 @@ export function useGeminiSession(active: boolean, persona?: Persona): GeminiSess
       };
 
       ws.onclose = () => {
-        if (endedRef.current) return;
+        if (ended()) return;
         endedRef.current = true;
         teardown();
         setCallState("ended");

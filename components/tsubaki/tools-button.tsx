@@ -2,7 +2,8 @@
 // tools (derived from Settings). Greyed out when nothing's armed.
 
 import { useEffect, useRef } from "react";
-import { Btn } from "./primitives";
+import { Btn, PreviewTag } from "./primitives";
+import { useT } from "./i18n-context";
 import { WrenchGlyph } from "./glyphs";
 import type { Tool } from "@/lib/data";
 
@@ -15,8 +16,9 @@ export function ToolsButton({
   open: boolean;
   setOpen: (open: boolean) => void;
 }) {
+  const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
-  const active = tools.filter((t) => t.on);
+  const active = tools.filter((tool) => tool.on);
   const total = tools.length;
   const allOff = active.length === 0;
 
@@ -43,30 +45,35 @@ export function ToolsButton({
         onClick={() => !allOff && setOpen(!open)}
         disabled={allOff}
         active={open}
-        aria-label={allOff ? "Tools — none armed" : `Tools — ${active.length} of ${total} armed`}
+        aria-label={allOff ? t("aria.toolsNone") : t("aria.toolsSome", { n: active.length, total })}
         aria-expanded={open}
       >
         <WrenchGlyph />
         {!allOff && <span className="tb-btn-badge">{active.length}</span>}
       </Btn>
       {open && !allOff && (
-        <div className="tb-tools-pop" role="dialog" aria-label="Active tools">
+        <div className="tb-tools-pop" role="dialog" aria-label={t("aria.activeTools")}>
           <div className="tb-tools-pop-hd">
-            <span>ACTIVE TOOLS</span>
+            <span>
+              {t("tools.active")}
+              <PreviewTag />
+            </span>
             <span className="tb-tools-pop-count">
               {active.length} / {total}
             </span>
           </div>
           <div className="tb-tools-pop-body">
-            {active.map((t) => (
-              <div key={t.name} className="tb-tools-pop-row">
-                <span className="tb-tools-pop-name">{t.name}</span>
-                <span className="tb-tools-pop-label">{t.label}</span>
+            {active.map((tool) => (
+              <div key={tool.name} className="tb-tools-pop-row">
+                <span className="tb-tools-pop-name">{tool.name}</span>
+                <span className="tb-tools-pop-label">
+                  {t(`tool.${tool.name}`, null, tool.label)}
+                </span>
               </div>
             ))}
           </div>
           <div className="tb-tools-pop-foot">
-            <span>↳ CONFIGURE IN SETTINGS</span>
+            <span>{t("tools.configure")}</span>
           </div>
         </div>
       )}

@@ -162,3 +162,24 @@ export function InterruptGlyph({ size = 14 }: GlyphProps) {
     </svg>
   );
 }
+
+export function MenuGlyph({ size = 14 }: GlyphProps) {
+  // Three bars — opens the mobile sections drawer.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="square"
+      aria-hidden="true"
+      style={{ display: "block" }}
+    >
+      <line x1="2" y1="4" x2="14" y2="4" />
+      <line x1="2" y1="8" x2="14" y2="8" />
+      <line x1="2" y1="12" x2="14" y2="12" />
+    </svg>
+  );
+}

@@ -4,11 +4,11 @@ Stream audio chunks as they're generated for lower latency.
 
 ## Model Selection for Streaming
 
-| Model               | Latency | Use Case                     |
-| ------------------- | ------- | ---------------------------- |
-| `eleven_flash_v2_5` | ~75ms   | Lowest latency, 32 languages |
-| `eleven_flash_v2`   | ~75ms   | Lowest latency, English only |
-| `eleven_turbo_v2_5` | Low     | Balanced quality/speed       |
+| Model | Latency | Use Case |
+|-------|---------|----------|
+| `eleven_flash_v2_5` | ~75ms | Lowest latency, 32 languages |
+| `eleven_flash_v2` | ~75ms | Lowest latency, English only |
+| `eleven_turbo_v2_5` | Low | Balanced quality/speed |
 
 ## Python Streaming
 
@@ -56,6 +56,7 @@ play_stream(audio_stream)
 ```javascript
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { createWriteStream } from "fs";
+import { Readable } from "stream";
 
 const client = new ElevenLabsClient();
 
@@ -64,9 +65,8 @@ const audioStream = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
   modelId: "eleven_flash_v2_5",
 });
 
-// Write to file
-const writeStream = createWriteStream("output.mp3");
-audioStream.pipe(writeStream);
+// Write to file (convert() returns a web ReadableStream — bridge to a Node stream first)
+Readable.fromWeb(audioStream).pipe(createWriteStream("output.mp3"));
 
 // Or process chunks
 for await (const chunk of audioStream) {
@@ -187,7 +187,7 @@ async function textToSpeechWsStreaming(voiceId, modelId) {
           generation_config: {
             chunk_length_schedule: [120, 160, 250, 290],
           },
-        }),
+        })
       );
 
       // Send text chunks
@@ -213,7 +213,10 @@ async function textToSpeechWsStreaming(voiceId, modelId) {
   });
 }
 
-const audio = await textToSpeechWsStreaming("JBFqnCBsd6RMkjVDRZzb", "eleven_flash_v2_5");
+const audio = await textToSpeechWsStreaming(
+  "JBFqnCBsd6RMkjVDRZzb",
+  "eleven_flash_v2_5"
+);
 fs.writeFileSync("output.mp3", audio);
 ```
 
@@ -274,11 +277,11 @@ fs.writeFileSync("output.mp3", audio);
 
 ### Key Parameters
 
-| Parameter               | Description                                                                                                                                                                                                                                                                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parameter | Description |
+|-----------|-------------|
 | `chunk_length_schedule` | Array of character counts that trigger audio generation. The model waits until it has this many characters before generating audio, which improves quality but adds latency. Lower values = faster response, higher values = better prosody. Example: `[120, 160, 250, 290]` means generate after 120 chars, then after 160 more, etc. |
-| `flush`                 | Set `true` to force immediate audio generation without waiting for the character threshold. Use at the end of sentences or when you need audio NOW.                                                                                                                                                                                    |
-| `voice_settings`        | Adjustable per-message: `stability`, `similarity_boost`, `use_speaker_boost`                                                                                                                                                                                                                                                           |
+| `flush` | Set `true` to force immediate audio generation without waiting for the character threshold. Use at the end of sentences or when you need audio NOW. |
+| `voice_settings` | Adjustable per-message: `stability`, `similarity_boost`, `use_speaker_boost` |
 
 ### Important Notes
 

@@ -36,7 +36,6 @@ npm install @elevenlabs/react@latest   # React hooks
 ```
 
 **Import changes:**
-
 ```javascript
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Scribe } from "@elevenlabs/client";
@@ -88,6 +87,6 @@ Or use the `setup-api-key` skill for guided setup.
 
 ## Environment Variables
 
-| Variable             | Description                        |
-| -------------------- | ---------------------------------- |
+| Variable | Description |
+|----------|-------------|
 | `ELEVENLABS_API_KEY` | Your ElevenLabs API key (required) |

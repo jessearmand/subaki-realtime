@@ -137,8 +137,13 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --tb-mono: var(--font-plex-mono), ui-monospace, monospace;
-  --tb-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  /* A Japanese face sits behind the Latin ones as a per-glyph fallback: Latin
+     stays Plex Mono / Newsreader, kana and kanji fall through. Noto by default;
+     --tb-ja-sans / --tb-ja-serif are set from Tweaks (hooks/use-ja-fonts.ts). */
+  --tb-mono:
+    var(--font-plex-mono), var(--tb-ja-sans, var(--font-noto-sans-jp)), ui-monospace, monospace;
+  --tb-serif:
+    var(--font-newsreader), var(--tb-ja-serif, var(--font-noto-serif-jp)), ui-serif, Georgia, serif;
 }
 
 .tsubaki {
@@ -1529,48 +1534,6 @@
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
-.tb-mobile-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--line);
-  background: var(--paper);
-}
-.tb-mobile-tab {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  color: var(--ink-2);
-  padding: 10px 4px;
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  border-right: 1px solid var(--hair);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.tb-mobile-tab:last-child {
-  border-right: 0;
-}
-.tb-mobile-tab.on {
-  color: var(--ink);
-  background: var(--bg);
-  font-weight: 600;
-  position: relative;
-}
-.tb-mobile-tab.on::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-}
-
 .tb-mobile-sheet {
   position: absolute;
   left: 0;
@@ -1638,20 +1601,11 @@
   padding: 14px;
 }
 
-/* Responsive overrides: the single desktop shell adapts to the bottom-tab
-   mobile layout (the design's two artboards become one responsive app). */
+/* Responsive overrides: the single desktop shell adapts to the mobile layout
+   (the design's two artboards become one responsive app). Sections are reached
+   through the drawer, so nothing is fixed to the bottom edge. */
 .tb-mobile .tb-shell {
   grid-template-columns: 1fr;
-}
-.tb-mobile .tb-main {
-  padding-bottom: 44px; /* clear the fixed bottom tab bar */
-}
-.tb-mobile .tb-mobile-tabs {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 6;
 }
 .tb-mobile .tb-call {
   grid-template-columns: 1fr;
@@ -1666,22 +1620,13 @@
   padding: 18px 16px 14px;
 }
 .tb-mobile .tb-grid {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
 }
 .tb-mobile .tb-prov-detail {
   padding: 8px 14px 0;
 }
 .tb-mobile .tb-prov-specs {
   grid-template-columns: 1fr 1fr;
-}
-/* Keep the tweaks control above the fixed bottom tab bar on mobile. */
-.tb-mobile .tb-tweaks-toggle,
-.tb-mobile .tb-tweaks {
-  bottom: 56px;
-}
-.tb-mobile .tb-mobile-tab {
-  letter-spacing: 0.08em;
-  padding: 10px 2px;
 }
 
 /* ── Orb (custom CSS/SVG visualizer — mono + particles + states) ───────── */
@@ -2046,4 +1991,375 @@
 .tb-swatch.on {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
+}
+
+/* ── Session language (EN / 日本語) ───────────────────────────────────────
+   .tsubaki carries data-lang; Japanese typography cascades from it. */
+
+.tb-lang-sw {
+  display: inline-flex;
+  border: 1px solid var(--hair);
+}
+.tb-lang-btn {
+  appearance: none;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 4px 7px;
+  background: none;
+  border: 0;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.tb-lang-btn + .tb-lang-btn {
+  border-left: 1px solid var(--hair);
+}
+.tb-lang-btn.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.tb-lang-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+}
+.tb-lang-field-l {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+/* Persona cards in Japanese */
+.tb-name-sub {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  margin-left: 8px;
+  font-weight: 400;
+}
+.tb-ja-greet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 1px solid var(--hair);
+  padding-left: 9px;
+  margin-bottom: 10px;
+}
+.tb-ja-greet-l {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.tb-ja-greet-t {
+  font-family: var(--tb-serif);
+  font-size: 11.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+.tb-ja-support {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.tb-ja-support-l {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.tb-ja-support-v {
+  color: var(--ink-2);
+  text-align: right;
+}
+
+/* JA support level on a transport: dedicated agent (solid) vs prompt (dashed). */
+.tb-ja-mark {
+  white-space: nowrap;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  font-weight: 400;
+  border: 1px solid var(--hair);
+  padding: 1px 4px;
+  margin-left: 8px;
+  color: var(--ink-3);
+}
+.tb-ja-mark-agent {
+  color: var(--ink-2);
+  border-color: var(--ink-2);
+}
+.tb-ja-mark-prompt {
+  border-style: dashed;
+}
+
+/* Settings: full-width band above the 2×2 grid. */
+.tb-settings-sec-wide {
+  grid-column: 1 / -1;
+  border-right: 0;
+}
+
+/* Session routing strip. A zero-height sticky slot, so the strip overlays the
+   top of whatever page is open (no layout shift) and stays in view on scroll. */
+.tb-route-slot {
+  position: sticky;
+  top: 0;
+  height: 0;
+  overflow: visible;
+  z-index: 20;
+  flex: 0 0 auto;
+}
+.tb-route-notice {
+  position: absolute;
+  top: 12px;
+  left: 28px;
+  right: 28px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 7px 10px;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--line);
+  animation: tb-route-in 0.15s ease;
+}
+.tb-route-notice.done {
+  border-style: solid;
+}
+/* A forced language drop is a warning, not a confirmation — keep it dashed. */
+.tb-route-notice.tb-route-downgrade.done,
+.tb-route-notice.tb-route-unavailable {
+  border-style: dashed;
+}
+@keyframes tb-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tb-mobile .tb-route-notice {
+  top: 8px;
+  left: 14px;
+  right: 14px;
+}
+.tb-mobile .tb-page-hd {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tb-mobile .tb-call-meta {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Japanese typography. Kinsoku (no 。、」 at line start) and breaking inside
+   long kana runs. */
+.tsubaki[data-lang="ja"] {
+  line-break: strict;
+  overflow-wrap: anywhere;
+}
+/* Italic Japanese is a synthesized slant — set the serif contexts upright,
+   with the extra leading CJK text needs. */
+.tsubaki[data-lang="ja"] :is(.tb-caption, .tb-mobile-caption, .tb-turn-text, .tb-persona-desc) {
+  font-style: normal;
+  font-synthesis: none;
+}
+.tsubaki[data-lang="ja"] .tb-caption {
+  font-size: 18px;
+  line-height: 1.8;
+}
+.tsubaki[data-lang="ja"] .tb-mobile-caption {
+  font-size: 16px;
+  line-height: 1.8;
+}
+.tsubaki[data-lang="ja"] .tb-turn-text {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.tsubaki[data-lang="ja"] .tb-persona-desc {
+  font-size: 12.5px;
+  line-height: 1.85;
+}
+/* Tracked 9px labels fragment kana and are illegible in kanji: tighten the
+   tracking and lift the size where the label itself is Japanese. */
+.tsubaki[data-lang="ja"] :is(.tb-trait, .tb-persona-accent) {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+/* Japanese display type and labels. */
+.tsubaki[data-lang="ja"] .tb-h1 {
+  font-style: normal;
+  font-synthesis: none;
+  font-size: 38px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+.tsubaki.tb-mobile[data-lang="ja"] .tb-h1 {
+  font-size: 24px;
+}
+.tsubaki[data-lang="ja"] .tb-lede {
+  line-height: 1.8;
+}
+/* ALL-CAPS tracked labels don't translate: text-transform is a no-op on kana,
+   wide tracking fragments words, and 8–9px kanji is illegible. Tighten the
+   tracking everywhere and lift the smallest labels to a 10.5px floor. */
+.tsubaki[data-lang="ja"]
+  :is(
+    .tb-side-eyebrow,
+    .tb-spec-l,
+    .tb-field-hd,
+    .tb-turn-hd,
+    .tb-table thead th,
+    .tb-tools-pop-hd,
+    .tb-tools-pop-foot,
+    .tb-switch,
+    .tb-lang-field-l,
+    .tb-prov-inset-l,
+    .tb-tool-status,
+    .tb-call-manual-hint,
+    .tb-ja-mark
+  ) {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+.tsubaki[data-lang="ja"]
+  :is(
+    .tb-h-eyebrow,
+    .tb-nav-item,
+    .tb-tag,
+    .tb-hr-label,
+    .tb-label,
+    .tb-btn,
+    .tb-call-state,
+    .tb-call-state-sub,
+    .tb-transcript-hd,
+    .tb-topbar-status,
+    .tb-route-notice,
+    .tb-persona-drop,
+    .tb-brand-sub,
+    .tb-side-foot
+  ) {
+  letter-spacing: 0.04em;
+}
+
+/* PREVIEW tag — a mock surface (tools). Dashed accent outline reads as "not
+   live" without shouting. */
+.tb-preview-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 5px;
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+  color: var(--accent);
+  border: 1px dashed var(--accent);
+  vertical-align: 1px;
+  cursor: help;
+}
+.tsubaki[data-lang="ja"] .tb-preview-tag {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* Tweaks: labelled dropdown (Japanese type). */
+.tb-tweaks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--ink-2);
+}
+
+/* ── Mobile: menu button + sections drawer ────────────────────────────── */
+
+.tb-menu-btn {
+  appearance: none;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -6px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: 0;
+  flex: 0 0 auto;
+}
+.tb-menu-btn:hover {
+  border-color: var(--line);
+}
+.tb-menu-btn[aria-expanded="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.tb-mobile .tb-topbar {
+  gap: 12px;
+}
+/* Closed, the layer is visibility-hidden so the drawer's buttons leave the
+   tab order. */
+.tb-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  visibility: hidden;
+  transition: visibility 0s linear 0.22s;
+}
+.tb-drawer-layer.open {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.tb-drawer-scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--ink) 38%, transparent);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.tb-drawer-layer.open .tb-drawer-scrim {
+  opacity: 1;
+}
+.tb-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 240px;
+  max-width: 80%;
+  display: flex;
+  border-right: 1px solid var(--line);
+  box-shadow: 4px 0 0 var(--line);
+  transform: translateX(calc(-100% - 6px));
+  transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.tb-drawer-layer.open .tb-drawer {
+  transform: none;
+}
+/* The reused desktop Sidebar fills the drawer; the drawer owns the border. */
+.tb-drawer .tb-side {
+  flex: 1 1 auto;
+  border-right: 0;
+  padding-top: 22px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-drawer,
+  .tb-drawer-scrim {
+    transition: none;
+  }
+}
+/* Provider notes don't fit a phone; the active provider's specs carry the
+   detail instead. */
+.tb-mobile .tb-th-note,
+.tb-mobile .tb-table-note {
+  display: none;
+}
+.tb-mobile .tb-settings-sec {
+  border-right: 0;
 }

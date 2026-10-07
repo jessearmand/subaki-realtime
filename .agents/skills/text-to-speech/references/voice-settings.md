@@ -4,13 +4,13 @@ Fine-tune voice characteristics for your use case.
 
 ## Parameters
 
-| Parameter           | Range      | Default | Description                                                                                                                                                               |
-| ------------------- | ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stability`         | 0.0 - 1.0  | 0.5     | How consistent the voice sounds across the generation. Lower = more emotional variation and expressiveness (but can sound erratic). Higher = steady, predictable tone.    |
-| `similarity_boost`  | 0.0 - 1.0  | 0.75    | How closely to match the original voice sample. Higher sounds more like the source voice but may amplify audio artifacts or background noise from the original recording. |
-| `style`             | 0.0 - 1.0  | 0.0     | Exaggerates the unique characteristics of the voice's speaking style (v2+ and v3 models only). Higher values make the voice more "characterful" but can reduce stability. |
-| `speed`             | 0.25 - 4.0 | 1.0     | Speech speed multiplier. 1.0 = normal speed. Range is 0.25-4.0 for the REST API; the Agents Platform restricts to 0.7-1.2.                                                |
-| `use_speaker_boost` | boolean    | true    | Post-processing that enhances voice clarity and similarity to the original. Generally leave this on unless you're experiencing artifacts.                                 |
+| Parameter | Range | Default | Description |
+|-----------|-------|---------|-------------|
+| `stability` | 0.0 - 1.0 | 0.5 | How consistent the voice sounds across the generation. Lower = more emotional variation and expressiveness (but can sound erratic). Higher = steady, predictable tone. |
+| `similarity_boost` | 0.0 - 1.0 | 0.75 | How closely to match the original voice sample. Higher sounds more like the source voice but may amplify audio artifacts or background noise from the original recording. |
+| `style` | 0.0 - 1.0 | 0.0 | Exaggerates the unique characteristics of the voice's speaking style (v2+ and v3 models only). Higher values make the voice more "characterful" but can reduce stability. |
+| `speed` | 0.25 - 4.0 | 1.0 | Speech speed multiplier. 1.0 = normal speed. Range is 0.25-4.0 for the REST API; the Agents Platform restricts to 0.7-1.2. |
+| `use_speaker_boost` | boolean | true | Post-processing that enhances voice clarity and similarity to the original. Generally leave this on unless you're experiencing artifacts. |
 
 ## Python Example
 
@@ -70,7 +70,6 @@ curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb" 
 ## Use Case Recommendations
 
 ### Audiobooks / Narration
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.7,        # Consistent tone
@@ -80,7 +79,6 @@ voice_settings=VoiceSettings(
 ```
 
 ### Conversational / Chatbots
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.4,        # More expressive
@@ -90,7 +88,6 @@ voice_settings=VoiceSettings(
 ```
 
 ### News / Professional
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.8,        # Very consistent
@@ -100,7 +97,6 @@ voice_settings=VoiceSettings(
 ```
 
 ### Character Voices / Drama
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.3,        # Highly expressive

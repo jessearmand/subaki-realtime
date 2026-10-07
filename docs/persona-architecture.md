@@ -69,16 +69,24 @@ or voice IDs.
 
 Each real provider owns a configuration module that translates the catalog into its API:
 
+- Shared condensed identity (xAI, Gemini, Cascade): [`lib/realtime/shared-persona-prompt.ts`](../lib/realtime/shared-persona-prompt.ts)
+  — the single source for the condensed `SHARED` prose those engines import; edit it there, not per provider.
 - OpenAI: [`lib/realtime/openai-agent.ts`](../lib/realtime/openai-agent.ts)
 - xAI: [`lib/realtime/xai-agent.ts`](../lib/realtime/xai-agent.ts)
+- Gemini: [`lib/realtime/gemini-agent.ts`](../lib/realtime/gemini-agent.ts)
 - Cascade: [`lib/realtime/cascade-agent.ts`](../lib/realtime/cascade-agent.ts)
 - PersonaPlex (fal.ai hosted and local MLX):
   [`lib/realtime/personaplex-personas.ts`](../lib/realtime/personaplex-personas.ts)
-- ElevenLabs: agent configuration managed through the ElevenLabs integration
+- ElevenLabs: [`scripts/elevenlabs/gen-agent-configs.ts`](../scripts/elevenlabs/gen-agent-configs.ts)
+  — the versioned prompt document for the platform agents, in both languages (EN and JA
+  variants per persona). The persona lives server-side on the platform, so identity edits
+  reach it only by regenerating and running `elevenlabs agents push` — a doctrine change in
+  the shared module or the OpenAI variant must be mirrored here (EN **and** JA) and pushed.
 
-At present, the complete Furutsubaki prompt architecture is implemented in the OpenAI module
-first. Other providers should be updated only after the behavior has been tested and the
-characterization is considered stable.
+The OpenAI module remains the reference implementation of the full prompt architecture. xAI,
+Gemini, and Cascade carry ported manifestations built on the shared condensed identity module
+above; PersonaPlex conditions differently (see its provider notes). Port further providers via
+the propagation procedure below, after the behavior they port has been tested and is stable.
 
 ### This document
 
@@ -191,6 +199,9 @@ Each manifestation must remain recognizably different.
 ### Echo
 
 - Makes room for difficult thoughts and notices distress gently.
+- If the user describes self-harm, danger to themselves or others, or acute crisis, take it
+  seriously: answer plainly and with care, point toward real human support, and set the
+  atmospheric register aside for that exchange.
 - Must not invent prophecies or danger merely to sound uncanny.
 - Must not become flirtatious, possessive, or emotionally dependent.
 
@@ -239,6 +250,28 @@ The following remain provider-specific and should not be moved into the shared c
 Voice selection should support the manifestation, but voice availability must not redefine the
 character. A temporary or imperfect voice mapping is acceptable while the behavioral prompt is
 being settled.
+
+### Session language
+
+The session language (EN / 日本語) is one switch that every engine honours at its own level
+(`Provider.ja` in `lib/data.ts`):
+
+| Level | Engines | How Japanese is set |
+| --- | --- | --- |
+| `agent` | ElevenLabs | A dedicated JA platform agent per persona (`tsubaki-<id>-ja`): JA prompt and a cast native-speaker voice. Routed by agent ID in `elevenlabs-agent.ts`. |
+| `prompt` | xAI, OpenAI, Gemini | No session language parameter exists. `lib/realtime/japanese.ts` appends a language rule to the English persona prompt and swaps the opening direction for the persona's Japanese greeting (`Persona.ja.greet`). Same voice. OpenAI additionally sets its transcription hint to `ja`. |
+| none | Mistral cascade, fal.ai, Kyutai | No Japanese path (Voxtral TTS has no Japanese; PersonaPlex is English-only). |
+
+Routing lives in `hooks/use-session-routing.ts`: Japanese on a transport with no path fails over
+to the last transport a Japanese session ran on (else ElevenLabs); picking a no-path transport
+while Japanese is on drops the language to EN. Any transport or language change during a call
+ends it and opens a new session — a session is never kept alive across the change.
+
+The same switch is the UI locale: `lib/i18n.ts` holds every label in English and Japanese, read
+through `useT()`, and `.tsubaki[data-lang]` drives the Japanese typography in `globals.css`.
+
+The Japanese greetings in `Persona.ja.greet` must match the JA agents' `first_message` in
+`scripts/elevenlabs/gen-agent-configs.ts` (minus the eleven_v3 audio tag).
 
 ## Provider Notes
 

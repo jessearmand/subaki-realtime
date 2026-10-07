@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { Tag, Hr, Spec } from "./primitives";
-import { PROVIDERS, type Provider } from "@/lib/data";
+import { useT } from "./i18n-context";
+import { formatExec } from "@/lib/i18n";
+import { PROVIDERS, type JaSupport, type Provider } from "@/lib/data";
 import { lmModelsForEngine, providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
 import {
   DEFAULT_STT_BACKEND_ID,
@@ -8,6 +10,16 @@ import {
   providerExecLabel,
 } from "@/lib/realtime/voice-config";
 import type { CSSProperties } from "react";
+
+/** Marks a JA-capable transport and how it gets there (solid: agent, dashed: prompt). */
+function JaMark({ level }: { level: JaSupport }) {
+  const t = useT();
+  return (
+    <span className={`tb-ja-mark tb-ja-mark-${level}`} title={t(`providers.jaMarkTitle.${level}`)}>
+      {t(`providers.jaMark.${level}`)}
+    </span>
+  );
+}
 
 export function ProvidersView({
   provider,
@@ -22,6 +34,7 @@ export function ProvidersView({
   lmModelId: string;
   setLmModelId: (id: string) => void;
 }) {
+  const t = useT();
   // Surface the headline transport changes in the active-provider detail:
   // the cascade engine (STT→LM→TTS) and neural Silero VAD turn detection.
   const isCascade = provider.engine === "cascade";
@@ -33,16 +46,13 @@ export function ProvidersView({
     <div className="tb-providers">
       <div className="tb-page-hd">
         <div>
-          <div className="tb-h-eyebrow">002 / TRANSPORT</div>
-          <h1 className="tb-h1">Realtime providers.</h1>
-          <p className="tb-lede">
-            All six backends accept the same audio stream. Switch mid-call without dropping the
-            session.
-          </p>
+          <div className="tb-h-eyebrow">{t("providers.eyebrow")}</div>
+          <h1 className="tb-h1">{t("providers.title")}</h1>
+          <p className="tb-lede">{t("providers.lede")}</p>
         </div>
         <div className="tb-page-hd-r">
           <Tag mono dot>
-            AUTO-FAILOVER ON
+            {t("providers.autoFailover")}
           </Tag>
         </div>
       </div>
@@ -51,10 +61,10 @@ export function ProvidersView({
         <thead>
           <tr>
             <th style={{ width: 32 }} />
-            <th>VENDOR</th>
-            <th>MODEL</th>
-            <th>EXECUTION</th>
-            <th>NOTES</th>
+            <th>{t("providers.th.vendor")}</th>
+            <th>{t("providers.th.model")}</th>
+            <th>{t("providers.th.exec")}</th>
+            <th className="tb-th-note">{t("providers.th.notes")}</th>
           </tr>
         </thead>
         <tbody>
@@ -72,21 +82,24 @@ export function ProvidersView({
                   <td className="tb-table-radio">
                     <span className={on ? "on" : ""} style={radioStyle} />
                   </td>
-                  <td className="tb-table-vendor">{p.name}</td>
+                  <td className="tb-table-vendor">
+                    {p.name}
+                    {p.ja && <JaMark level={p.ja} />}
+                  </td>
                   <td className="tb-mono-num">{providerModelLabel(p, lmModelId)}</td>
                   <td>
                     <Tag mono dot>
-                      {providerExecLabel(p, lmBackend).toUpperCase()}
+                      {formatExec(t, providerExecLabel(p, lmBackend))}
                     </Tag>
                   </td>
-                  <td className="tb-table-note">{p.note}</td>
+                  <td className="tb-table-note">{t(`prov.note.${p.id}`, null, p.note)}</td>
                 </tr>
                 {models.length > 1 && (
                   <tr className={`tb-prov-inset-row ${on ? "on" : ""}`}>
                     <td />
                     <td colSpan={4} className="tb-prov-inset">
                       <div className="tb-prov-inset-inner">
-                        <span className="tb-prov-inset-l">LM MODEL</span>
+                        <span className="tb-prov-inset-l">{t("providers.lmModel")}</span>
                         <span className="tb-prov-models">
                           {models.map((m) => {
                             const sel = m.id === lmModelId;
@@ -118,30 +131,37 @@ export function ProvidersView({
       </table>
 
       <div className="tb-prov-detail">
-        <Hr label={`ACTIVE · ${provider.name}`} />
+        <Hr label={t("providers.active", { name: provider.name })} />
         <div className="tb-prov-specs">
           <Spec
-            label="ENGINE"
-            value={provider.engine ? provider.engine.toUpperCase() : "MOCK"}
+            label={t("spec.engine")}
+            value={provider.engine ? provider.engine.toUpperCase() : t("spec.engine.mock")}
             sub={
-              isCascade ? "STT → LM → TTS" : provider.engine ? "native realtime" : "design preview"
+              isCascade
+                ? "STT → LM → TTS"
+                : t(provider.engine ? "spec.engine.native" : "spec.engine.preview")
             }
           />
           {isCascade ? (
             <Spec
-              label="VOICE LEGS"
+              label={t("spec.voiceLegs")}
               value={`TTS ${DEFAULT_TTS_BACKEND_ID.toUpperCase()} · STT ${DEFAULT_STT_BACKEND_ID.toUpperCase()}`}
               sub="NEXT_PUBLIC_*_BACKEND · voice-models.json"
             />
           ) : (
-            <Spec label="CODEC" value="opus 48k mono" sub="server-side resample" />
+            <Spec label={t("spec.codec")} value="opus 48k mono" sub={t("spec.codec.sub")} />
           )}
           <Spec
-            label="TURN DETECTION"
-            value={isCascade ? "Silero VAD" : "server VAD"}
-            sub={isCascade ? "neural · browser · send-turn" : "200 ms silence → end-of-turn"}
+            label={t("spec.turn")}
+            value={isCascade ? "Silero VAD" : t("spec.turn.server")}
+            sub={t(isCascade ? "spec.turn.cascadeSub" : "spec.turn.serverSub")}
           />
-          <Spec label="TOOL FORMAT" value="OpenAI-style fn-calls" sub="translated per provider" />
+          <Spec
+            label={t("spec.language")}
+            value={t(provider.ja ? "spec.language.both" : "spec.language.enOnly")}
+            sub={t(`spec.language.sub.${provider.ja ?? "none"}`)}
+          />
+          <Spec label={t("spec.tools")} value={t("spec.tools.value")} sub={t("spec.tools.sub")} />
         </div>
       </div>
     </div>

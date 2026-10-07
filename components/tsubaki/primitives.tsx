@@ -1,6 +1,7 @@
 // Brutalist editorial primitives ported from the design bundle (screens.jsx).
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useT } from "./i18n-context";
 
 interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean;
@@ -61,7 +62,7 @@ export function Tag({
   );
 }
 
-export function Hr({ label }: { label?: string }) {
+export function Hr({ label }: { label?: ReactNode }) {
   if (!label) return <hr className="tb-hr" />;
   return (
     <div className="tb-hr-l">
@@ -102,7 +103,21 @@ export function FieldRow({
   );
 }
 
+/**
+ * Marks a surface that is still a mock — today the tool roster, which isn't
+ * wired to a live backend. Sits inline after a section or popover label.
+ */
+export function PreviewTag() {
+  const t = useT();
+  return (
+    <span className="tb-preview-tag" title={t("tag.previewTitle")}>
+      {t("tag.preview")}
+    </span>
+  );
+}
+
 export function SwitchRow({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -111,9 +126,9 @@ export function SwitchRow({ value, onChange }: { value: boolean; onChange: (v: b
       aria-checked={value}
       onClick={() => onChange(!value)}
     >
-      <span className="tb-switch-l">OFF</span>
+      <span className="tb-switch-l">{t("switch.off")}</span>
       <span className="tb-switch-knob" />
-      <span className="tb-switch-r">ON</span>
+      <span className="tb-switch-r">{t("switch.on")}</span>
     </button>
   );
 }
@@ -129,11 +144,14 @@ export function ToolRow({
   on: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   return (
     <button type="button" className={`tb-tool ${on ? "on" : "off"}`} onClick={onToggle}>
       <span className="tb-tool-name">{name}</span>
-      <span className="tb-tool-label">{label}</span>
-      <span className={`tb-tool-status ${on ? "on" : "off"}`}>{on ? "● ON" : "○ OFF"}</span>
+      <span className="tb-tool-label">{t(`tool.${name}`, null, label)}</span>
+      <span className={`tb-tool-status ${on ? "on" : "off"}`}>
+        {t(on ? "tool.on" : "tool.off")}
+      </span>
     </button>
   );
 }

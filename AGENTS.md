@@ -114,6 +114,7 @@ Before writing ElevenLabs API code, read the matching skill in `.claude/skills/`
 - **API key scopes are dashboard-managed.** A write failing with 401 `missing_permissions` (e.g. `convai_write`, `add_voice_from_voice_library`) means the key needs rescoping in the dashboard; it isn't an auth bug. The CLI has its own stored login (`elevenlabs auth whoami`), separate from the fnox key.
 
 ### Tooling
+- **There is deliberately no `CLAUDE.md`; this file is the only instruction file.** Codex and other AGENTS.md-native agents read it directly. Local Claude Code loads it through the `cc-plugin-agents-md` plugin (`claude-md-and-agents-md` mode), which is user-scoped, not in this repo. Claude Code without that plugin, such as the GitHub Actions in `.github/workflows/claude*.yml`, must be told to read `AGENTS.md` explicitly. Don't recreate `CLAUDE.md` to fix that.
 - **oxfmt may ignore `.gitignore` inside git worktrees** (`.git` is a file there). Generated JSON must therefore already pass `fmt:check`; the ElevenLabs generator handles this.
   - *Local check:* in a worktree with `agent_configs/` present, `bun run fmt:check` should stay clean.
 - **Maintainer-local agent hooks** (Claude Code settings, not in this repo) block writes to `.env*` and expect `rg` rather than `grep` / `find -name` in shell commands. Document env vars in the README instead of `.env` files.

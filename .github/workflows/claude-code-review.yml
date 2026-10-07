@@ -62,8 +62,9 @@ jobs:
                       Review this PR for Tsubaki, a Next.js 16 / React 19 / TypeScript
                       realtime voice console. The PR branch is already checked out.
 
-                      First read CLAUDE.md — it is the source of truth for conventions
-                      and the hard-won gotchas of this codebase. Hold the diff against it.
+                      First read AGENTS.md — it is the source of truth for conventions
+                      and the hard-won gotchas of this codebase (there is no CLAUDE.md).
+                      Hold the diff against it, including its multilingual rules.
 
                       Focus on what static analysis cannot catch (CI already runs tsc,
                       oxlint, oxfmt and `bun run build`, so do NOT re-run or report

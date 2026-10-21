@@ -3,7 +3,7 @@
 [![Oxc](https://github.com/jessearmand/subaki-realtime/actions/workflows/oxc.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/oxc.yml)
 [![Build](https://github.com/jessearmand/subaki-realtime/actions/workflows/build.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/build.yml)
 [![CodeQL](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml/badge.svg)](https://github.com/jessearmand/subaki-realtime/actions/workflows/codeql.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
 
 A brutalist inspired design of realtime voice console inspired by [古椿の霊](https://grokipedia.com/page/furutsubaki_no_rei) a yokai (妖怪) in Japanese folklore, made with Claude Design, and built from **ElevenLabs UI** primitives.
 
@@ -295,3 +295,7 @@ lib/realtime/              types (CallState, SessionApi), use-realtime-session (
 The `useRealtimeSession` hook owns the call state machine. It always calls
 `useConversation` (rules of hooks) but only lets it drive state when the active
 provider is ElevenLabs; otherwise the mocked timers own the lifecycle.
+
+## License
+
+This project is licensed under the Mozilla Public License, version 2.0 ([LICENSE](LICENSE) or <https://www.mozilla.org/MPL/2.0/>).

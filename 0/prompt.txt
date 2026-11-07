@@ -1,0 +1,9 @@
+Review the latest changes on this PR. I've tested switching the language from EN to JA during the initial connection, and unexpectedly discovered that the prompt is leaking through the conversation:
+
+
+```
+Open in Japanese. Say this greeting word for word, then wait for my reply: 「ようこそ。アリアです。寒かったでしょう、枝の下へどうぞ。……何を整えましょうか。」
+```
+
+
+The server is already running at localhost:3000 in Chrome with the transcript on the screen

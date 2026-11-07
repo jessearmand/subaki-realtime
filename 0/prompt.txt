@@ -1,0 +1,7 @@
+I've tested the STT without the realtime STT. Although it works, it does feel like it's stop recording before I finished talking.
+I think without somekind of VAD we'd need to provide a control on when to stop talking. 
+
+But, I'd like to migrate to the Mistral realtime STT. Also evaluate their typescript SDK instead of python, perhaps you can find how it should be setup with websocket?
+
+What exactly is being done here that doesn't fit our current system? It doesn't seem to need to set a WS auth headers
+https://docs.mistral.ai/studio-api/audio/speech_to_text/realtime_transcription#basic-usage

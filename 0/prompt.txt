@@ -1,0 +1,4 @@
+The local_web python module in ~/Develop/personaplex-mlx is noticeably better than the fal.ai version
+First of all, I think the greeting voice often is not played, and speaking to it while listening, also sometimes doesn't result in any response.
+
+I think we should start integrating kyutai instead with personaplex-mlx that was fixed

@@ -1,0 +1,7 @@
+We can keep the voice mapping, but some voices can be considered, none of them are british. I think the one that's obviously british is eve. So we might need to re-label some voice to not be british, but if they are british, then it's fine for the persona to not have that label
+
+Three that I'm interested in, we can keep Aria to be ara, and Vesper to be eve
+
+* carina (F)
+* zagan (M)
+* orion (M)

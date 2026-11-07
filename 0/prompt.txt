@@ -1,0 +1,2 @@
+Continue with fal.ai implementation for personaplex using fal/personaplex branch
+After we have a good stable setup, then we can return to the local kyutai personaplex with the fix from the PR to be able to perform real comparison

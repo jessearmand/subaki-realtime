@@ -1,0 +1,2 @@
+Hmmm, if you just need the firecrawl MCP, you should use this OAuth URL: 
+https://mcp.firecrawl.dev/v2/mcp

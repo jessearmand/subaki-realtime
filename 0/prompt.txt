@@ -1,0 +1,30 @@
+<task-notification>
+<task-id>a9cbb439cfdd27270</task-id>
+<tool-use-id>toolu_015dnVGAiq1SrocENjY1g5KT</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/9475ce3e-2381-4dc6-b0e9-48eb9193fb7f/tasks/a9cbb439cfdd27270.output</output-file>
+<status>completed</status>
+<summary>Agent "Refactor README into project skills" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Done. Report:
+
+## Files created
+- `/Users/jessearmand/Develop/realtime-persona/.claude/skills/cascade-provider/SKILL.md` — MISTRAL cascade (STT → LM → TTS): proxy architecture, fnox secrets table, all mise tasks, Silero VAD turn-taking with the tuned constants (VAD_REDEMPTION_MS 1400, VAD_POSITIVE 0.3, VAD_NEGATIVE 0.15, VAD_MIN_SPEECH_MS 160, FLUSH_GRACE_MS 1000) and the `tsubaki.vad-debug=1` trace flag, Send/push-to-talk, STT reconnect (MAX_STT_RECONNECTS 2, 500 ms delay, loud Web Speech fallback), the LM catalog incl. tinker/Inkling `extraBody reasoning_effort:"none"` and all six Inkling variants, the voice-legs catalog (voiceMap, batch STT via `/api/stt`), and the fully-local stack.
+- `.claude/skills/kyutai-local-provider/SKILL.md` — local PersonaPlex via personaplex-mlx fork: `mise run personaplex-local` (:8998, q8, kyutai RL), env overrides, the `ws://localhost:8998/api/chat` URL with `voice_prompt`/`text_prompt`/`format=pcm` and the tag-prefixed frame protocol (0x00/0x01/0x02), shared `personaplex-personas.ts`, server-side greeting gate, full-duplex rules.
+- `.claude/skills/fal-personaplex-provider/SKILL.md` — hosted PersonaPlex on fal.ai: JWT mint at `/api/fal/token` (incl. the singular-`app`-not-`allowed_apps` 422 gotcha, verified in the route), msgpack PCM16 @ 24 kHz transport, 18 voice presets, client-side `GreetingGate` (600 ms quiet / 12 s cap, verified against code), continuous-timeline rule, no-ASR transcript, pricing, cold-start/empty-dashboard-logs quirks.
+
+Frontmatter matches the existing skills' style (`name` + when-to-use `description`).
+
+## README.md
+Each of the three sections replaced by a 5–7-line summary (what it is, quick-start command, secrets) + relative link to its skill. ElevenLabs/xAI/OpenAI/Gemini sections and Architecture untouched. README went 456 → 258 lines. Nothing in `docs/` touched.
+
+## Staleness found while verifying (corrected in skills/README summary)
+1. README said the TTS route is **`/api/mistral/tts`** in two places — the real route is **`/api/tts`** (catalog-driven, serves both Mistral and local backends). Fixed everywhere I wrote.
+2. README's LM-catalog jsonc example showed `"default": "mistral-small"` — the actual default in `config/lm-models.json` is `gemma-4-31b`; skill states the real value.
+3. README's (retained) Architecture section says "Silero VAD **v5**" — the code pins `SILERO_TAG = "v6.2.1"` (with the v6-required 64-sample context) and `ORT_VERSION = "1.27.0"`; the skill carries the accurate pins. (Architecture section left as-is per instructions.)
+4. Local TTS returns raw audio bytes per the catalog's `audio-bytes` response shape (README said "raw MP3 bytes" — kept generic in the skill).
+5. Not fixed (out of scope, code not README): `lib/realtime/cascade-agent.ts` line 8 comment still says "TTS uses Mistral via /api/mistral/tts" — same stale route name in a source comment, worth a one-line cleanup later.
+
+## Gates
+`bunx tsc --noEmit` → `bun run lint` → `bun run fmt:check` all pass. Not committed. Note: `git status` also shows a modified `lib/realtime/use-cascade-session.ts` (a dead-air-continuation change) that predates/parallels this task — **not made by me**, left untouched.</result>
+<usage><subagent_tokens>113915</subagent_tokens><tool_uses>25</tool_uses><duration_ms>305194</duration_ms></usage>
+</task-notification>

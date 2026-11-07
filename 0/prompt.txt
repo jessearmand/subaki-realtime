@@ -1,0 +1,2 @@
+Also it seems that there's a problem with the local voxtral model POST api/llm returns 502 earlier
+Verify the local voxtral is running

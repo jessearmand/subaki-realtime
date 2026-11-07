@@ -1,0 +1,6 @@
+@"/Users/jessearmand/Develop/personaplex-mlx/astronaut_conversation.webm"
+I have recorded a conversation with the rl-seamless model. Yes, the greeting glitch remains. When you mentioned that it's inherent in the architecture, what exactly do you mean? We can write this down in @docs/personaplex-local-inference.md 
+
+Next, is to test voxtral 
+https://github.com/awni/voxmlx
+https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602

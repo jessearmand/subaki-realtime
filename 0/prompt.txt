@@ -1,0 +1,5 @@
+Ok, that's not a problem, I'm curious about the OAuth flow. Then, there's an error when starting a call
+
+— Unknown parameter: 'session.tools[0].server_description'. —
+
+You can test this in Chrome

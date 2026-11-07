@@ -1,0 +1,7 @@
+I understand now. The cascade engine `GreetingGate` is fine because it's not meant to be a realtime full-duplex conversation. 
+While for gpt-realtime-2 we can provide a manual interrupt button, and tuning the turn_detection at the same time. 
+
+Also explore OpenAI's documentation about VAD
+https://developers.openai.com/api/docs/guides/realtime-vad
+
+Do they have any best practice for this speaker - mic loop interruption?

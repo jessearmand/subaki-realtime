@@ -1,0 +1,12 @@
+@"/Users/jessearmand/Develop/latent-space-generator"
+/security-review perform a licensing and security review, I have staged some changes 
+
+Then, I'd like to create a repository on github, with the name `subaki-realtime` instead of the full `tsubaki`
+
+Perform a search on github to understand the implication of using this name
+
+If everything is fine, I'd like to add some github workflows, and at least it should have a linter:
+https://oxc.rs/docs/guide/usage/linter/ci.html
+https://oxc.rs/docs/guide/usage/formatter/ci.html
+
+Another workflow I'm considering is codeql like it was done in `latent-space-generator` project, review the configuration there to understand how it can be transferred, and to see if anything is out-of-date

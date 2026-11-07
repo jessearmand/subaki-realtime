@@ -1,0 +1,6 @@
+<!-- attach -->
+> The xAI, OpenAI, and Gemini prompts still open with "through Tsubaki, a realtime voice interface" — if you want the same in-world framing across every engine, it's the same rewrite applied to their SHARED constants.
+
+Perform the same update of system instructions or personas across providers, and for this turn, we don't need to do as much probing as we did earlier. Simply synchronize the prompts
+
+Although pay attention that we might have different convention regarding which persona is British or not, and we don't have Scottish accent in other providers.

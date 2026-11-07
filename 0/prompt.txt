@@ -1,0 +1,4 @@
+Okay, I've upgraded the account, and we can perform what you suggested to handle the crash.
+But, first let's modify the nova system prompt only for elevenlabs agent, the accent should be Scottish, not British. 
+
+But, we don't need to change the personas card, only the elevenlabs config

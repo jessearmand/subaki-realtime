@@ -1,0 +1,28 @@
+The audio is now better at both fal.ai and local kyutai server. Although there's a bit of glitch at the start of the greeting, but not for every greeting, only on Vesper:
+
+```
+Hello, you' through to Blacklist Listening. How can I help today?
+```
+
+
+Then, there's a decoding error in the local server:
+
+```
+mise run personaplex-local
+[personaplex-local] $ # The KYUTAI provider row's engine (lib/realtime/use-moshi-session.ts) connects
+[Warn] Echo cancellation is not implemented in this barebone web client. Use headphones to avoid feedback.
+[Info] retrieving static content
+[Info] warming up generation graph
+[Info] warmup complete in 0.9s
+[Info] listening on http://localhost:8998
+======== Running on http://localhost:8998 ========
+(Press CTRL+C to quit)
+error in decoder thread sending on a closed channel
+error in encoder thread sending on a closed channel
+error in encoder thread sending on a closed channel
+error in encoder thread sending on a closed channel
+error in decoder thread sending on a closed channel
+```
+
+
+Next, what is the deprecated ScriptProcessor about, and yes we can migrate them if it's not needed anymore

@@ -1,0 +1,4 @@
+There's actually Voxtral TTS MLX 6-bit version here:
+https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-6bit
+
+Try the voxtral TTS first. Then  cleanup the scratchpad/ unless if you still need some files from there

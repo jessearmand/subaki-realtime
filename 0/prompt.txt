@@ -1,0 +1,2 @@
+You can list all the voices here, MISTRAL_API_KEY is set via fnox
+https://docs.mistral.ai/en/studio-api/audio/text_to_speech/voices?tab=list#explorer-tabs-tts-voices

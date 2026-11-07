@@ -1,0 +1,3 @@
+A few things before committing, because fonts are loaded from `next/font/google` do we need still need the fonts in `fonts/` 
+
+Then, mem0 is still not included in this change, but it will be a separate feature in relation to memory usage

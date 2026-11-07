@@ -1,0 +1,3 @@
+I've tested with a headset, and the original local_web.py is still noticeably better, smoother without the glitches in the audio. 
+
+But, an improvement compared to the fal.ai is the local server is much more responsive. But the audio glitch is still there as if the greeting-stability fix wasn't applied, and now the crackling or glitch occured not only on the greeting it seems.

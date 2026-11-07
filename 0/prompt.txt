@@ -1,0 +1,1 @@
+Ok forget about: Qwen3.6-35B-A3B, I can test that separately, let's establish the rest

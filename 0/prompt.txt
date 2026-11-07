@@ -1,0 +1,1 @@
+I've set the OPENAI_API_KEY via fnox, and you could run the test now with chrome

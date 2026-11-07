@@ -1,0 +1,5 @@
+@"/Users/jessearmand/Develop/subaki-design-system"
+Yes, let's commit these changes, and create a separate repository for the design system under ~/Develop/subaki-design-system/
+I think .design-sync should be migrated over to ~/Develop/subaki-design-system?
+
+Update NOTES.md, and I suppose the gitgnored design system related files will also need to be copied over if they're referencing these design-system

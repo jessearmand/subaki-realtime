@@ -1,0 +1,3 @@
+Before moving on with the local model, let's separate the Voxtral local inference from @docs/personaplex-local-inference.md into a separate document under docs/ writing down what needs to be prepared for Voxtral. 
+
+Then, track the new mistral focused local inference, push to remote branch, and create a PR to main

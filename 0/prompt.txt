@@ -1,0 +1,3 @@
+I added a `## Review` section in @docs/personaplex-local-inference.md 
+
+Examine what's the problem with the initial tokens to output greeting, before I could actually test further.

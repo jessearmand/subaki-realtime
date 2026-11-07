@@ -1,0 +1,33 @@
+We can use these models for huggingface inference instead on ~/Develop/voice-cascade/ and re-test
+
+* Qwen/Qwen3.6-35B-A3B
+* google/gemma-4-26B-A4B-it
+
+For the GGUF model, we can use, with llama-server (which I already installed):
+https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF
+
+
+```
+./build/bin/llama-server \
+  -hf unsloth/gemma-4-12B-it-qat-GGUF:UD-Q4_K_XL \
+  --spec-type draft-mtp --spec-draft-n-max 4 \
+  -ngl 999 -fa on
+```
+
+
+While another way to run it is here, which I'm not sure what's the difference
+
+https://unsloth.ai/docs/models/mtp#llama-server-deployment
+
+```
+./llama.cpp/llama-server \
+    --model unsloth/gemma-4-12B-it-qat-GGUF/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf \
+    --mmproj unsloth/gemma-4-12B-it-qat-GGUF/mmproj-F16.gguf \
+    --model-draft unsloth/gemma-4-12B-it-qat-GGUF/mtp-gemma-4-12B-it.gguf \
+    --temp 1.0 \
+    --top-p 0.95 \
+    --top-k 64 \
+    --alias "unsloth/gemma-4-12b-it-qat-GGUF" \
+    --port 8001 \
+    --chat-template-kwargs '{"enable_thinking":true}'
+```

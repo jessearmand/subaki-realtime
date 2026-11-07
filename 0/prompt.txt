@@ -1,0 +1,97 @@
+<task-notification>
+<task-id>a8c14b44ac41489dc</task-id>
+<tool-use-id>toolu_01VvPGxqXxgpgeqb6aZQNGu9</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/d8e9ee42-070d-4170-82f6-c165661af7d2/tasks/a8c14b44ac41489dc.output</output-file>
+<status>completed</status>
+<summary>Agent "Research Gemini Live JA support" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>All questions are answered. Here is the report.
+
+---
+
+# Gemini Live API — Japanese support for realtime speech-to-speech
+
+## 1. Does the Live API support Japanese speech in/out? Which models?
+
+**Yes.** Japanese (`ja`) is on the official Live API supported-languages list (70 languages) for both speech input and audio output.
+
+- **Current model: `gemini-3.1-flash-live-preview`** (native audio output; the model this project already uses in `/Users/jessearmand/Develop/realtime-persona/lib/realtime/gemini-agent.ts`) — full Japanese in/out.
+- `gemini-2.5-flash-native-audio-preview-12-2025` (native audio) — supported Japanese, but is **deprecated**; migrate to 3.1.
+- **Half-cascade models (`gemini-live-2.5-flash-preview`, `gemini-2.0-flash-live-001`) are already shut down** (shutdown date was December 9, 2025). As of today there is no half-cascade option — every live model is native-audio.
+- `gemini-3.5-live-translate-preview` exists separately for live streaming translation (70+ languages).
+
+Source: https://ai.google.dev/gemini-api/docs/live-guide (Supported languages table; Japanese = `ja`).
+
+## 2. Language configuration — `languageCode` in `speechConfig`
+
+The field exists in the API schema but **native-audio models do not support it**. Verbatim from the capabilities guide:
+
+&gt; "Native audio output models automatically choose the appropriate language and **don't support explicitly setting the language code**."
+
+So for `gemini-3.1-flash-live-preview` you do **not** set a language — the model auto-detects from spoken input, and you steer it via system instructions (see #5).
+
+For completeness, the schema shape (this was only honored by the now-retired half-cascade models; sending it to a native-audio model is at best ignored):
+
+`SpeechConfig` (defined at https://ai.google.dev/api/generate-content#SpeechConfig, referenced by the Live setup's `generationConfig`):
+
+```json
+{
+  "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": string } },
+  "multiSpeakerVoiceConfig": { ... },   // mutually exclusive with voiceConfig
+  "languageCode": string                 // BCP-47; ja-JP is a valid value
+}
+```
+
+Documented valid `languageCode` values include **`ja-JP`** (full list: `de-DE, en-AU, en-GB, en-IN, en-US, es-US, fr-FR, hi-IN, pt-BR, ar-XA, es-ES, fr-CA, id-ID, it-IT, ja-JP, tr-TR, vi-VN, bn-IN, gu-IN, kn-IN, ml-IN, mr-IN, ta-IN, te-IN, nl-NL, ko-KR, cmn-CN, pl-PL, ru-RU, th-TH`).
+
+**Exact WebSocket setup-message shape** (first and only first client message; same for the `BidiGenerateContentConstrained` endpoint — setup goes inside `generationConfig`):
+
+```json
+{
+  "setup": {
+    "model": "models/gemini-3.1-flash-live-preview",
+    "generationConfig": {
+      "responseModalities": ["AUDIO"],
+      "speechConfig": {
+        "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": "Kore" } }
+        // "languageCode": "ja-JP"  &lt;- schema-valid but NOT supported by native-audio models
+      }
+    },
+    "systemInstruction": { "parts": [{ "text": "..." }] },
+    "inputAudioTranscription": {},
+    "outputAudioTranscription": {}
+  }
+}
+```
+
+Note `inputAudioTranscription`/`outputAudioTranscription` sit at the **setup level**, not inside `generationConfig`. Source: https://ai.google.dev/api/live (BidiGenerateContentSetup).
+
+## 3. Voices and Japanese
+
+**Voices are language-agnostic.** Native audio Live models support "any of the voices available for our Text-to-Speech (TTS) models" (Puck, Charon, Kore, Fenrir, Aoede, Leda, Orus, Zephyr, and the rest of the TTS voice roster). The TTS docs state the models "detect the input language automatically" and list Japanese (`ja`) among supported languages — there is no per-voice language matrix; every prebuilt voice speaks every supported language, including Japanese. You can audition Japanese output per voice in AI Studio (https://aistudio.google.com/app/live).
+
+Sources: https://ai.google.dev/gemini-api/docs/live-guide#change-voice-and-language, https://ai.google.dev/gemini-api/docs/speech-generation#voices.
+
+## 4. Documented language list — is ja-JP on it?
+
+Yes. The Live API list uses bare BCP-47 primary tags: **Japanese = `ja`** (70 languages total) at https://ai.google.dev/gemini-api/docs/live-guide#supported-languages. The regional form `ja-JP` appears only in the (legacy-relevant) `SpeechConfig.languageCode` value list.
+
+## 5. Caveats
+
+- **Auto-detection:** native audio models detect the spoken language automatically and "can switch between languages naturally during conversation."
+- **Forcing Japanese:** the documented mechanism is **system instructions** — "You can also restrict the languages it speaks in by specifying it in the system instructions." For this project, add e.g. "Always respond in Japanese (日本語で応答してください)" to the persona prompt in `gemini-agent.ts`. This is the only supported control on native-audio models.
+- **Transcription language is not configurable.** `inputAudioTranscription`/`outputAudioTranscription` are empty-object toggles (`AudioTranscriptionConfig` has no fields). Output-transcript language "is inferred from the model's response"; input transcript aligns with the input audio language. Japanese audio yields Japanese transcripts automatically.
+- **Mixed-language input:** since detection is automatic, a bilingual user can code-switch; the model follows unless system instructions pin it to Japanese.
+- All docs still carry the "Live API is in preview" warning; the newest guidance recommends `gemini-3.1-flash-live-preview` for all Live use cases, which is what this project already targets.
+
+## Doc URLs
+
+- https://ai.google.dev/gemini-api/docs/live-guide (voice/language config, supported-languages table)
+- https://ai.google.dev/api/live (WebSocket reference, BidiGenerateContentSetup)
+- https://ai.google.dev/api/generate-content#SpeechConfig (SpeechConfig/VoiceConfig/PrebuiltVoiceConfig schema, languageCode values)
+- https://ai.google.dev/gemini-api/docs/speech-generation (TTS voices + language list)
+- https://ai.google.dev/gemini-api/docs/live-api/live-translate (separate live-translation model, if ever needed)
+
+**Bottom line for the feat/multilingual-jp branch:** no config change is needed to *enable* Japanese on the Gemini engine — `gemini-3.1-flash-live-preview` handles Japanese in/out natively with any prebuilt voice. Do not send `speechConfig.languageCode` (unsupported on native audio); to *force* Japanese responses, put the language directive in the persona's system instruction.</result>
+<usage><subagent_tokens>84666</subagent_tokens><tool_uses>12</tool_uses><duration_ms>152002</duration_ms></usage>
+</task-notification>

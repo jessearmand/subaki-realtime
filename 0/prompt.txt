@@ -1,0 +1,6 @@
+From my testing, it seems the realtime input is too sensitive
+
+Review if we have configured everything about VAD: 
+https://developers.openai.com/api/docs/guides/realtime-vad
+
+Have we set turn detection to `null` or omitted?

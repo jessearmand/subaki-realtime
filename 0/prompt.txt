@@ -1,0 +1,8 @@
+@"/Users/jessearmand/Develop/personaplex-mlx/data/"
+I think the glitch is fixed. Regarding personas, how does the original local_web is loading the various examples for each voice prompt. I noticed that the "Astronaut (fun)" example will always respond as an astronaut
+
+Here's the `data/astronaut-persona.txt` prompt that I've written for that. 
+
+Although I agree that each voice will respond a bit differently, some of them will greet as Vesper, some of then will answer as a customer support line
+
+We can commit the changes in kyutai-personaplex-rl branch

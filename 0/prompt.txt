@@ -1,0 +1,2 @@
+Yes let's update the prototype starting with 1, 2, 6. Then regarding the fonts, I've downloaded Noto Fonts JP in @fonts/
+Review them if these sets of fonts are enough for what we need.

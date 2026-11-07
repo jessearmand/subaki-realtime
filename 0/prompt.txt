@@ -1,0 +1,3 @@
+Yes add a mise run task to start and stop the local stack
+
+Afterwards, examine @components/tsubaki/nav.tsx to verify if the keys are working, for navigation to each section. This can be a separate branch from feat/cascade-local-model

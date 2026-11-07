@@ -1,0 +1,2 @@
+Let's add the quick fix, and commit the changes, before moving on with the dead-air fix. 
+I'll test it separately, and we'll continue debugging once they are committed

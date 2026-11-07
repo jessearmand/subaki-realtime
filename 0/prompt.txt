@@ -1,0 +1,2 @@
+I updated llama 70B to gemma-4-31B-it, examine why it still fails? It's listed as available on 3 providers:
+https://huggingface.co/inference/models?model=google%2Fgemma-4-31B-it

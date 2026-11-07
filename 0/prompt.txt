@@ -1,0 +1,1 @@
+I think the adaptive VAD or improved auto-VAD still doesn't work, but we can commit the changes first

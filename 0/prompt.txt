@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>blf6o1as7</task-id>
+<tool-use-id>toolu_01JuBKrcEiEZzdvvVcsf5K6R</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/fc8fe1bb-6e8d-44c4-8ca6-42ea8b66ea07/tasks/blf6o1as7.output</output-file>
+<status>killed</status>
+<summary>Background command "Start local llama-server (gemma-4-12B + MTP draft) on :8001" was stopped</summary>
+</task-notification>

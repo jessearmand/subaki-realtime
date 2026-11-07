@@ -1,0 +1,8 @@
+Instead of using mlx-lm model which will take sometime to download, let's also setup a huggingface inference
+Where I can use any model on huggingface as the LM model part for this STT -> LM -> TTS pipeline
+
+/hf-cli Review the setup here, we can use python, since our experimental code is already in python: 
+https://huggingface.co/docs/inference-providers/providers/hf-inference
+
+Once we can hook that, migrating to subaki-realtime app should be more clear. 
+Ideally, we can switch between local inference and huggingface inference.

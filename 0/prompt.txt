@@ -1,0 +1,5 @@
+Similar to how tool use have been integrated with gpt-realtime-2, 
+
+Review the latest update of gemini-live on the current active branch, then next examine whether we already have gemini function calling and grounding with google search
+
+https://ai.google.dev/gemini-api/docs/live-api/tools.md.txt

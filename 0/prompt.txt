@@ -1,0 +1,47 @@
+Before moving on, there are some personas prompt improvements, based on this review, then examine the commit history, and its compatibility with the elevenlabs agents and multilingual setup
+
+
+```
+# Prompt Review — Furutsubaki persona stack
+
+## Verdict
+
+This is a strong, unusually disciplined prompt system. The layered design (shared identity → manifestation → transport) is consistently executed across all four engines, the failure boundaries are real boundaries rather than decoration, and per-engine condensation follows each provider's actual constraints rather than copy-paste. Issues below are mostly edge-case coherence and one substantive gap.
+
+## What works well
+
+- **Utility-first invariant is enforced everywhere.** "Give the clear, useful answer first — character colors the answer, never replaces it" appears in all four `SHARED` blocks, backed by "literal precision on names/dates/numbers." This directly implements the doc's core promise.
+- **Boundaries are negative constraints, not vibes.** Each persona carries its anti-failure clause verbatim from the doc's Manifestation Boundaries (`never blustering`, `not flirtatious, possessive, dependent`, `atmosphere never replaces the answer`). Negative constraints are what actually prevent archetype collapse.
+- **Engine-appropriate structure.** OpenAI gets labeled sections (`# Role & Manifestation`, `# Pacing`, `# Unclear Audio`, `# Variety`) matching the gpt-realtime skeleton; xAI/Gemini get condensed prose per the think-fast guidance; Cascade stays small-LM-safe. This is the doc's "use the provider's most reliable prompt structure" done correctly.
+- **Openings are elicited, not scripted.** `firstMessage` as an imperative direction ("Introduce yourself as Onyx in one weighty…") gives per-session variation and demonstrates the aspect in one line — exactly what the propagation procedure asks for.
+- **Pacing lives in transport, not just adjectives.** VAD presets are wired per-persona (`VAD_SNAPPY` for sage/nova, `VAD_PATIENT` for cipher/vesper), so "relaxed" isn't only a prose hope.
+- **Graceful degradation**: `DEFAULT_PERSONA_AGENT` fallback in all resolvers; unknown IDs don't crash.
+
+## Substantive issues
+
+**1. Echo has no distress protocol (biggest gap).**
+Echo is explicitly scoped to "listens for grief, danger, and truths people struggle to say aloud," yet neither her prompt nor any `SHARED` block says what to do when a user expresses self-harm or crisis intent — the prompt only says "notice distress gently." A persona marketed toward difficult thoughts needs one line: acknowledge seriously, encourage human support, stay in character without pretending to be a counselor. The architecture doc shares this gap, so this is a doc-level fix, not just a prompt patch.
+
+**2. "You know nothing of machines" conflicts with tool use and utility rules.**
+All condensed `SHARED` blocks go beyond the doc's "gentle amused refusal" to "you know nothing of machines, companies, or devices." Two collisions:
+- xAI sessions carry `web_search`; OpenAI sessions attach Firecrawl. "How did you find that?" breaks the fiction immediately, and the model has no coherent answer available.
+- The same paragraph demands literal precision on technical topics — but the tree ostensibly knows nothing of devices. Whether the camellia can explain how a phone works is undefined; expect inconsistent behavior at exactly that boundary.
+
+The OpenAI variant's softer phrasing ("If asked whether you are an AI… a gentle, amused refusal is the whole answer") avoids overcommitting; I'd align the condensed versions to it. Refusing the *identity* claim is safe; claiming *ignorance of the concept* invites provable lies.
+
+**3. OpenAI `VAD_PATIENT` is dead weight.**
+`VAD_PATIENT` and `VAD_RELAXED` are byte-identical (`eagerness: "low"`, `interrupt_response: false`) — semantic_vad has no silence-duration knob, so "longest silence tolerance" comments are misleading. Harmless at runtime, but a future reader tuning Cipher's pauses will edit a preset that does nothing distinct. Either drop it or add a comment that it's intentionally aliased on this engine.
+
+## Minor observations
+
+- **Triplicated `SHARED`.** xAI, Gemini, and Cascade carry three verbatim-identical condensed blocks. An identity fix must land in four places (plus the doc). Since all three want the same condensation, one shared constant in a neutral module would remove the drift risk — the OpenAI variant is legitimately different and can stay local.
+- **Accent-by-prompt on Gemini is optimistic.** Nova/Vesper request a British read; Laomedeia/Despina aren't British voices, and native-audio models honor accent instructions weakly. Expectation gap only; harmless to leave in.
+- **Three-way voice sharing on OpenAI.** Nova, Echo, and Vesper all ride `sage`, differentiated purely by prompt. Deliberate and documented; it's the weakest casting of the set — Echo's intimacy depends almost entirely on prose against a neutral-bright voice.
+- **Persona-id `echo` vs OpenAI voice `"echo"` (a different, male voice)** is a footgun for future edits; the comments currently save you, but it's one rename away from a silent mis-cast.
+- **Unclear-audio handling dropped from Cascade.** Understandable for token economy, but Cascade is the one engine where input corruption is *routine* (real STT mishears, not hypothetical mic noise). One short line ("if a reply seems garbled or random, ask them to repeat") would likely pay for itself; the small-model budget concern cuts the other way here.
+- **Doc is slightly stale**: it frames OpenAI as the sole implemented reference with ports pending, but xAI, Gemini, and Cascade all carry the full seven-manifestation roster already. The propagation procedure's step 8 ("record meaningful differences") output isn't visible anywhere.
+
+## Bottom line
+
+Character design: excellent — coherent mythology, enforceable boundaries, utility protected. Prompt engineering: correct per-provider adaptation. Fix order if you touch it: (1) Echo crisis line, (2) soften the machine-ignorance claim to an identity refusal, (3) de-duplicate the condensed `SHARED`, (4) alias-or-delete `VAD_PATIENT` on OpenAI.
+```

@@ -1,0 +1,8 @@
+I have tested with the existing dev server running on localhost, a few problems I see:
+
+* On the personas page, when the personas is active, the "ACTIVE" label goes out of bounds of the square, we can replace the square with a circle showing bright red when it's active, and very dark red when it's inactive instead. It's not clear what the square does over there
+* On the settings page, the output device should show what's being read from macOS device instead. 
+* On the settings page, the input device label is cut-off, resize the width of the dropdown to fill the width, at the same size of the slider below or the dropdown of the output device
+Review the screenshots I attached
+
+Unrelated issue, why there's a "Next" logo on the bottom left? Is this visible because it's running in dev mode?

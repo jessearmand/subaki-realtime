@@ -1,0 +1,1 @@
+When browsing documentation, instead of interacting with /tmp directory follow the recommendation in /firecrawl  CLI or use agent-browser, or Claude in Chrome directly, save this into memory

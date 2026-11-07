@@ -1,0 +1,3 @@
+I'm thinking to add a UI picker as well. I think this should be an inset below each provider's row. Some providers may only have one model, or no configuration at all. In this case, it shouldn't have the inset
+
+Then, yes we should commit the changes first

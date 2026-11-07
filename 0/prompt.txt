@@ -1,0 +1,11 @@
+I've reviewed the typography. I think we need the font options in the Tweaks section. Also consider that the mobile layout has no settings page, or everything that exist on the desktop layout. 
+
+This might need to be addressed separately, and a sidebar menu is needed for
+
+* Sessions
+* Personas
+* Providers
+* Settings
+
+
+Also there's a problem in the settings page, where "tools" which are mostly still a mock, not fully implemented in the app are buried on the left column. This has diverged from the layout in the app, where tools is on the right column

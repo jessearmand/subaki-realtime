@@ -1,0 +1,1 @@
+I have set FAL_API_KEY via fnox replacing the FAL_KEY that you set. Review the changes, and do a quick test via the browser

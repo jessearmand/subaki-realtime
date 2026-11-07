@@ -1,0 +1,1 @@
+I can view the logs in the console now, and you can read it, what could you observe now?

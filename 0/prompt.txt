@@ -1,0 +1,1 @@
+Yes, we can note it in CLAUDE.md, and then we can push this branch to remote to create a PR

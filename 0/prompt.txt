@@ -1,0 +1,8 @@
+Create a PR from kyutai-personaplex-rl
+
+Then, branch out from main to implement `gpt-realtime-2` with tools
+Refer to: https://developers.openai.com/api/docs/guides/realtime-mcp
+
+The first tool that we need to add is firecrawl MCP server, according to the docs here to connect MCP clients with oauth
+
+https://docs.firecrawl.dev/developer-guides/mcp-setup-guides/oauth#connect-mcp-clients-with-oauth

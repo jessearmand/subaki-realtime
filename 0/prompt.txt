@@ -1,0 +1,12 @@
+That's a good consideration, for OpenAI, the prompt structure is followed as it's written here:  https://developers.openai.com/cookbook/examples/realtime_prompting_guide
+
+But, we may need something different for xAI
+
+First, xAI has more selection of voice samples:
+https://docs.x.ai/developers/model-capabilities/audio/voice
+
+Then, the prompt structure can be further simplified:
+
+Some references: 
+https://docs.x.ai/developers/model-capabilities/audio/voice-agent#migrating-from-openai-realtime
+https://docs.x.ai/developers/model-capabilities/audio/voice-agent#openai-realtime-api-compatibility

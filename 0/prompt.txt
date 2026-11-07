@@ -1,0 +1,3 @@
+Then, I think we don't have a clear way to stop a server, although I understand it can be run by `fnox exec -- bun run dev` 
+
+Let's create a mise task for dev, and to stop. We don't need a deploy task yet. For example refer to: https://fnox.jdx.dev/guide/mise-integration.html

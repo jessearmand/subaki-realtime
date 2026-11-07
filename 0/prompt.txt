@@ -1,0 +1,2 @@
+However the latest Silero is v6.2.1: https://github.com/snakers4/silero-vad
+https://github.com/ricky0123/vad/blob/master/check_vad_up_to_date.sh and here's the script to update

@@ -1,0 +1,4 @@
+Refactor openai gpt-realtime-2 to use the latest model gpt-realtime-2.1 
+https://developers.openai.com/api/docs/models/gpt-realtime-2.1
+
+Also consider how we could configure the gpt realtime model from a centralized configuration file instead of having to update in various places

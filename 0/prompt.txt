@@ -1,0 +1,5 @@
+Yes no more errors with the server launch. 
+The next problem is the realtime STT is not able to detect when I finish speaking. Is this because of the lack of VAD?
+Perhaps we do need manual turn-by-turn speaking button for these type on non-full duplex STT -> model -> TTS
+
+Also, review the personas and assignment to Mistral models. Assign the female voice to the female persona, and male voice to male persona.

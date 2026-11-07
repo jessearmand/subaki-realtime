@@ -1,0 +1,5 @@
+A few things about the gitignored files, are those something that can be re-generated via elevenlabs CLI? 
+It looks like it's? If so every operation with elevenlabs have to be started with init, right? 
+Then the agent_configs and anything else can be generated before working with elevenlabs agents
+
+Is this documented in elevenlabs skills?

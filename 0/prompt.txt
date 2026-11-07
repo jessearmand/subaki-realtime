@@ -1,0 +1,10 @@
+Review voxtral provider setup, and examine whether we could use inkling as the LM component for speech-to-text -> LM -> text-to-speach
+
+Explore tinker's documentation here:
+https://tinker-docs.thinkingmachines.ai/tinker/compatible-apis/anthropic/
+https://tinker-docs.thinkingmachines.ai/tinker/compatible-apis/openai/
+
+Which API is better for our current cascade voice pipeline?
+
+Then we should add all the variants of Inkling models on this page:
+https://tinker-docs.thinkingmachines.ai/tinker/models/

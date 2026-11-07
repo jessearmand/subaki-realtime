@@ -1,0 +1,9 @@
+I'm still review the greeting voice from the web browser. Yes, I can hear
+
+```
+afplay ~/Develop/personaplex-mlx/ws-greeting.wav
+```
+
+This clearly, but I think this is too short, we should record longer greetings, try to use the "Medical office (service)" or "Bank (service)" "Astronout (fun)" or write your own prompts to trigger longer greetings
+
+I'm using Airpods Pro 2 with Adaptive mode. But even with Noise Cancellation enabled it doesn't affect the greeting playback that's mangled.

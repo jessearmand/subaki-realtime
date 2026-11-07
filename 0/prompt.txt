@@ -1,0 +1,20 @@
+<!-- attach -->
+> Design observations worth carrying into implementation
+> 
+> Hard-coded failover target. Both shells do PROVIDERS.find(x => x.id === 'openai'). Since four providers support JA, the app version should pick the best available JA provider (or the previous JA provider the user used), not literally OpenAI — e.g. first ja provider in roster order excluding the current one.
+> Duplicated effect. The identical failover effect lives in both DesktopApp and MobileApp; in the codebase this belongs once in the SessionApi layer (a reroute is a transport concern, not a view concern) — especially since real engines mount unconditionally and a mid-call provider swap means tearing down one hook's session and starting another.
+> The mock "session stays up" is aspirational. In the real app a provider switch mid-call is a new WebSocket/WebRTC session; transcript continuity is ours to preserve (keep turns across the swap), but the agent's conversational context won't carry unless we replay it into the new session's instructions.
+> The Personas warning renders only for the armed persona (on && ja && !provider.ja), which is correct — but since failover auto-fires ~immediately, the warn state is essentially transient. Worth keeping: it's visible in the moment before/while the strip shows.
+
+The latest commit on the active branch has updated xai related docs, and it's mostly similar to what you expected? 
+
+Then, regarding the design observation: 
+
+1. Yes, the app should pick the best available or previous ones that have been chosen to have JA as supported language. ElevenLabs has a specific voice model that's cloned from native Japanese speaker, so that's my safe bet. 
+2. Yes, I agree it's a transport concern, and I don't think mid-call failover would work, it has to be a new call session after a transition
+3. Yes, mid-call will not work in practice, we should transition to a new session
+4. We should immediately switch the language in the persona if a provider is selected that doesn't support the known multilingual feature. 
+
+
+For the elevenlabs agent that I was referring to in no. 1 
+Here is a document I copied from elevenlabs @docs/elevenlabs-agent.md

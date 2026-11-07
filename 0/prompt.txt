@@ -1,0 +1,3 @@
+I've handled the design system repo, next is we need a way to configure the model being used as the LM backend for Voxtral or Mistral provider. Right now it's a little bit opaque, because the only way to modify it is in @app/api/llm/route.ts 
+
+To avoid having to pull a model list, we can create a configuration file

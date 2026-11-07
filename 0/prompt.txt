@@ -1,0 +1,1 @@
+Instead of doing that, examine why does the speech that comes through the mic is not being displayed as transcript?

@@ -1,0 +1,1 @@
+Wow hmmm the firecrawl OAuth flow is more complicated than I expected compared to OpenAI docs?

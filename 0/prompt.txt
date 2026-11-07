@@ -1,0 +1,3 @@
+Ok I was about to test PR #4 but the uv environment under `personaplex-mlx` is broken, I have moved some audio files to scratchpad/ because they're temporary
+
+Let's cleanup the uv project, update the personaplex-mlx README.md, and restart the local server there

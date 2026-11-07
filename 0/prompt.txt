@@ -1,0 +1,12 @@
+I have setup XAI_API_KEY with fnox, use `fnox exec` when we're testing the voice agent
+
+Before testing, I've modified @lib/realtime/xai-agent.ts to mimic the actual voice characteristics
+
+First, I was referencing this section:
+https://docs.x.ai/developers/model-capabilities/audio/voice-agent#available-voices
+
+But, there's more to improve:
+
+* `Cipher` should describe a voice that narrate a mystery novel 
+
+* I'm not really sure which ones are Irish or Australian so I set Eve and Leo as British

@@ -1,0 +1,121 @@
+<task-notification>
+<task-id>a81e4e68a0024bb98</task-id>
+<tool-use-id>toolu_01NJsf2vqp2g8qxwB2aNm6bj</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/d8e9ee42-070d-4170-82f6-c165661af7d2/tasks/a81e4e68a0024bb98.output</output-file>
+<status>completed</status>
+<summary>Agent "Research ElevenLabs JA support" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result># ElevenLabs Agents — Japanese support for a realtime voice agent
+
+Research based on the local skill (`/Users/jessearmand/Develop/realtime-persona/.claude/skills/agents/SKILL.md` + `references/agent-configuration.md`) and current elevenlabs.io docs (note: docs URLs moved from `/docs/agents-platform/...` to `/docs/eleven-agents/...`).
+
+## 1. Japanese conversations: yes, fully supported
+
+Japanese (`ja`) is a first-class agent language. Config knobs:
+
+- **Agent language**: `conversation_config.agent.language: "ja"` (ISO 639-1; default `"en"`).
+- **TTS model** (`conversation_config.tts.model_id`) — Japanese-capable options for agents:
+  - `eleven_flash_v2_5` — 32 languages incl. `ja`, ~75 ms, the recommended realtime choice. Note: a new agent defaults to English + Flash **v2** (English-only); adding non-English languages switches it to the v2.5 multilingual model automatically.
+  - `eleven_turbo_v2_5` — supports `ja` but is now **deprecated**; docs say use `eleven_flash_v2_5` instead (functionally equivalent, lower latency).
+  - `eleven_multilingual_v2` — 29 languages incl. `ja`, higher quality, higher latency.
+  - `eleven_v3_conversational` — 70+ languages incl. Japanese (`jpn`); the agents-flavored v3. Related: "Expressive mode" (`tts.expressive_mode: true`) docs explicitly call out improved expressiveness in Japanese (https://elevenlabs.io/docs/eleven-agents/customization/voice/expressive-mode).
+- **LLM**: any catalog model (`gemini-2.5-flash`, `gpt-4o`, `claude-sonnet-4-5`, etc.) — all mainstream models handle Japanese; no JA-specific LLM setting. Prompting the system prompt in/for Japanese is advisable.
+- **ASR**: platform-managed (Scribe; `asr.provider` = `elevenlabs` or `scribe_realtime`), 90+ languages incl. Japanese with automatic language recognition — no per-language ASR config needed.
+
+## 2. Language configuration on the agent
+
+Three layers (docs: https://elevenlabs.io/docs/eleven-agents/customization/voice/customization/language):
+
+- **Primary**: `conversation_config.agent.language` (e.g. `"ja"`).
+- **Additional languages / presets**: `conversation_config.language_presets` — map of lang code → per-language overrides (first message, voice, etc.):
+  ```json
+  "language_presets": {
+    "ja": {
+      "overrides": {
+        "agent": { "first_message": "こんにちは。今日はどんなご用件ですか？" },
+        "tts": { "voice_id": "&lt;ja-optimized-voice&gt;" }
+      }
+    }
+  }
+  ```
+  Adding additional languages in the dashboard ("Additional Languages" on the Agent tab) auto-translates the first message via LLM and switches TTS to the v2.5 multilingual model. Presets can also carry `first_message_translation`.
+- **Per-session client override**: yes — the conversation-initiation payload accepts `conversation_config_override.agent.language` (docs: https://elevenlabs.io/docs/eleven-agents/customization/personalization/overrides). Language selection is **fixed for the call duration** unless the language-detection tool is enabled (see 5).
+
+## 3. React SDK per-session language override
+
+Yes. In `@elevenlabs/react`, overrides are passed as an **option to `useConversation` / `ConversationProvider`** (not as a `startSession` argument — `startSession` takes `agentId`/`signedUrl`/`conversationToken`, `userId`, `connectionType`):
+
+```ts
+const conversation = useConversation({
+  overrides: {
+    agent: { language: "ja", firstMessage: "...", prompt: { prompt: "..." } },
+    tts: { voiceId: "..." },
+  },
+});
+await conversation.startSession({ agentId });
+```
+
+(Docs: https://elevenlabs.io/docs/eleven-agents/libraries/react — "Conversation overrides" section. In Tsubaki's vendored setup, pass `overrides` at the `ConversationProvider` level since provider props mirror hook options.)
+
+**Required agent-side enablement** — overrides are disabled by default for security; enable per-field on the agent's **Security** tab, or via API:
+
+```json
+"platform_settings": {
+  "overrides": {
+    "conversation_config_override": {
+      "agent": { "language": true, "first_message": true, "prompt": { "prompt": true } },
+      "tts": { "voice_id": true }
+    }
+  }
+}
+```
+
+Sending an override for a field not enabled here throws an error (except ASR keywords, which soft-fail). Omit fields you don't override — don't send null/empty.
+
+## 4. Japanese voices
+
+- Japanese is covered by all multilingual TTS models (`eleven_flash_v2_5`, `eleven_multilingual_v2`, `eleven_v3`/`eleven_v3_conversational`; `eleven_turbo_v2_5` deprecated). Models page: https://elevenlabs.io/docs/overview/models.
+- Any voice can technically speak `ja` through a multilingual model, but docs recommend a **language-specific voice** for natural pronunciation/accent. No specific voice IDs are named in docs; curated picks live at the Voice Library "language top picks" collections: https://elevenlabs.io/app/voice-library/collections (filter Japanese). The skill's "popular voices" (George, Sarah, etc.) are English-oriented defaults — audition a JA-native voice instead (and per project memory, the user auditions persona voices by ear).
+- Set the JA voice either as the agent's main `tts.voice_id` (single-language JA agent) or in `language_presets.ja.overrides.tts.voice_id` (multilingual agent).
+
+## 5. Auto language detection: yes
+
+The `language_detection` **system tool** (https://elevenlabs.io/docs/eleven-agents/customization/tools/system-tools/language-detection):
+
+- Not enabled by default. Enable via dashboard (Add tool → system) or API as a tool under `conversation_config.agent.prompt.tools`:
+  ```json
+  { "type": "system", "name": "language_detection", "description": "" }
+  ```
+  (Also appears as `built_in_tools.language_detection` in the skill's built-in tools table; the docs' API example uses the `tools` array form with `"type": "system"`.)
+- Triggers on (a) user speaking a different language than current output, (b) user explicitly asking to switch. Tool params: `reason`, `language` (must be in the agent's configured language list).
+- Target languages must be configured as additional languages (`language_presets`) — docs recommend enabling all languages + the tool for multilingual agents. Switching swaps voice + responses per the presets.
+- Without this tool, language is fixed for the whole call.
+
+## Minimal JA-capable agent config (summary)
+
+```json
+{
+  "conversation_config": {
+    "agent": {
+      "language": "en",
+      "prompt": {
+        "llm": "gemini-2.5-flash",
+        "tools": [{ "type": "system", "name": "language_detection", "description": "" }]
+      }
+    },
+    "tts": { "model_id": "eleven_flash_v2_5", "voice_id": "&lt;voice&gt;" },
+    "language_presets": {
+      "ja": { "overrides": { "agent": { "first_message": "こんにちは！" }, "tts": { "voice_id": "&lt;ja-voice&gt;" } } }
+    }
+  },
+  "platform_settings": {
+    "overrides": { "conversation_config_override": { "agent": { "language": true } } }
+  }
+}
+```
+
+Then client-side: `useConversation({ overrides: { agent: { language: "ja" } } })`.
+
+Caveats: doc URLs under `/docs/agents-platform/...` now 404 — use `/docs/eleven-agents/...`; append `.md` for markdown versions. The Tsubaki agent is public (`enable_auth: false`), which doesn't conflict with enabling the language override — override enablement is independent of auth.</result>
+<usage><subagent_tokens>119683</subagent_tokens><tool_uses>13</tool_uses><duration_ms>127618</duration_ms></usage>
+</task-notification>

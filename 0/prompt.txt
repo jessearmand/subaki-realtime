@@ -1,0 +1,2 @@
+We can port the remaining UI strings and mobile drawer, preview tag, font tweaks first
+Regardless, I'll need to re-test again when we have ported all the changes in the prototype

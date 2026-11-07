@@ -1,0 +1,205 @@
+## Context
+
+- Current git status: On branch refactor/gpt-realtime
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+	modified:   app/api/openai/token/route.ts
+	modified:   lib/data.ts
+	modified:   lib/realtime/openai-agent.ts
+	modified:   lib/realtime/use-openai-session.ts
+	modified:   lib/realtime/use-realtime-session.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	config/realtime-models.json
+	lib/realtime/realtime-model-config.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")
+- Current git diff (staged and unstaged changes): diff --git a/README.md b/README.md
+index 16fec7a..c2e4f68 100644
+--- a/README.md
++++ b/README.md
+@@ -90,7 +90,7 @@ caption instead of connecting.
+ 
+ ## Wiring the real OpenAI provider
+ 
+-OpenAI's realtime API (`gpt-realtime-2`) connects over **WebRTC** — the browser's
++OpenAI's realtime API (`gpt-realtime-2.1`) connects over **WebRTC** — the browser's
+ peer connection carries the audio both ways, so there's no hand-rolled PCM
+ pipeline. A short-lived **ephemeral key** is minted server-side at
+ `POST /api/openai/token`; the browser then POSTs its SDP offer straight to
+@@ -105,7 +105,10 @@ Per-persona config (voice, multi-line instructions, opening line, reasoning
+ effort, turn-detection) lives in the typed module **`lib/realtime/openai-agent.ts`**
+ — a shared `BASE` (model / reasoning / `gpt-realtime-whisper` input transcription /
+ turn-detection) plus a per-persona map of OpenAI voice + prompt + greeting,
+-resolved by `resolveOpenaiAgent(personaId)`. The persona `instructions` follow a
++resolved by `resolveOpenaiAgent(personaId)`. The model ids themselves live in
++**`config/realtime-models.json`** (read by `lib/realtime/realtime-model-config.ts`),
++the single source shared by the agent `BASE`, the `/api/openai/token` mint route,
++and the Providers UI label — bump the model there and every consumer follows. The persona `instructions` follow a
+ light slice of OpenAI's Realtime 2.0 prompt skeleton (Role, Personality & Tone,
+ Pacing, Unclear Audio, Variety).
+ 
+@@ -408,6 +411,7 @@ app/api/tts/               TTS route (per-clause MP3; Mistral or local mlx-audio
+ app/api/stt/               batch STT route (per-turn WAV → local mlx-audio transcription)
+ config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
+ config/voice-models.json   cascade TTS/STT catalog (cloud/local backends + persona voice map)
++config/realtime-models.json  fixed realtime model ids (OpenAI session + mint + UI label) — edit to bump
+ scripts/mistral-stt-proxy.ts  standalone bun WS proxy: browser ↔ Mistral realtime STT (adds Bearer header)
+ components/ui/             ElevenLabs + shadcn components (copied, editable)
+ components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
+@@ -418,8 +422,9 @@ lib/data.ts                personas, providers (with engine discriminator), tool
+ lib/realtime/              types (CallState, SessionApi), use-realtime-session (dispatcher),
+                            use-xai-session (Grok WS engine), xai-audio (PCM16 + playback),
+                            xai-agent (per-persona Grok config: voice + prompt + greeting),
+-                           use-openai-session (gpt-realtime-2 WebRTC engine),
++                           use-openai-session (gpt-realtime-2.1 WebRTC engine),
+                            openai-agent (per-persona OpenAI config: voice + prompt + greeting),
++                           realtime-model-config (loads config/realtime-models.json — model ids),
+                            use-cascade-session (STT→LM→TTS engine), cascade-agent (per-persona),
+                            lm-config (loads config/lm-models.json — backends + model catalog),
+                            voice-config (loads config/voice-models.json — TTS/STT backends),
+diff --git a/app/api/openai/token/route.ts b/app/api/openai/token/route.ts
+index 99f9c0a..bb2e7eb 100644
+--- a/app/api/openai/token/route.ts
++++ b/app/api/openai/token/route.ts
+@@ -6,16 +6,20 @@
+ //   POST https://api.openai.com/v1/realtime/calls
+ //     Authorization: Bearer <ephemeral key>, Content-Type: application/sdp
+ // Full per-persona config is applied client-side via `session.update`, so the
+-// mint body stays minimal here.
++// mint body stays minimal here. The model id comes from
++// `config/realtime-models.json` (via realtime-model-config), the same source
++// the client's `session.update` uses — so mint scope and session config can't
++// silently disagree.
+ //
+ // Dev only: OPENAI_API_KEY is provided via fnox (`fnox exec -- bun run dev`).
+ 
++import { OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
++
+ export const runtime = "nodejs";
+ // Never cache a freshly-minted secret.
+ export const dynamic = "force-dynamic";
+ 
+ const CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
+-const MODEL = "gpt-realtime-2";
+ 
+ export async function POST(): Promise<Response> {
+   const apiKey = process.env.OPENAI_API_KEY;
+@@ -35,7 +39,7 @@ export async function POST(): Promise<Response> {
+         Authorization: `Bearer ${apiKey}`,
+         "Content-Type": "application/json",
+       },
+-      body: JSON.stringify({ session: { type: "realtime", model: MODEL } }),
++      body: JSON.stringify({ session: { type: "realtime", model: OPENAI_REALTIME_MODEL } }),
+     });
+   } catch (err) {
+     return Response.json(
+diff --git a/lib/data.ts b/lib/data.ts
+index 6a85e84..1a715b9 100644
+--- a/lib/data.ts
++++ b/lib/data.ts
+@@ -1,6 +1,8 @@
+ // Sample data ported from the design bundle (screens.jsx).
+ // Single source of truth for personas, providers, tools and the mock transcript.
+ 
++import { OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
++
+ export interface Persona {
+   id: string;
+   name: string;
+@@ -121,7 +123,7 @@ export const PROVIDERS: Provider[] = [
+   {
+     id: "openai",
+     name: "OPENAI",
+-    model: "gpt-realtime-2",
++    model: OPENAI_REALTIME_MODEL,
+     exec: "remote",
+     note: "Best general performance.",
+     engine: "openai",
+diff --git a/lib/realtime/openai-agent.ts b/lib/realtime/openai-agent.ts
+index be0f2df..7b34053 100644
+--- a/lib/realtime/openai-agent.ts
++++ b/lib/realtime/openai-agent.ts
+@@ -1,5 +1,6 @@
+ // OpenAI realtime agent configuration — the source of truth for what each
+-// persona sounds and behaves like on the real `gpt-realtime-2` engine.
++// persona sounds and behaves like on the real gpt-realtime engine (model id
++// pinned in `config/realtime-models.json`).
+ //
+ // Ported from `xai-agent.ts` (same authoring model: shared transport in BASE,
+ // per-persona overrides for voice + prompt + greeting) and adapted to OpenAI's
+@@ -19,6 +20,10 @@
+ // resource the token is scoped to (import from config, NOT oauth.ts — that
+ // module is server-only via node:fs/node:crypto).
+ import { FIRECRAWL_MCP_URL } from "@/lib/firecrawl/config";
++import {
++  OPENAI_REALTIME_MODEL,
++  OPENAI_TRANSCRIPTION_MODEL,
++} from "@/lib/realtime/realtime-model-config";
+ 
+ export type OpenaiVoice =
+   | "marin"
+@@ -60,8 +65,8 @@ export interface McpToolConfig {
+   /** Narrow the imported tool surface — the server sees any data the model sends. */
+   allowed_tools?: string[];
+   require_approval?: "always" | "never";
+-  // NOTE: the docs also list `server_description`, but gpt-realtime-2 rejects
+-  // it ("Unknown parameter") — don't add it back without checking the model.
++  // NOTE: the docs also list `server_description`, but the gpt-realtime models
++  // reject it ("Unknown parameter") — don't add it back without checking.
+ }
+ 
+ /** Classic function tool — the app executes it and returns function_call_output. */
+@@ -195,10 +200,10 @@ const BASE: Pick<
+   OpenaiAgentConfig,
+   "model" | "reasoningEffort" | "transcription" | "tools" | "turnDetection"
+ > = {
+-  model: "gpt-realtime-2",
++  model: OPENAI_REALTIME_MODEL,
+   // "low" is OpenAI's recommended default for production voice agents.
+   reasoningEffort: "low",
+-  transcription: { model: "gpt-realtime-whisper", language: "en", delay: "low" },
++  transcription: { model: OPENAI_TRANSCRIPTION_MODEL, language: "en", delay: "low" },
+   tools: [],
+   // Global fallback for any persona that doesn't override turnDetection.
+   turnDetection: VAD_RELAXED,
+diff --git a/lib/realtime/use-openai-session.ts b/lib/realtime/use-openai-session.ts
+index a228149..12eee4a 100644
+--- a/lib/realtime/use-openai-session.ts
++++ b/lib/realtime/use-openai-session.ts
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+-// Real OpenAI `gpt-realtime-2` voice engine over a browser WebRTC peer connection.
++// Real OpenAI gpt-realtime voice engine (model pinned in config/realtime-models.json)
++// over a browser WebRTC peer connection.
+ //
+ // Architecture (no relay server): mint an ephemeral key at /api/openai/token,
+ // then negotiate WebRTC directly with OpenAI — POST the local SDP offer to
+diff --git a/lib/realtime/use-realtime-session.ts b/lib/realtime/use-realtime-session.ts
+index a2227ef..bd313ec 100644
+--- a/lib/realtime/use-realtime-session.ts
++++ b/lib/realtime/use-realtime-session.ts
+@@ -41,7 +41,7 @@ function mockCaption(state: CallState): string {
+  *   - undefined → the design's mock lifecycle (timers + TRANSCRIPT_SCRIPT)
+  *   - "elevenlabs" → real conversation via `@elevenlabs/react`
+  *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
+- *   - "openai" → real gpt-realtime-2 voice via WebRTC (useOpenaiSession)
++ *   - "openai" → real gpt-realtime voice via WebRTC (useOpenaiSession)
+  *   - "gemini" → real Gemini Live voice via a direct WebSocket (useGeminiSession)
+  *   - "fal" → full-duplex PersonaPlex via a direct WebSocket (useFalSession)
+  *   - "moshi" → full-duplex PersonaPlex on the LOCAL MLX server (useMoshiSession)
+- Current branch: refactor/gpt-realtime
+
+## Your task
+
+Based on the above changes:
+
+1. Create a new branch if on main
+2. Create a single commit with an appropriate message
+3. Push the branch to origin
+4. Create a pull request using `gh pr create`
+5. You have the capability to call multiple tools in a single response. You MUST do all of the above in a single message. Do not use any other tools or do anything else. Do not send any other text or messages besides these tool calls.

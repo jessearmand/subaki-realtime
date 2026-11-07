@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b55hru0gc</task-id>
+<tool-use-id>toolu_01EdYH828sf3NajyYfMSmftx</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/f8266b04-4107-4c22-8467-db2cc1af183c/tasks/b55hru0gc.output</output-file>
+<status>completed</status>
+<summary>Background command "Download RL model weights (~16GB)" completed (exit code 0)</summary>
+</task-notification>

@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>btzkd32u8</task-id>
+<tool-use-id>toolu_01C5kFnRgqwJeyPefUoVFbsQ</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/b89e9d28-4663-4f14-88cc-15da0ebd7f84/tasks/btzkd32u8.output</output-file>
+<status>failed</status>
+<summary>Background command "Run dev server with fnox secrets (background)" failed with exit code 143</summary>
+</task-notification>

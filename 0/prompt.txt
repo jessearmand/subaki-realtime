@@ -1,0 +1,1 @@
+Yes, we can use the push-to-talk to handle this type of use cases, we can push the branch and create a PR

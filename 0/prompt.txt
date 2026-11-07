@@ -1,0 +1,3 @@
+I finished the conversation, one observation is, the default inkling model which was the first call session I have made with your logging, seems to behave better, and rarely end my turn before finishing my speech
+
+But, the inkling small - serverless which is the current session I just ran shows the same problem that ended my turn too early, with hardly any noticeable improvement

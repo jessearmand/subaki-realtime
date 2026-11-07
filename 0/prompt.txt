@@ -1,0 +1,4 @@
+I've tested via the dev server. Let's commit the changes. Then, I think local voxtral model has not been setup has it? 
+Also we're on a different branch now feat/cascade-local-model. 
+
+I'd rather group the voxtral local model together, or do you think this is a bigger work and better to be separated?

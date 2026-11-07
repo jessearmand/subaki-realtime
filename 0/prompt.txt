@@ -1,0 +1,11 @@
+Next, we can continue with the dead-air window fix
+
+At the same time launch an agent to refactor the @README.md into separate skills for the project specifically for:
+
+* Cascade provider setup
+* Local kyutai provider
+* fal.ai PersonaPlex provider
+
+The README could refer to the skills for the expansion
+
+What's documented in `docs/` were written after prototyping and validation (we can leave it as it's), while the skills doc should focus on actual integration and setup in the main app

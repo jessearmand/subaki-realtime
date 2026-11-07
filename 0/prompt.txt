@@ -1,0 +1,8 @@
+<bash-input>bun --version</bash-input>
+<bash-stdout>~/Develop/realtime-persona claude/eleve…gents-07030a *1                00:17:44
+
+1.4.0
+
+
+~/Develop/realtime-persona claude/eleve…gents-07030a *1                00:17:45
+❯ </bash-stdout><bash-stderr></bash-stderr>

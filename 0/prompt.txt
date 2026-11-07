@@ -1,0 +1,18 @@
+@"/Users/jessearmand/Develop/xai-cookbook/examples" @"/Users/jessearmand/Develop/xai-cookbook/voice-examples" @"/Users/jessearmand/Develop/xai-cookbook"
+Review docs/grok-voice-agent-review-1.md and docs/grok-voice-agent-review-2.md to understand what can be applied from the suggestions
+
+Strengths (already doing right):
+
+• Ephemeral tokens + browser xai-client-secret.* subprotocol auth (exact docs pattern).
+• Native-rate PCM16 end-to-end (no unnecessary resampling).
+• Server VAD, session.update shape, first-utterance bootstrap via conversation.item.create + response.create, barge-in, and server-side web_search (no client handler needed).
+• Excellent per-persona factorization (SHARED spoken guardrails + character instructions/firstMessage + voice mapping) in a version-controlled TS module.
+
+We don't need to pin to a specific model version, but prioritize on these:
+
+1. Call-start latency (highest impact): Move mic capture + early PCM buffering to parallel with WS/token (per the explicit "Parallel Initialization" section in the voice-agent docs). Current flow waits until after session.updated.
+2. Per-persona VAD tuning: Expose threshold/silence_duration_ms/prefix_padding_ms (currently minimal {type: "server_vad"} only). Helps slow/measured personas (aria, cipher, echo, onyx).
+3. Custom voices (biggest future opportunity): The 8-char voice_ids are fully interchangeable in session.update. Current literal XaiVoice union + built-in mappings are compromises (e.g. soft "echo" → energetic "eve"). Recording guidelines, limits (30/team, US excl. IL), and metadata are all in the custom-voices docs.
+4. Event/tooling robustness (input transcripts, future custom function tools following the exact telephony example flow), graceful reconnect, etc.
+
+Review the xai-cookbook references as needed

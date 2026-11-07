@@ -1,0 +1,1 @@
+I think it's a good idea to also update @lib/realtime/openai-agent.ts because cedar has its own character that could fit the role but different than zagan, it's dramatic in a way that sounds like a spirit that has lived for centuries and have seen everything

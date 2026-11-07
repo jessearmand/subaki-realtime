@@ -1,0 +1,8 @@
+Voxtral live transcription supports `ja` 
+[`mistralai/Voxtral-Mini-4B-Realtime-2602`](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602/blob/main/README.md)
+
+But, the TTS doesn't: https://huggingface.co/mistralai/Voxtral-4B-TTS-2603/blob/main/README.md
+
+I think it's clear that Mistral strength is on English and French, so we don't need Japanese support for Mistral.
+
+However Qwen3 Audio realtime and StepFun will be the next integration that supports Japanese and Chinese (this will be the next plan, we should continue with app side change as planned)

@@ -1,0 +1,6 @@
+All providers are working fine with the Japanese language configuration, except OpenAI 
+Examine what's the problem on Chrome, the error is: 
+
+```
+— OpenAI call setup failed (429) —
+```

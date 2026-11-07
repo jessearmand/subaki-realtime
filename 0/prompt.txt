@@ -1,0 +1,10 @@
+@"/Users/jessearmand/Develop/xai-cookbook/voice-examples/agent"
+Next, what I'd like to understand is grok voice integration 
+
+/agent-browser review the documentation site here: https://docs.x.ai/developers/model-capabilities/audio/voice
+
+Then, explore the voice agent examples in xai-cookbook
+
+I have downloaded a copy here at @docs/xai-voice-agent-api.md 
+
+Because we're still using webrtc, investigate more into that path, and how much the user interaction will change considering we have integrated ElevenLabs agent

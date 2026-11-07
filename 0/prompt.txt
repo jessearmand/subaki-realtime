@@ -1,0 +1,8 @@
+Explain this part again:
+
+
+```
+the same defect, described from two angles: the PR's new createMediaElementSource(audioEl) routing permanently reroutes the <audio> element's output through the Web Audio graph, so if the AudioContext starts "suspended" (likely on Safari/iOS, since it's created after await getUserMedia, outside the click's gesture stack), you get silent playback and a dead orb — a regression from the old passive-tap analyser, which never sat in the playback path.
+```
+
+What I noticed in Safari is sometimes the gpt-realtime-2 responded on something that I didn't say (there's nothing written in my transcript). This tend to happen when I started a session for the first time after a refresh in the browser. But, the issue could stabilize after the next session.

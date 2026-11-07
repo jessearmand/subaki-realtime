@@ -1,0 +1,81 @@
+<task-notification>
+<task-id>a94187ccc17716507</task-id>
+<tool-use-id>toolu_0172VEMeApYHfA1LPSDCgqTg</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-jessearmand-Develop-realtime-persona/9475ce3e-2381-4dc6-b0e9-48eb9193fb7f/tasks/a94187ccc17716507.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore voxtral cascade setup" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I have the full picture. Here's the report.
+
+## 1. Naming: there is no "voxtral" engine — it's the `cascade` engine on the `MISTRAL` provider row
+
+"Voxtral" is the *model family* used for the voice legs (Mistral's Voxtral STT/TTS), not an engine id. The engine is `cascade`.
+
+- Provider row: `/Users/jessearmand/Develop/realtime-persona/lib/data.ts:147-154` — `{ id: "mistral", name: "MISTRAL", model: "cascade · gemma-4-31B", exec: "local / remote", engine: "cascade" }`. Engine union at `lib/data.ts:27`.
+- Engine dispatch into the provider-agnostic `SessionApi`: `/Users/jessearmand/Develop/realtime-persona/lib/realtime/use-realtime-session.ts:113` (`useCascadeSession(engine === "cascade", persona, lmModelId)`), selected as `custom` at `:117-130`; `SessionApi` interface at `/Users/jessearmand/Develop/realtime-persona/lib/realtime/types.ts:18-35`. Cascade is the only engine with `canSendTurn` (`use-realtime-session.ts:281-284`).
+- UI boundary: `/Users/jessearmand/Develop/realtime-persona/components/tsubaki/app-shell.tsx:29` (`useLmModel()`), `:38-47` (passes `lmModelId` into the session, computes labels).
+
+## 2. Cascade architecture (files, ports, env)
+
+Client orchestrator: `/Users/jessearmand/Develop/realtime-persona/lib/realtime/use-cascade-session.ts` (504 lines) — turn machine, clause segmentation (`nextClause`, `:74-92`), LM streaming (`:290-338`), TTS per clause (`:225-256`), greeting bootstrap (`:414`, `visible:false`).
+
+| Leg | Cloud | Local | Config |
+|---|---|---|---|
+| STT | Mistral realtime WS `wss://api.mistral.ai/v1/audio/transcriptions/realtime`, model `voxtral-mini-transcribe-realtime-2602`, via Bun proxy on **:3001** | batch POST → `http://localhost:8002/v1/audio/transcriptions`, `mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit` (mlx-audio) | `config/voice-models.json:32-45` |
+| LM | HF router / Mistral API | `http://localhost:8001/v1/chat/completions` (llama-server) | `config/lm-models.json` |
+| TTS | `https://api.mistral.ai/v1/audio/speech`, `voxtral-mini-tts-2603` | `http://localhost:8002/v1/audio/speech`, `mlx-community/Voxtral-4B-TTS-2603-mlx-6bit` | `config/voice-models.json:3-31` |
+
+- STT client: `/Users/jessearmand/Develop/realtime-persona/lib/realtime/mistral-stt.ts` — 16 kHz PCM16 capture, `realtime` vs `batch` mode (`:89-91`, `:236-259`, `:305-337`), WS handshake/session.update at `:170-199`.
+- VAD (turn boundaries, always on-device): `/Users/jessearmand/Develop/realtime-persona/lib/realtime/silero-vad.ts` — Silero via `onnxruntime-web` WASM, model from jsDelivr pinned at `SILERO_TAG = "v6.2.1"` (`:35-38`); tunables in `mistral-stt.ts:36-39`.
+- WS proxy (adds the Bearer header browsers can't set): `/Users/jessearmand/Develop/realtime-persona/scripts/mistral-stt-proxy.ts` (port `STT_PROXY_PORT`, default 3001).
+- Fallbacks: Web Speech for STT (`use-cascade-session.ts:145-185`), `speechSynthesis` for TTS (`:210-221`).
+- Server routes: `app/api/llm/route.ts`, `app/api/tts/route.ts`, `app/api/stt/route.ts`.
+- mise tasks: `/Users/jessearmand/Develop/realtime-persona/mise.toml:39-54` (`lm-local`, llama-server :8001, `--alias unsloth/gemma-4-12b-it-qat-GGUF`), `:75-83` (`audio-local`, mlx-audio :8002), `:56-66` (`local-stack`), `:23-25` (`stt-proxy`).
+- Env vars: `HF_TOKEN`, `MISTRAL_API_KEY` (server-side, fnox); `NEXT_PUBLIC_MISTRAL_STT_WS` (default `ws://localhost:3001`, `use-cascade-session.ts:23`); `NEXT_PUBLIC_TTS_BACKEND` / `NEXT_PUBLIC_STT_BACKEND` (`lib/realtime/voice-config.ts:66-69`); `LM_LOCAL_PORT`, `LM_LOCAL_MODEL_DIR`, `AUDIO_LOCAL_PORT`, `MLX_AUDIO_DIR`, `STT_PROXY_PORT`.
+
+## 3. The LM leg — exact wire format (what you'd swap for Tinker/Inkling)
+
+**Client → `/api/llm`** (`use-cascade-session.ts:290-301`):
+
+```jsonc
+POST /api/llm            // Content-Type: application/json
+{ "backend": a.lmBackend, "model": a.lmModel,
+  "messages": [{role:"system",content:instructions}, ...history],  // roles: system|user|assistant
+  "maxTokens": a.maxTokens, "temperature": a.temperature }
+```
+
+**Route → upstream** (`app/api/llm/route.ts:61-85`) — plain OpenAI chat-completions, always streaming:
+
+```jsonc
+POST &lt;backend.url&gt;
+Authorization: Bearer &lt;process.env[backend.envKey]&gt;   // omitted entirely when envKey === ""
+Content-Type: application/json
+Accept: text/event-stream
+{ "model": body.model, "messages": [...], "stream": true,
+  "max_tokens": body.maxTokens ?? 256, "temperature": body.temperature ?? 0.7,
+  // only when backend.supportsThinking:
+  "chat_template_kwargs": { "enable_thinking": false } }
+```
+
+**Response**: the upstream SSE body is piped back verbatim (`route.ts:104-111`, `Content-Type: text/event-stream`). The client parses only `data:` lines and reads `JSON.parse(data)?.choices?.[0]?.delta?.content` (`use-cascade-session.ts:315-330`), skipping `[DONE]`. Nothing else in the SSE payload is used — no `reasoning`, no tool calls, no usage.
+
+Implications for swapping in another endpoint:
+- **OpenAI-compatible endpoint (e.g. Tinker/Inkling if it exposes `/v1/chat/completions` SSE)**: zero code change — add a `backends` entry (`url` + `envKey: "TINKER_API_KEY"` + `supportsThinking`) and a `models` entry in `config/lm-models.json`. `TINKER_API_KEY` is already declared in `/Users/jessearmand/Develop/realtime-persona/fnox.toml:48` (currently uncommitted, and note it's wired to the `ElevenLabs` keychain provider at that line — likely a copy/paste you'll want to point at a `tinker` provider block, which exists at `fnox.toml:35-37`).
+- **Anthropic-shaped endpoint**: needs code. The two things that are OpenAI-specific are the upstream body build (`app/api/llm/route.ts:61-73` — `max_tokens` is fine, but Anthropic requires `system` hoisted out of `messages` and `anthropic-version` + `x-api-key` headers) and the delta parse (`use-cascade-session.ts:322`, which expects `choices[0].delta.content` rather than `content_block_delta`/`text_delta`). Cleanest seam: add a `shape: "openai" | "anthropic"` field to `LmBackendConfig` (`lib/realtime/lm-config.ts:12-21`), branch the request build in the route, and translate Anthropic SSE → OpenAI-shaped `data:` frames inside the route so the client parser stays unchanged.
+
+Also relevant: the route hard-requires `model` + non-empty `messages` (`route.ts:57-59`) and 500s if a *named* `envKey` is unset (`:50-56`); an empty `envKey` means keyless.
+
+## 4. Model catalog / picker
+
+- Data: `/Users/jessearmand/Develop/realtime-persona/config/lm-models.json` — `default: "gemma-4-31b"`, three backends (`hf` → `https://router.huggingface.co/v1/chat/completions`, `mistral`, `local` :8001), four models. HF `:provider` routing lives in the model id string itself (`"google/gemma-4-31B-it:fastest"`, line 26; the note at line 2 documents `:fastest`, `:cerebras`, …).
+- Loader/typing/helpers: `/Users/jessearmand/Develop/realtime-persona/lib/realtime/lm-config.ts` — `resolveLmBackend` (`:48`), `resolveLmModel` (`:54`, falls back to `default` then `models[0]`), `DEFAULT_LM_MODEL` (`:63`), `lmModelsForEngine` (`:68`, returns `LM_MODELS` only for `"cascade"`), `providerModelLabel` (`:76-83`, renders `cascade · &lt;model id&gt;`).
+- Picker UI: `/Users/jessearmand/Develop/realtime-persona/components/tsubaki/providers-view.tsx:68` (`lmModelsForEngine`), `:84-113` (the "LM MODEL" inset row of buttons, rendered only when `models.length &gt; 1`).
+- Persistence: `/Users/jessearmand/Develop/realtime-persona/hooks/use-lm-model.ts` — localStorage key `tsubaki.lm-model`.
+- Precedence: UI pick &gt; persona `lmModelId` pin &gt; catalog `default` — `/Users/jessearmand/Develop/realtime-persona/lib/realtime/cascade-agent.ts:153-168`. Per-persona pins/prompts/voices are in the `PERSONA_AGENTS` map at `cascade-agent.ts:57-138`.
+- Execution label (LOCAL/REMOTE per leg): `lib/realtime/voice-config.ts:74-102`.
+
+**Where to add a new LM model**: append an object to `models[]` in `config/lm-models.json` (`{id, label, backend, model, temperature, maxTokens}`) and, if the endpoint is new, a `backends` entry above it. It then appears in the Providers picker automatically. Optionally set `default` to its id, or pin one persona with `lmModelId` in `cascade-agent.ts`.
+
+Docs worth reading alongside: `/Users/jessearmand/Develop/realtime-persona/docs/voxtral-local-inference.md` (lines 99-152 cover the LM-stage prototype and the `enable_thinking` reasoning gotcha; 170-205 the local LM leg) and `README.md:324-405` ("Configuring the cascade LM" / "voice legs"). One stale detail in the README at line 261: it still says `/api/mistral/tts`; the route is now `/api/tts`.</result>
+<usage><subagent_tokens>116636</subagent_tokens><tool_uses>33</tool_uses><duration_ms>125343</duration_ms></usage>
+</task-notification>

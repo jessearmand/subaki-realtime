@@ -1,0 +1,1 @@
+GEMINI_API_KEY has been set via fnox. I prefer local personas config, but what does it mean by having the config server-side? Which server?

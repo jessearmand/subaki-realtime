@@ -1,0 +1,1 @@
+Do we have to put `silero_vad.onnx` file in public/ is there any other suitable place to load it from?

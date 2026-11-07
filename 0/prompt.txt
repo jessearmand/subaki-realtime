@@ -1,0 +1,1 @@
+Yes, raise the VAD_REDEMPTION_MS and the fixes you suggested. I'm not really sure whether Mistral with local model has a push to talk mode, or everything goes to to Silero VAD?

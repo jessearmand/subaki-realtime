@@ -1,0 +1,1 @@
+Review the latest commit and the document in @docs/persona-architecture.md as a persona architecture, we'd like to apply this acroos provider, but let's start with @lib/realtime/xai-agent.tsto understand how it will behave before moving on to other provider

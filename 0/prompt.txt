@@ -1,0 +1,5 @@
+Review the changes in feat/cascade-voice-engine (already pushed to remote) 
+
+Then examine what's needed to prepare for local model execution, based on @lib/data.ts 
+
+At the moment it's either using hf or mistral backend

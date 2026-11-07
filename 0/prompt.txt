@@ -1,0 +1,3 @@
+@"/Users/jessearmand/Develop/personaplex-mlx/bank_teller_personaplex_audio.webm"
+Yes, note this evaluation there. 
+Then after running one conversation, I can still hear the glitch in the initial greeting. Examine `bank_teller_*.webm` file that I donwloaded

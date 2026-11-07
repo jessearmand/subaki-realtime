@@ -1,0 +1,2 @@
+I've modified the system prompt for onyx, cipher, and vesper, apply them across the other agents
+Then, we should synchronize it to @scripts/elevenlabs/gen-agent-configs.ts

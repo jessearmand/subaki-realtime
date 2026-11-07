@@ -1,0 +1,3 @@
+After re-testing there seems to be a problem with either VAD from Voxtral API or in the  cascade voice pipeline, where when it's listening it doesn't seem to wait until I fully finish speaking. Then why the manual turn doesn't seem to wait, but instead it automatically sends a reply 
+
+Was there a regression?

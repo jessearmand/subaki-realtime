@@ -5,9 +5,10 @@
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `file` | file | Yes | Audio or video file to transcribe |
-| `model_id` | string | Yes | `scribe_v2` for batch transcription |
+| `model_id` | string | Yes | `scribe_v2` for general batch transcription or `scribe_v2_medical` for medical and clinical audio |
 | `token` | string | No | Single-use authentication token from `POST /v1/single-use-token/batch_scribe`. Alternative to API key or bearer authentication for frontend clients; expires after 15 minutes and is consumed on use. |
 | `language_code` | string | No | Language hint (ISO 639-1 or ISO 639-3, e.g., `en` or `eng`) |
+| `transcript_edit` | string | No | Natural-language instruction applied to the final transcript (maximum 2,000 characters). Cannot be combined with `entity_detection`, `entity_redaction`, or `use_multi_channel`. Adds a 30% surcharge, billed for at least 10 seconds of audio. |
 | `timestamps_granularity` | string | No | `none`, `word`, or `character` (default: `word`) |
 | `diarize` | boolean | No | Enable speaker diarization (default: `false`; up to 32 speakers) |
 | `use_speaker_library` | boolean | No | Match diarized speakers against registered speaker profiles in the workspace speaker library. Requires `diarize=true` |
@@ -37,13 +38,12 @@ Generate a batch Scribe token on a trusted backend, then pass it as the `token` 
 from the frontend. Do not expose the API key to the client.
 
 ```bash
-TOKEN=$(curl -s -X POST \
-  "https://api.elevenlabs.io/v1/single-use-token/batch_scribe" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" | jq -r '.token')
+TOKEN=$(elevenlabs tokens single-use create --token-type batch_scribe --query token --format raw)
 
-curl -X POST "https://api.elevenlabs.io/v1/speech-to-text?token=$TOKEN" \
-  -F "file=@audio.mp3" \
-  -F "model_id=scribe_v2"
+elevenlabs speech-to-text convert \
+  --file audio.mp3 \
+  --model-id scribe_v2 \
+  --token "$TOKEN"
 ```
 
 ## Python Example
@@ -82,16 +82,15 @@ const result = await client.speechToText.convert({
 });
 ```
 
-## cURL Example
+## CLI Example
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -F "file=@audio.mp3" \
-  -F "model_id=scribe_v2" \
-  -F "language_code=eng" \
-  -F "timestamps_granularity=word" \
-  -F "diarize=true"
+elevenlabs speech-to-text convert \
+  --file audio.mp3 \
+  --model-id scribe_v2 \
+  --language-code eng \
+  --timestamps-granularity word \
+  --diarize true
 ```
 
 ## Agent and Customer Role Detection
@@ -127,16 +126,15 @@ for (const word of result.words ?? []) {
 }
 ```
 
-### cURL
+### CLI
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -F "file=@call.mp3" \
-  -F "model_id=scribe_v2" \
-  -F "diarize=true" \
-  -F "detect_speaker_roles=true" \
-  -F "use_speaker_library=true"
+elevenlabs speech-to-text convert \
+  --file call.mp3 \
+  --model-id scribe_v2 \
+  --diarize true \
+  --detect-speaker-roles true \
+  --use-speaker-library true
 ```
 
 ## Cloud Storage URL
@@ -173,13 +171,12 @@ const result = await client.speechToText.convert({
 });
 ```
 
-### cURL
+### CLI
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -F "model_id=scribe_v2" \
-  -F "source_url=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+elevenlabs speech-to-text convert \
+  --model-id scribe_v2 \
+  --source-url "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 ## Response Structure
@@ -227,6 +224,7 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
 | `transcription_id` | string | Unique identifier for this transcription |
 | `additional_formats` | array | Exported transcript formats (if requested) |
 | `entities` | array | Detected entities with text, type, and character offsets (if entity_detection enabled) |
+| `edited_transcript` | object or null | Transcript edit result when `transcript_edit` is set. A successful result has `kind: "transcript"` and `text`; a failed edit has `kind: "error"`, `error_type: "edit_failed"`, and `message`. |
 
 ## Supported Languages (90+)
 

@@ -187,6 +187,10 @@ MCP server configuration supports the same `pre_tool_speech`, `interruption_mode
 while retaining the server default for other tools. MCP timeouts default to 30 seconds and must be
 5-300 seconds.
 
+Set `request_meta` on an MCP server configuration to send entries in the MCP `_meta` field of
+`tools/call` requests. Values can be JSON scalars or references to workspace secrets, dynamic
+variables, or environment variables that resolve for each call.
+
 **Note:** The default `api_schema.method` is `GET`. Always set `"method": "POST"` explicitly for webhook tools that send request bodies.
 
 ### Server Implementation (Node.js)
@@ -365,6 +369,7 @@ When users want to go somewhere, use navigate_to.""",
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `expects_response` | bool | `false` | Whether the tool returns data to the agent |
+| `response_timeout_secs` | int | `20` | Seconds to wait for the client to respond (1-120), or `-1` to wait indefinitely. `-1` requires `expects_response` |
 
 ### Client Tool Return Values
 
@@ -402,6 +407,10 @@ Built-in tools provided by ElevenLabs. These are configured in `conversation_con
 ```
 
 Current API schemas also expose `agent_prompt_change`, `memory_entry_create`, `memory_entry_delete`, `memory_entry_search`, and `memory_entry_update` in `built_in_tools`.
+
+Set `only_at_conversation_start: true` on the `language_detection` tool to constrain language
+switching when no switch occurs in the first two user turns. Leave it `false` when the conversation
+must remain able to switch languages later.
 
 ### end_call
 
@@ -489,6 +498,11 @@ Help the LLM extract correct values:
 For optional tool parameters that should never be sent in the request payload, set
 `is_omitted: true` on the JSON schema property. Do not combine it with `description`,
 `dynamic_variable`, `is_system_provided`, or `constant_value`.
+
+For an LLM-supplied parameter that must match a runtime list, set
+`allowed_values: {"dynamic_variable": "allowed_ids"}`. The dynamic variable must resolve to a
+JSON array. Use `allowed_values` only with a `description`-sourced property; do not combine it with
+`dynamic_variable`, `is_system_provided`, `constant_value`, or `is_omitted`.
 
 ### Error Handling
 
@@ -604,7 +618,7 @@ Always verify order ID before lookup. Offer transfer for complex issues.""",
                 }
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "model_id": "eleven_flash_v2_5"}
+        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "model_id": "eleven_v4_turbo"}
     }
 )
 ```

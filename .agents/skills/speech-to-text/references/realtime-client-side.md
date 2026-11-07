@@ -159,7 +159,30 @@ async function startTranscription() {
 }
 ```
 
-`keyterms` biases realtime recognition toward important terms. `noVerbatim` removes filler words, false starts, and disfluencies from committed transcripts. `includeLanguageDetection` returns the detected language code on committed transcript events that include timestamps.
+`keyterms` biases realtime recognition toward important terms. `noVerbatim` removes filler words,
+false starts, and disfluencies from committed transcripts. `includeLanguageDetection` returns the
+detected language code in a delayed final transcript event.
+
+Both `Scribe.connect` and `useScribe` accept `secondaryLanguages` for expected additional
+languages, `entityDetection` for entity events, and `filterBackgroundAudio` to reduce false
+activation from background speech and ambient noise. Do not combine `filterBackgroundAudio` with
+`includeTimestamps`. Enterprise zero-retention sessions can set `enableLogging: false`.
+
+To redact entities, pass `entityRedaction` (same values as `entityDetection`) and optionally
+`entityRedactionMode` (`redacted`, `entity_type`, or `enumerated_entity_type`, the default). With
+`Scribe.connect`, listen for `RealtimeEvents.REDACTED_TRANSCRIPT`; each event contains the original
+`text` and the `redacted_text`. With `useScribe`, use the `onRedactedTranscript` callback or read
+`redactedText` on the matching entry in `committedTranscripts`.
+
+In microphone mode, both also accept `previousText`: text that precedes the audio, such as existing
+document content. It is sent with the first audio chunk as context for casing, punctuation, and
+sentence continuation.
+
+Set `transcriptEdit` on `Scribe.connect` to apply a natural-language instruction of up to 2,000
+characters to each committed segment. Listen for `RealtimeEvents.EDITED_TRANSCRIPT`; each event
+contains the original `text` and the `edited_text`. Transcript editing cannot be combined with
+`entityDetection` or `entityRedaction` and adds a 30% premium, billed for at least 10 seconds of audio per committed
+segment.
 
 ## Manual Audio Chunking
 

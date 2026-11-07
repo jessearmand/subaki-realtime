@@ -10,7 +10,7 @@ metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv
 
 Removes background noise from audio and isolates vocals/speech — useful for cleaning up noisy recordings, prepping audio for transcription, or pulling dialogue out of a mixed track.
 
-> **Setup:** See [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
+> **Setup, before writing any code:** if `ELEVENLABS_API_KEY` isn't set for this project, run `npx -y @elevenlabs/cli@latest onboard init` from the app's folder first and follow what it prints: it signs the user in and stores a key for the project, so nobody copies one by hand. Otherwise see the [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
 
 ## Quick Start
 
@@ -44,13 +44,10 @@ const audioStream = await client.audioIsolation.convert({
 audioStream.pipe(createWriteStream("clean.mp3"));
 ```
 
-### cURL
+### CLI
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/audio-isolation" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -F "audio=@noisy.mp3" \
-  --output clean.mp3
+elevenlabs audio-isolation convert --audio noisy.mp3 --output clean.mp3
 ```
 
 ## Parameters

@@ -131,3 +131,8 @@ Drive the running app in a browser at **1440×900** (desktop) and **390×844** (
 - Switching language or transport while idle shows the right notice (failover / downgrade / none).
 
 Calls themselves need provider keys and a microphone, so they are **local checks**. For engine or routing changes, start a call, then switch language mid-call and while still connecting. The call should reopen once on the new agent or prompt, in the right language, with no duplicate connection and no stale "call ended".
+
+<!-- entire-agent:begin -->
+Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.
+@.entire/agent-guide.md
+<!-- entire-agent:end -->

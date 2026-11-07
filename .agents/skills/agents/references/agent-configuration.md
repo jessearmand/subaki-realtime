@@ -67,11 +67,9 @@ conversation_config={
 conversation_config={
     "tts": {
         "voice_id": "JBFqnCBsd6RMkjVDRZzb",
-        "model_id": "eleven_flash_v2_5",
+        "model_id": "eleven_v4_turbo",
         "stability": 0.5,
-        "similarity_boost": 0.8,
-        "speed": 1.0,
-        "expressive_mode": True
+        "similarity_boost": 0.8
     }
 }
 ```
@@ -79,10 +77,10 @@ conversation_config={
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `voice_id` | string | `"cjVigY5qzO86Huf0OWal"` | Voice to use |
-| `model_id` | string | - | TTS model (see below) |
+| `model_id` | string | `"eleven_v4_turbo"` | TTS model (see below) |
 | `stability` | float | `0.5` | 0-1, lower = more expressive |
 | `similarity_boost` | float | `0.8` | 0-1, higher = closer to original voice |
-| `speed` | float | `1.0` | 0.7-1.2, speech speed multiplier |
+| `speed` | float | `1.0` | 0.7-1.2, speech speed multiplier (not supported on Eleven v4 models) |
 | `expressive_mode` | bool | `true` | Enable expressive voice generation |
 | `agent_output_audio_format` | string | - | Output audio codec format |
 | `pronunciation_dictionary_locators` | array | - | Pronunciation overrides |
@@ -92,12 +90,14 @@ conversation_config={
 
 | Model ID | Languages | Latency |
 |----------|-----------|---------|
-| `eleven_flash_v2_5` | 32 | ~75ms (recommended) |
+| `eleven_v4_turbo` | 90+ | ~100ms (default, recommended — most expressive real-time model) |
+| `eleven_v4` | 90+ | Standard |
+| `eleven_flash_v2_5` | 32 | ~75ms (lowest latency and cost) |
 | `eleven_flash_v2` | English | ~75ms |
-| `eleven_turbo_v2_5` | 32 | ~250-300ms |
-| `eleven_turbo_v2` | English | ~250-300ms |
-| `eleven_multilingual_v2` | 29 | Standard |
-| `eleven_v3_conversational` | 70+ | Standard |
+| `eleven_v3_conversational` | 70+ | ~280ms (previous generation) |
+| `eleven_multilingual_v2` | 29 | Standard (previous generation) |
+
+`eleven_turbo_v2_5` and `eleven_turbo_v2` are still accepted but superseded by the Flash models. Eleven v4 models use only `stability` and `similarity_boost`; `speed` does not apply.
 
 ### asr (Automatic Speech Recognition)
 
@@ -142,6 +142,8 @@ conversation_config={
 | `speculative_turn` | bool | `false` | Enable speculative turn detection |
 | `turn_model` | string | `"turn_v3"` | Turn detection model version: `turn_v2` or `turn_v3` |
 | `interruption_ignore_terms` | array | - | Case-insensitive terms that should not trigger an interruption when spoken by the user |
+| `interruption_ignore_term_languages` | array | - | Language codes whose curated ignore-term lists are enabled |
+| `merge_with_default_ignore_terms` | bool | `false` | Combine curated terms for `interruption_ignore_term_languages` with `interruption_ignore_terms` |
 | `transcribe_on_disabled_interruptions` | bool | `false` | When interruptions are disabled, still transcribe user speech so it can carry into the next turn |
 | `soft_timeout_config` | object | - | Configures a message if user is silent (see below) |
 
@@ -156,6 +158,7 @@ conversation_config={
 | `randomize_fillers` | bool | `false` | Shuffle static soft timeout messages once at the start of each turn |
 | `max_soft_timeouts_per_generation` | int | `1` | Maximum filler messages while waiting for one LLM response (1-8) |
 | `llm_generated_message_prompt_override` | string | - | Custom prompt for LLM-generated filler messages; supports dynamic variables |
+| `disable_until_first_user_message` | bool | `false` | Suppress soft timeout fillers until the conversation receives its first user message |
 
 ## prompt (nested in conversation_config.agent)
 
@@ -181,6 +184,7 @@ conversation_config={
 |-------|------|---------|-------------|
 | `prompt` | string | `""` | System prompt defining agent behavior |
 | `llm` | string | - | Model ID (see LLM providers below) |
+| `service_tier` | string | `"standard"` | `standard` or `fast`. `fast` trades a per-token price premium for higher token throughput; only some models offer it (see `available_service_tiers` in `GET /v1/convai/llm/list`) |
 | `temperature` | float | `0` | 0-1, higher = more creative |
 | `max_tokens` | int | `-1` | Max tokens for LLM response (-1 = unlimited) |
 | `reasoning_effort` | string | - | Reasoning depth: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max` (model-dependent) |
@@ -188,6 +192,7 @@ conversation_config={
 | `enable_reasoning_summary` | bool | `false` | Request provider reasoning summaries when supported; keep disabled for lower time-to-first-byte |
 | `tools` | array | - | Webhook and client tool definitions |
 | `built_in_tools` | object | - | System tools (end_call, transfer, etc.) |
+| `enable_parallel_tool_calls` | bool | `true` | Allow supported models to execute multiple tools within one turn |
 | `tool_ids` | array | - | References to pre-configured tools |
 | `knowledge_base` | array | - | Documents for RAG |
 | `custom_llm` | object | - | Custom LLM endpoint config |
@@ -207,10 +212,10 @@ to resolve per-environment auth connections at runtime.
 
 | Provider | Model IDs |
 |----------|-----------|
-| OpenAI | `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.5-2026-04-23`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17`, `gpt-5.4-nano-2026-03-17`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
-| Anthropic | `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-sonnet-4-5`, `claude-sonnet-4`, `claude-haiku-4-5`, `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-haiku` |
-| Google | `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
-| ElevenLabs | `glm-45-air-fp8`, `qwen3-30b-a3b`, `qwen36-35b-a3b`, `qwen35-35b-a3b`, `qwen35-397b-a17b`, `gpt-oss-120b` (hosted, ultra-low latency) |
+| OpenAI | `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.5-2026-04-23`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17`, `gpt-5.4-nano-2026-03-17`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
+| Anthropic | `claude-opus-5-5`, `claude-opus-5`, `claude-sonnet-5-5`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-sonnet-4`, `claude-haiku-4-5`, `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-haiku` |
+| Google | `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
+| ElevenLabs | `glm-52`, `deepseek-v41-flash`, `glm-45-air-fp8`, `qwen3-30b-a3b`, `qwen36-35b-a3b`, `qwen35-35b-a3b`, `qwen35-397b-a17b`, `nemotron-35-super-vl-nvfp4`, `gpt-oss-120b` (hosted, ultra-low latency) |
 | Custom | `custom-llm` (requires custom_llm config) |
 
 Use `GET /v1/convai/llm/list` to inspect the current model catalog, including deprecation state, token/context limits, and capability flags such as image-input support.
@@ -255,6 +260,10 @@ platform_settings={
         "agent_concurrency_limit": 10,
         "daily_limit": 100
     },
+    "queueing_config": {
+        "enabled": True,
+        "wait_timeout_seconds": 300
+    },
     "trust_context": "low"
 }
 ```
@@ -269,11 +278,13 @@ platform_settings={
 | `widget` | object | Hosted widget and shareable page configuration. See the widget table below for selected options. |
 | `auth` | object | Authentication and origin restrictions for agent access |
 | `call_limits` | object | Concurrency and daily usage limits |
+| `queueing_config` | object | Per-agent wait queue for calls that arrive at the concurrency limit |
 | `guardrails` | object | Built-in safety and policy controls for agent interactions |
 | `privacy` | object | Recording, retention, and conversation history redaction settings |
 | `trust_context` | string | Trust classification for the agent: `unknown`, `low`, or `high` |
 | `topic_discovery` | object | Per-agent topic discovery configuration |
 | `sentiment_analysis` | object | Per-agent post-call sentiment analysis configuration |
+| `alerting` | object or null | Per-agent monitor thresholds, auto-resolution timing, and webhook, PagerDuty, or Slack notification settings |
 
 ### auth
 
@@ -290,6 +301,51 @@ platform_settings={
 | `agent_concurrency_limit` | int | Max simultaneous conversations (default: -1, unlimited) |
 | `daily_limit` | int | Max conversations per day (default: 100000) |
 | `bursting_enabled` | bool | Allow exceeding limits at 2x cost (default: true) |
+
+### alerting
+
+Use `platform_settings.alerting.notifiers` to deliver alert lifecycle notifications:
+
+| Notifier | Required fields |
+|----------|-----------------|
+| Webhook | `type: "webhook"`, `webhook_id` |
+| PagerDuty | `type: "integration"`, `integration_type: "pagerduty"`, `connection_id` |
+| Slack | `type: "integration"`, `integration_type: "slack"`, `connection_id`, `channel_id` |
+
+For Slack, `connection_id` identifies a workspace integration connection with monitoring
+capability. `channel_id` identifies the destination channel:
+
+```json
+{
+  "platform_settings": {
+    "alerting": {
+      "notifiers": [
+        {
+          "type": "integration",
+          "integration_type": "slack",
+          "connection_id": "connection_id",
+          "channel_id": "C0123456789"
+        }
+      ]
+    }
+  }
+}
+```
+### queueing_config
+
+Call queueing holds callers when the agent is at its concurrency limit and connects them when
+capacity becomes available. It is disabled by default.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Hold callers in a queue instead of rejecting them immediately |
+| `wait_timeout_seconds` | int | `180` | Maximum wait before disconnection, from 1 to 1,800 seconds |
+
+Queued callers hear the default hold tone unless a custom MP3 or WAV file is uploaded. Use
+`client.conversational_ai.agents.hold_audio.create` or
+`client.conversationalAi.agents.holdAudio.create` to upload a file, and the corresponding
+`delete` method to restore the default tone. The uploaded `hold_audio` object in
+`queueing_config` is read-only.
 
 ### guardrails
 
@@ -311,7 +367,7 @@ Use `platform_settings.guardrails` to configure built-in safety controls for use
 | `name` | string | User-facing guardrail name. |
 | `prompt` | string | Instruction describing what to block. |
 | `execution_mode` | string | Guardrail execution mode: `streaming` or `blocking`. |
-| `model` | string | LLM model used for custom guardrail evaluation, such as `gemini-2.5-flash-lite`, `claude-sonnet-4-6`, or `gpt-5.4-mini`. |
+| `model` | string | LLM model used for custom guardrail evaluation, such as `gemini-3.1-flash-lite`, `claude-sonnet-4-6`, or `gpt-5.4-mini`. |
 | `history_message_count` | integer | Number of recent customer messages to include in guardrail history; `0` includes none. |
 | `trigger_action` | object | Action when triggered, such as retrying with feedback or ending the call. |
 | `evaluate_full_response_only` | bool | Evaluate the complete non-TTS response once. Requires `execution_mode` set to `blocking`; defaults to `false`. |
@@ -378,6 +434,8 @@ Use `platform_settings.widget` to configure the hosted widget and shareable page
 | `show_agent_status` | bool | `false` | Whether to show working, done, or error status while tools are running |
 | `show_conversation_id` | bool | `true` | Whether to show the conversation ID after disconnection |
 | `strip_audio_tags` | bool | `true` | Whether to strip audio markup from messages |
+| `mic_muting_enabled` | bool | `true` | Whether users can mute their microphone |
+| `transcript_enabled` | bool | `true` | Whether to show the live conversation transcript |
 | `syntax_highlight_theme` | string | auto | Code block syntax highlighting theme (`light` or `dark`); omit it to let the widget auto-detect |
 | `show_resize_button` | bool | `true` | Whether to show the expand and collapse control in the widget header |
 
@@ -388,6 +446,7 @@ Use `platform_settings.widget` to configure the hosted widget and shareable page
 | `max_duration_seconds` | int | `600` | Max conversation duration |
 | `text_only` | bool | `false` | Text-only mode (avoids audio pricing) |
 | `file_input` | object | - | Enables image and PDF uploads in chat for multimodal LLMs |
+| `dtmf_input_settings` | object or null | - | Collects phone keypad input; set to `null` to disable |
 | `monitoring_enabled` | bool | `false` | Enable real-time WebSocket monitoring |
 | `client_events` | array | - | Client events forwarded to the connected application |
 | `monitoring_events` | array | - | Events forwarded to monitoring WebSocket connections |
@@ -395,8 +454,9 @@ Use `platform_settings.widget` to configure the hosted widget and shareable page
 | `source_attribution` | bool | `false` | Instructs the LLM to report sources used when knowledge base content is present |
 
 Common client events include `agent_response_correction`, `agent_tool_response_full_payload`,
-and `agent_response_complete`. `agent_response_complete` fires when the agent is done responding
-and must be enabled in `client_events`.
+`agent_response_complete`, and `context_usage`. `agent_response_complete` fires when the agent is
+done responding. `context_usage` fires after each completed agent turn with `event_id`, `model`,
+`context_tokens`, and `context_limit_tokens`. Enable either event by adding it to `client_events`.
 
 **file_input:**
 
@@ -406,14 +466,25 @@ and must be enabled in `client_events`.
 | `max_files_in_memory` | int | `10` | Number of most-recent files kept in memory (1-30); older files are summarized and released |
 | `max_files_per_conversation` | int | `10` | Total upload limit; use `-1` for no limit or a value at least as large as `max_files_in_memory` |
 
+**dtmf_input_settings:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `dtmf_input_timeout` | number | `2` | Seconds to wait after the last keypress before completing the sequence (0.5-10) |
+| `hash_terminator` | bool | `true` | Completes the sequence when the caller presses `#` |
+| `redact_input` | bool | `false` | Replaces keypad entries in stored transcripts, logs, and analysis; the live agent and tools still receive the digits |
+
+DTMF input accepts out-of-band keypad events during phone calls. Each completed sequence becomes
+one user turn.
+
 **background_sound:**
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `source_type` | string | - | Background sound source type; use `preset` for built-in sounds |
 | `source_id` | string | - | Preset sound ID, such as `office1`, `office2`, `restaurant`, `city`, `typing`, or `elevator1`-`elevator4` |
-| `volume` | number | `0.6` | Playback volume from `0.01` to `1.0` |
-| `crossfade_loop` | bool | `false` | Crossfade loop boundaries to avoid audible pops |
+| `volume` | number | `0.15` | Playback volume from `0.01` to `1.0` |
+| `crossfade_loop` | bool | `true` | Crossfade loop boundaries to avoid audible pops |
 
 ## Additional Top-Level Fields
 
@@ -460,7 +531,9 @@ report which knowledge base sources it used in responses.
 Use a [crawl job](https://elevenlabs.io/docs/api-reference/knowledge-base/create-crawl-job) to
 ingest a website into the knowledge base. A crawl requires a `url` and can control crawl depth,
 page count, URL matching, sitemaps, folder placement, and automatic synchronization. List,
-inspect, or cancel crawl jobs while ingestion is running.
+inspect, or cancel crawl jobs while ingestion is running. Set `auto_discover: true` with
+`enable_auto_sync: true` to follow links from crawled pages and add newly discovered pages during
+automatic synchronization.
 
 Before deleting several documents or folders, use the
 [bulk dependency check](https://elevenlabs.io/docs/api-reference/knowledge-base/dependent-agents-multiple)
@@ -521,7 +594,7 @@ const agents = await client.conversationalAi.agents.list();
 ```
 
 ```bash
-curl -X GET "https://api.elevenlabs.io/v1/convai/agents" -H "xi-api-key: $ELEVENLABS_API_KEY"
+elevenlabs agents list
 ```
 
 ### SDK: Manage Conversation Tags
@@ -562,9 +635,17 @@ const conversations = await client.conversationalAi.conversations.list({
 ```
 
 Conversation listing and message search can filter by `visited_agent_ids` and
-`visited_agent_branch_ids`. For a listing that includes selected analysis results, pass
-`data_collection_ids` or `evaluation_criteria_ids`; matching summaries include
+`visited_agent_branch_ids`, `triggered_procedure_ids`, and `include_invalid_tool_calls`. List
+conversations also accepts `parent_conversation_id`, `guardrail_types`, `custom_guardrail_names`,
+and `sort_direction` to narrow or order results. For a listing that includes selected analysis
+results, pass `data_collection_ids` or `evaluation_criteria_ids`; matching summaries include
 `data_collection_results` or `evaluation_criteria_results`.
+
+Both operations accept repeatable `data_collection_params`, `dynamic_variable_params`, and
+`evaluation_params` filters. Data collection and dynamic variable filters use `name:op:value`,
+where `op` is `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, or `in`; comparison operators require a
+numeric value, and `in` values use a pipe delimiter. Evaluation filters use
+`criteria_id:result`, where `result` is `success`, `failure`, or `unknown`.
 
 ### SDK: Get Agent
 
@@ -577,7 +658,7 @@ const agent = await client.conversationalAi.agents.get("your-agent-id");
 ```
 
 ```bash
-curl -X GET "https://api.elevenlabs.io/v1/convai/agents/your-agent-id" -H "xi-api-key: $ELEVENLABS_API_KEY"
+elevenlabs agents get --agent-id "your-agent-id"
 ```
 
 ### SDK: Update Agent
@@ -591,7 +672,7 @@ client.conversational_ai.agents.update(agent_id="id", name="New Name")
 
 # Update TTS voice
 client.conversational_ai.agents.update(agent_id="id", conversation_config={
-    "tts": {"voice_id": "EXAVITQu4vr4xnSDxMaL", "model_id": "eleven_flash_v2_5"}
+    "tts": {"voice_id": "EXAVITQu4vr4xnSDxMaL", "model_id": "eleven_v4_turbo"}
 })
 
 # Update prompt/LLM (nested in agent)
@@ -621,11 +702,9 @@ await client.conversationalAi.agents.update("id", {
 });
 ```
 
-**cURL:**
+**CLI:**
 ```bash
-curl -X PATCH "https://api.elevenlabs.io/v1/convai/agents/your-agent-id" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
-  -d '{"name": "New Name"}'
+elevenlabs agents update --agent-id "your-agent-id" --json '{"name": "New Name"}'
 ```
 
 #### Updatable Fields
@@ -634,13 +713,13 @@ curl -X PATCH "https://api.elevenlabs.io/v1/convai/agents/your-agent-id" \
 |---------|--------|
 | Root | `name`, `tags` |
 | `conversation_config.agent` | `first_message`, `language`, `disable_first_message_interruptions`, `dynamic_variables`, `text_behavior_overrides` |
-| `conversation_config.agent.prompt` | `prompt`, `llm`, `temperature`, `max_tokens`, `reasoning_effort`, `tools`, `built_in_tools`, `knowledge_base`, `custom_llm`, `timezone` |
+| `conversation_config.agent.prompt` | `prompt`, `llm`, `temperature`, `max_tokens`, `reasoning_effort`, `tools`, `built_in_tools`, `enable_parallel_tool_calls`, `knowledge_base`, `custom_llm`, `timezone` |
 | `conversation_config.tts` | `voice_id`, `model_id`, `stability`, `similarity_boost`, `speed`, `expressive_mode`, `enable_phoneme_tags` |
 | `conversation_config.asr` | `quality`, `provider`, `keywords`, `user_input_audio_format` |
-| `conversation_config.turn` | `turn_timeout`, `turn_eagerness`, `silence_end_call_timeout`, `turn_model`, `interruption_ignore_terms`, `transcribe_on_disabled_interruptions`, `soft_timeout_config` |
-| `conversation_config.conversation` | `max_duration_seconds`, `text_only`, `monitoring_enabled`, `background_sound` |
-| `platform_settings` | `summary_language`, `auto_translate_transcript_to_app_language`, `analysis_items`, `guardrails`, `privacy`, `topic_discovery`, `sentiment_analysis` |
-| `platform_settings.widget` | `dismissible`, `show_agent_status`, `show_conversation_id`, `strip_audio_tags`, `syntax_highlight_theme` |
+| `conversation_config.turn` | `turn_timeout`, `turn_eagerness`, `silence_end_call_timeout`, `turn_model`, `interruption_ignore_terms`, `interruption_ignore_term_languages`, `merge_with_default_ignore_terms`, `transcribe_on_disabled_interruptions`, `soft_timeout_config` |
+| `conversation_config.conversation` | `max_duration_seconds`, `text_only`, `dtmf_input_settings`, `monitoring_enabled`, `background_sound` |
+| `platform_settings` | `summary_language`, `auto_translate_transcript_to_app_language`, `analysis_items`, `queueing_config`, `guardrails`, `privacy`, `topic_discovery`, `sentiment_analysis`, `alerting` |
+| `platform_settings.widget` | `dismissible`, `show_agent_status`, `show_conversation_id`, `strip_audio_tags`, `mic_muting_enabled`, `transcript_enabled`, `syntax_highlight_theme` |
 | `platform_settings.auth` | `enable_auth`, `allowlist` |
 | `platform_settings.call_limits` | `agent_concurrency_limit`, `daily_limit`, `bursting_enabled` |
 
@@ -655,7 +734,7 @@ await client.conversationalAi.agents.delete("your-agent-id");
 ```
 
 ```bash
-curl -X DELETE "https://api.elevenlabs.io/v1/convai/agents/your-agent-id" -H "xi-api-key: $ELEVENLABS_API_KEY"
+elevenlabs agents delete --agent-id "your-agent-id"
 ```
 
 ## CI/CD Integration
@@ -693,7 +772,7 @@ agent = client.conversational_ai.agents.create(
                 }
             }
         },
-        "tts": {"voice_id": "XB0fDUnXU5powFXDhCwa", "model_id": "eleven_flash_v2_5"},
+        "tts": {"voice_id": "XB0fDUnXU5powFXDhCwa", "model_id": "eleven_v4_turbo"},
         "turn": {"turn_eagerness": "normal", "turn_timeout": 7},
         "conversation": {"max_duration_seconds": 900}
     }
@@ -715,7 +794,7 @@ agent = client.conversational_ai.agents.create(
                 "max_tokens": 100
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "model_id": "eleven_flash_v2_5"},
+        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "model_id": "eleven_flash_v2_5"},  # Flash: lowest latency (~75ms)
         "turn": {"turn_eagerness": "eager", "turn_timeout": 3}
     }
 )

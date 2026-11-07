@@ -75,6 +75,34 @@ Interim transcription results, updates frequently as audio is processed.
 | `message_type` | string | `"partial_transcript"` |
 | `text` | string | Current partial transcription |
 
+### final_transcript
+
+A stable result for a segment after speech settles but before the segment is committed.
+
+```json
+{
+  "message_type": "final_transcript",
+  "text": "Hello, how are you today?"
+}
+```
+
+### final_transcript_with_timestamps
+
+A delayed final result sent when timestamps or language detection are enabled.
+
+```json
+{
+  "message_type": "final_transcript_with_timestamps",
+  "text": "Hello, how are you today?",
+  "language_code": "en",
+  "words": [
+    {"text": "Hello", "start": 0.0, "end": 0.32, "type": "word", "logprob": -0.03}
+  ]
+}
+```
+
+`language_code` and `words` are optional and depend on the enabled session options.
+
 ### committed_transcript
 
 Final transcription after commit.
@@ -120,6 +148,24 @@ Final transcription with word-level timing. Sent after `committed_transcript` wh
 | `words[].type` | string | `"word"`, `"spacing"`, or `"audio_event"` |
 | `words[].speaker_id` | string | Speaker identifier (if diarization enabled) |
 
+### edited_transcript
+
+Edited version of a committed segment. Sent when the connection includes `transcript_edit`.
+
+```json
+{
+  "message_type": "edited_transcript",
+  "text": "our next meeting is on the twelfth of July twenty twenty-six",
+  "edited_text": "our next meeting is on 2026-07-12"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_type` | string | `"edited_transcript"` |
+| `text` | string | Committed transcript text that the instruction was applied to |
+| `edited_text` | string | Edited text; identical to `text` when no edits were made |
+
 ### committed_transcript_entities
 
 Entities detected in a committed segment when the connection includes `entity_detection`.
@@ -149,6 +195,24 @@ Entities detected in a committed segment when the connection includes `entity_de
 | `entities[].start_char` | integer | Start character offset in `text` |
 | `entities[].end_char` | integer | End character offset in `text` |
 
+### redacted_transcript
+
+Redacted version of a committed segment. Sent when the connection includes `entity_redaction`.
+
+```json
+{
+  "message_type": "redacted_transcript",
+  "text": "My name is Alice.",
+  "redacted_text": "My name is {NAME_0}."
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_type` | string | `"redacted_transcript"` |
+| `text` | string | Committed transcript text that entities were redacted from |
+| `redacted_text` | string | Committed text with each redacted entity replaced by a marker |
+
 ## Error Events
 
 ### error
@@ -171,6 +235,7 @@ Sent when an error occurs.
 | `input_error` | Unsupported audio format or invalid input |
 | `rate_limited` | Too many requests |
 | `commit_throttled` | Commits sent too frequently |
+| `invalid_request` | Connection parameters were rejected; the session closes |
 | `session_time_limit_exceeded` | Session exceeded max duration |
 | `unaccepted_terms` | Terms not accepted in dashboard |
 | `resource_exhausted` | Server capacity reached |
@@ -193,21 +258,24 @@ WebSocket connection closed (standard WebSocket close frame with code and reason
 
 ### Python
 
-The Python SDK abstracts the wire protocol. You can use `event.type` (not `message_type`) when using the SDK's event objects:
+The Python SDK uses `RealtimeEvents` members matching the `message_type` values. Each callback receives the event payload as a dict. `ERROR` also fires for every specific error event, so register it to catch all failures:
 
 ```python
-async for event in connection:
-    if event.type == "session_started":
-        print(f"Session: {event.session_id}")
-    elif event.type == "partial_transcript":
-        print(f"Partial: {event.text}")
-    elif event.type == "committed_transcript":
-        print(f"Final: {event.text}")
-    elif event.type == "committed_transcript_with_timestamps":
-        for word in event.words:
-            print(f"  {word.text}: {word.start}s - {word.end}s")
-    elif event.type == "error":
-        print(f"Error: {event.error}")
+from elevenlabs import RealtimeEvents
+
+def on_committed_with_timestamps(data):
+    for word in data.get("words", []):
+        print(f"  {word['text']}: {word['start']}s - {word['end']}s")
+
+connection.on(RealtimeEvents.SESSION_STARTED, lambda data: print(f"Session: {data.get('session_id')}"))
+connection.on(RealtimeEvents.PARTIAL_TRANSCRIPT, lambda data: print(f"Partial: {data.get('text', '')}"))
+connection.on(RealtimeEvents.FINAL_TRANSCRIPT, lambda data: print(f"Stable segment: {data.get('text', '')}"))
+connection.on(RealtimeEvents.COMMITTED_TRANSCRIPT, lambda data: print(f"Final: {data.get('text', '')}"))
+connection.on(RealtimeEvents.COMMITTED_TRANSCRIPT_WITH_TIMESTAMPS, on_committed_with_timestamps)
+connection.on(RealtimeEvents.EDITED_TRANSCRIPT, lambda data: print(f"Edited: {data.get('edited_text', '')}"))
+connection.on(RealtimeEvents.INVALID_REQUEST, lambda data: print(f"Connection rejected: {data.get('error')}"))
+connection.on(RealtimeEvents.ERROR, lambda data: print(f"Error: {data.get('error')}"))
+connection.on(RealtimeEvents.CLOSE, lambda: print("Connection closed"))
 ```
 
 ### JavaScript
@@ -223,6 +291,10 @@ connection.on("partial_transcript", (data) => {
   console.log("Partial:", data.text);
 });
 
+connection.on("final_transcript", (data) => {
+  console.log("Stable segment:", data.text);
+});
+
 connection.on("committed_transcript", (data) => {
   console.log("Final:", data.text);
 });
@@ -233,7 +305,15 @@ connection.on("committed_transcript_with_timestamps", (data) => {
   }
 });
 
+connection.on("edited_transcript", (data) => {
+  console.log("Edited:", data.edited_text);
+});
+
 connection.on("error", (error) => {
   console.error("Error:", error);
+});
+
+connection.on("invalid_request", (error) => {
+  console.error("Connection rejected:", error.error);
 });
 ```

@@ -1,0 +1,8 @@
+I have ran the local setup: 
+
+```
+NEXT_PUBLIC_TTS_BACKEND=local NEXT_PUBLIC_STT_BACKEND=local mise run dev
+```
+
+
+What is the indicator that Voxtral is being used? Is there an indicator? Also the "EXECUTION" column in PROVIDERS shows LOCAL / REMOTE is should select which execution mode it's in

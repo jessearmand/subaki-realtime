@@ -1,0 +1,3 @@
+Okay, push both feat/cascade-local-model and feat/nav-key-shortcuts, then create a PR for it.
+
+The feat/nav-key-shortcuts should be based on the feat/cascade-local-model to minimize the diff

@@ -1,0 +1,1 @@
+Yes, update the relevant description of Onyx character in lib/data.ts and persona-architecture.md

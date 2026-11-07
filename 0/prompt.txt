@@ -1,0 +1,3 @@
+I think yes that's likely the issue. The model is listening to its own audio via the mic. I can see that it's interrupting when it listeining its own voice. I confirmed this by muting the microphone while the model is speaking.
+
+Then for the playback risk you mentioned in Part 1, is it related to how sometimes the greeting playback was cut off, and it stops playing? The voice still plays paritally, but at that point it could seem to be cut off. It doesn't happen anymore after I mute the mic while the model is speaking

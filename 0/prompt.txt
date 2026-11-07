@@ -1,0 +1,7 @@
+@"/Users/jessearmand/Develop/personaplex-mlx"
+Review the latest commits in ~/Develop/personaplex-mlx/
+Despite, the changes in commit e41bf5a7a90aed6de8ac87ef1e4679396a979a24 
+
+The burst glitch or crackling at initial greeting still occurs. However, the conversation proceed normally afterwards, it seems the latency is more observable
+
+The local server is still running in Chrome

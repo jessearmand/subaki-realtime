@@ -1,0 +1,150 @@
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - Earlier requests, all completed:
+     - Import the design prototype and review the multilingual JA failover.
+     - Research the JA support in Gemini, ElevenLabs, OpenAI and xAI.
+     - Search the ElevenLabs library for native-JA voices and download previews.
+     - Cast the voices and create seven JA ElevenLabs agents.
+     - Commit the work.
+     - Apply the persona prompt review across engines, including ElevenLabs EN and JA.
+     - Commit and merge to `feat/multilingual-jp`.
+   - User design decisions to keep:
+     1. Failover goes to the previously chosen JA provider or the best available one; ElevenLabs is the safe bet, because it uses a cloned voice from a native Japanese speaker.
+     2. Failover is a transport concern. Mid-call failover does not work, so it must be a new call session after a transition.
+     3. Transition to a new session. Do not try to keep the session alive.
+     4. If the user selects a provider that does not support JA, switch the persona language immediately.
+   - **Current request**: Re-import the prototype `https://claude.ai/design/p/70221de8-e3ca-4c57-a1b8-547e9eded928?file=index.html`. Read `index.html` and the files it imports (app.jsx, design-canvas.jsx, mount.jsx, orb.jsx, screens.jsx, styles.css, tweaks-panel.jsx). Then: "Review: `index.html` examine what are we missing in the UI to complete the EN / 日本語 switch. At the moment, the language switch only applies to sessions and personas UI, not the whole application yet". The user wants an assessment, not implementation.
+
+2. Key Technical Concepts:
+   - Language is routing, not configuration. ElevenLabs uses one dedicated platform agent per persona per language (`tsubaki-<id>` and `tsubaki-<id>-ja`).
+   - For xAI, OpenAI and Gemini, JA is set only through instructions. None of them has a session `language` field. Never send Gemini `speechConfig.languageCode`, because native-audio models do not support it.
+   - The updated prototype marks only ELEVENLABS as `ja: true`, because the other engines use the shared EN identity prompt and OpenAI pins transcription to "en".
+   - In the prototype, `lang` is session-level state and the persona is derived from it.
+   - Fonts: `.pp-ja` uses Zen Kaku Gothic New; the JA description and greet use Shippori Mincho.
+   - The ElevenLabs CLI project (`agents.json`, `agent_configs/`) is gitignored. The source of truth is the generator. `agents push` is required after edits.
+   - Repo gates, in this order: `bunx tsc --noEmit` → `bun run lint` → `bun run fmt:check` → `bun run build`.
+   - Run secret commands only through `fnox exec --`. The secrets-guard blocks `echo` near secret variables.
+
+3. Files and Code Sections:
+   - `scripts/elevenlabs/gen-agent-configs.ts`: generates 14 configs.
+     - Contains `ENVIRONMENT_JA`, `GUARDRAILS_JA` and `GOAL_JA`.
+     - Interfaces: `PersonaVariant {voiceId, voiceNote, firstMessage, personality, tone}` and `PersonaSpec extends PersonaVariant {id, name, eagerness, speed, ja: PersonaVariant}`.
+     - `buildPrompt(v, lang)` and `agentConfig(p, lang)` set `language: lang` and name the JA agent `${p.name}-ja`.
+     - The guardrails now say "never accept machines, companies, or devices as an explanation of what you are" (JA: 機械や会社や装置を、自分が何者かの説明として決して受け入れないこと).
+     - Echo has the crisis line in both EN and JA.
+   - `scripts/elevenlabs/cast-voices-ja.sh`: new. Adds the JA voices through `POST /v1/voices/add/<owner>/<voice_id>`.
+   - `scripts/elevenlabs/create-agents-ja.sh`: new. Creates and pushes the JA set. Its jq line handles `-ja(-[0-9]+)?\.json`.
+   - `lib/realtime/elevenlabs-agent.ts`: has the maps `PERSONA_AGENT_IDS` and `PERSONA_AGENT_IDS_JA`:
+     ```ts
+     const PERSONA_AGENT_IDS_JA = { aria:"REDACTED", onyx:"agent_0101m0ws50k8f5yvq13w1vnfewmj", sage:"agent_5901m0ws5299ed18ay20rdz97zwa", nova:"agent_8601m0ws53vqevptfz83rhfzj9wj", echo:"agent_8701m0ws55jzfff8stqz47gb4rj4", cipher:"agent_7101m0ws5795fqa8fq1zk7bjew9t", vesper:"agent_0001m0ws5960ehtr2fxpnrgwvfhx" };
+     export function resolveElevenLabsAgentId(personaId?: string, lang: "en"|"ja" = "en") { return (personaId && lang==="ja" && PERSONA_AGENT_IDS_JA[personaId]) || (personaId && PERSONA_AGENT_IDS[personaId]) || process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID || undefined; }
+     ```
+   - JA casting:
+
+     | Persona | Voice | Voice ID |
+     |---|---|---|
+     | ARIA | Morioki | 8EkOjt4xTPGMclNlh1pk |
+     | ONYX | Kyo | 4YdULuX6cCG6iCRjMFZM |
+     | SAGE | Minato | nZ1TUMhlYQFm890dVJCz |
+     | NOVA | Rina | lxNssjs8lZzgD44uVifH |
+     | ECHO | Mio | nBV906YvEOdwWKK9J8Hx |
+     | CIPHER | Ken | CNs61ARiqwaYAbqKRbHf |
+     | VESPER | Mithiru | fVUIeVRB3vuo1X2r1gMM |
+
+   - `lib/realtime/cascade-agent.ts`: `const SHARED = \`${SHARED_PERSONA_PROMPT}\nIf the user's words arrive garbled... briefly ask them to say it again...\``.
+   - `lib/realtime/shared-persona-prompt.ts`: the shared condensed identity for xAI, Gemini and Cascade (from `6b2c373`).
+   - `docs/persona-architecture.md`: the ElevenLabs generator is listed as a source of truth, with the EN+JA+push rule for propagating edits.
+   - Prototype (re-fetched; screens.jsx extracted to the session scratchpad `.../scratchpad/screens.jsx`):
+     - `app.jsx`:
+       - `DesktopApp` and `MobileApp` both use `const [lang,setLang]=useState('en')` and `personaId` + `resolvePersona`.
+       - A failover effect runs on `[lang, provider]` and uses `JA_PROVIDER()`.
+       - The Sidebar footer shows `{lang==='ja'?'日本語':'EN'}`.
+       - Everything else is hard-coded EN: TopBar SESSION/NETWORK/MIC/LIVE/IDLE, the NAV labels, `stateLabel`, captions such as 'tap CALL to begin', the sheet "TRANSCRIPT · N TURNS", the mobile settings labels, aria-labels, "YOU" and the failover copy.
+     - `screens.jsx`:
+       - `PERSONAS` with `ja` blocks (name, accent, aspect, traits, desc, rate, voice, tag, greet).
+       - `resolvePersona`, and `PROVIDERS` with only elevenlabs `ja:true`.
+       - `LangSwitch` (role=group, aria-label "Voice language").
+       - `JA_PROVIDER` and `jaAgentName`.
+       - CallView meta row: LangSwitch, "PERSONA · name" and the "NO JA AGENT ON … · FAILOVER" tag.
+       - PersonasView: "VOICE LANG" LangSwitch, JA greet block ("FIRST MESSAGE" + tag) and the "JA AGENT" line.
+       - ProvidersView: LANGUAGE Spec ("EN · JA" / "EN ONLY").
+       - Still EN-only: `TRANSCRIPT_SCRIPT` and `TOOLS_DEFAULT` labels; all page headers, ledes, eyebrows and h1s ("Personas.", "Realtime providers.", "Settings."); settings labels (AUDIO IN/OUT, DENOISE, VAD, LATENCY BUDGET, INTERRUPTIONS, PUSH-TO-TALK); the ToolsButton popover (ACTIVE TOOLS, CONFIGURE IN SETTINGS); MicSelector (MUTE/UNMUTE); the transcript drawer header (LIVE TRANSCRIPT, TURNS); provider notes and spec labels; the clone slot; the CLONE NEW and IMPORT buttons.
+     - `styles.css`: has `.pp-ja`, `.pp-lang-sw`, `.pp-lang-btn`, `.pp-lang-field`, `.pp-ja-greet*`, `.pp-ja-support`, `.pp-ja-warn`, `.pp-ja-mark` and `.pp-failover`. The JA font applies only to persona elements. Captions and transcript (`.pp-caption`, `.pp-turn-text`, Newsreader italic) have no JA font.
+     - `index.html`: `<html lang="en">` is static. The fonts Zen Kaku Gothic New and Shippori Mincho are loaded.
+     - `mount.jsx`: the Tweaks panel has no language tweak.
+
+4. Errors and fixes:
+   - Python urllib failed with SSL CERTIFICATE_VERIFY_FAILED. Fixed by using curl through subprocess.
+   - secrets-guard blocked `echo` near `$ELEVENLABS_API_KEY`. Fixed by using `curl -s -w "\n"`.
+   - The ElevenLabs CLI created `tsubaki-*-ja-1.json` copies. Fixed by repointing `agents.json` to the canonical files, deleting the copies and updating the jq regex.
+   - `oxfmt --check` failed on the generator. Fixed by running `bun run fmt`.
+
+5. Problem Solving:
+   - All seven JA agents were verified live: a Japanese greeting plus audio over WebSocket.
+   - The prompt doctrine drift to ElevenLabs was found and fixed.
+   - The branches are aligned: `feat/multilingual-jp` = `refactor/personas` = `a881644`.
+   - `fnox.toml` has an unrelated modification. Do not touch it.
+
+6. All user messages:
+   - Import the prototype and review the multilingual JA design and the persona failover. Launch agents to read the Gemini Live and ElevenLabs docs. The user supplied the OpenAI `gpt-realtime-2.1` JA notes (JA is set through instructions; there is no language param).
+   - "The latest commit on the active branch has updated xai related docs, and it's mostly similar to what you expected?" The user then gave decisions 1–4 (above) and shared `@docs/elevenlabs-agent.md` (the Japan Culture Expert agent, ID f7d7lAUw08B7Qx2bCHlP).
+   - "Examine the latest commit history on this branch, there's a refactor on elevenlabs agents... /agents First, review if there's a way to search for voice samples that's specifically made from Japanese native speakers from elevenlabs, then at least we can use the voice that have been setup with this agent ID: `f7d7lAUw08B7Qx2bCHlP`"
+   - "Yes, let's download the preview samples"
+   - "Here's my preferences: Aria: Morioki, Cipher: Ken, Echo: Mio, Nova: Rina, Onyx: Kyo, Sage: Minato, Vesper: Mithiru"
+   - "Commit the agents work first"
+   - "Before moving on, there are some personas prompt improvements, based on this review, then examine the commit history, and its compatibility with the elevenlabs agents and multilingual setup" (followed by the full Prompt Review text).
+   - "Let's commit them and then merge back the changes to `feat/multilingual-jp`"
+   - Current: "Use the claude_design MCP ... to import this project: https://claude.ai/design/p/70221de8-e3ca-4c57-a1b8-547e9eded928?file=index.html ... Focus on these files: index.html ... Also read these files the selection imports: app.jsx, design-canvas.jsx, mount.jsx, orb.jsx, screens.jsx, styles.css, tweaks-panel.jsx. Review: `index.html` examine what are we missing in the UI to complete the EN / 日本語 switch. At the moment, the language switch only applies to sessions and personas UI, not the whole application yet"
+   - Security-relevant constraints from CLAUDE.md:
+     - Run secrets via `fnox exec --`.
+     - `.env*` writes are blocked. Document env vars in the README.
+     - Do not use `/tmp`. Use the scratchpad.
+     - Use `rg`, not `grep` or `find`.
+
+7. Pending Tasks:
+   - Deliver the review of the gaps in the app-wide EN / 日本語 switch. This is an assessment only; do not implement yet.
+   - Later, not yet requested: the app-side implementation, which includes:
+     - `Persona.lang` session state
+     - the LangSwitch
+     - JA fonts
+     - the failover and downgrade handlers, with a new session on transition
+     - ElevenLabs passing `lang` to `resolveElevenLabsAgentId`
+
+8. Current Work:
+   I re-fetched the prototype files and grepped `screens.jsx` for language-related code. I was about to write the gap analysis for the whole-app EN / 日本語 switch. The findings are gathered, and the gaps to report are:
+   1. A global UI string dictionary (`t(lang, key)` / `STRINGS.{en,ja}`) for the chrome:
+      - NAV labels, the Sidebar eyebrow and footer captions ("active persona", "active transport", "exec")
+      - TopBar SESSION/NETWORK/MIC and LIVE/IDLE/ENDED
+      - mobile tabs and the status row
+   2. Page headers: eyebrows, h1s and ledes for Personas, Providers and Settings. The h1 would need JA serif (Shippori Mincho) instead of Newsreader italic.
+   3. Call view:
+      - `stateLabel` (IDLE/CONNECTING/LISTENING/SPEAKING/INTERRUPTED/ENDED)
+      - the manual-turn hint
+      - idle, connecting and ended captions
+      - the SESSION tag and "YOU" in the transcript
+      - the LIVE TRANSCRIPT header, the TURNS count and the mobile sheet handle
+   4. `TRANSCRIPT_SCRIPT` is EN-only; it needs a JA mock script. Caption and transcript text need `.pp-ja` / Shippori Mincho in JA mode, because real JA sessions produce JA captions.
+   5. Settings:
+      - all section and field labels and hints
+      - the MicSelector MUTE/UNMUTE button
+      - the SwitchRow OFF/ON
+      - the tool labels in `TOOLS_DEFAULT`
+      - the ToolsButton popover (ACTIVE TOOLS, CONFIGURE IN SETTINGS)
+   6. Providers: column headers, provider notes, spec labels and subs, and the AUTO-FAILOVER tag.
+   7. The failover strip, the warning strings and the Personas clone slot / buttons.
+   8. aria-labels (Mute, Interrupt, Send turn, Call, Hang up, Tools, Voice language) for accessibility.
+   9. `<html lang>` must update dynamically (`document.documentElement.lang = lang`) so screen readers and CJK line-breaking work. This matters for `word-break` and `line-break: strict` in JA.
+   10. The global font stack: apply a `.pp-ja` root-level class (for example on `.pp-app[data-lang="ja"]`) so all text falls back to Zen Kaku Gothic New. Reconsider the uppercase and letter-spacing on JA text, because `text-transform` is a no-op for CJK and wide tracking looks wrong.
+   11. Two separate concepts: the UI locale versus the voice language. Decide whether one switch drives both. Currently the switch is session voice language; the UI chrome would follow it.
+   12. Persistence: store `lang` in `use-tweaks` localStorage and add a language toggle to the Tweaks panel or Settings (a "LANGUAGE" FieldRow in Settings, so the switch is reachable from every screen, not only Call and Personas).
+   13. Mobile gaps: there is no LangSwitch in the mobile Settings or Providers views. The desktop Sidebar could host a global switch.
+   14. Date and number formats (clock and elapsed time) are fine. The rate unit already switches between wpm and mora/min.
+   - I also note that the prototype now marks only ELEVENLABS as `ja:true`, which reverses the earlier four-provider assumption. This conflicts with the earlier plan to prefer the "previous JA provider". Flag it for the user.
+
+9. Optional Next Step:
+   Deliver the text review that answers the user's latest request: "Review: `index.html` examine what are we missing in the UI to complete the EN / 日本語 switch. At the moment, the language switch only applies to sessions and personas UI, not the whole application yet". Present the gap list above, organized by screen, with recommendations: a string table, `html lang`, a root-level JA font and typography class, a global switch location and persistence. Point out the change to only-ElevenLabs `ja:true` in the prototype. Do not implement until the user asks.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/jessearmand/.claude/projects/-Users-jessearmand-Develop-realtime-persona/ba2603d4-67d9-4765-bf77-002b0ea4406c.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.

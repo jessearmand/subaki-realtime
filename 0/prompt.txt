@@ -1,0 +1,5 @@
+Yes, add the preview tag for the tools
+
+Then, let's review what exactly is the support of japanese voice settings for xAI, OpenAI, and Gemini provider, because from the fallback behavior and language support notice. It seems it's shown as not supported. But at least for these three providers, language setting for the voice agent are set via a parameter or prompting.
+
+Review the configuration for theses 3 providers

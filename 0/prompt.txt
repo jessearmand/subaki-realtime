@@ -1,0 +1,1 @@
+There's an erro printed on running `mise run dev` examine what they are

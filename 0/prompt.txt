@@ -1,0 +1,7 @@
+First, let's commit the changes in two stages:
+
+1. The rebranding to tsubaki
+2. xAI voice agent integration
+
+Review the modified files and I have staged some of the files that are explicitly involved in rebranding.
+If there are intersection between these two stages, we can shift those intersection to xAI voice agent integration, because it's the latest stage

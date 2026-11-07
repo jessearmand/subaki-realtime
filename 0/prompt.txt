@@ -1,0 +1,67 @@
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The overarching context is the "Tsubaki" realtime voice console (Next.js 16 App Router/Turbopack · React 19 · Tailwind v4 · bun · oxlint/oxfmt) at `~/Develop/realtime-persona`, on branch `feat/cascade-voice-engine`. Two explicit requests in this conversation segment:
+   - **Request 1:** "Review the changes in feat/cascade-voice-engine (already pushed to remote). Then examine what's needed to prepare for local model execution, based on @lib/data.ts. At the moment it's either using hf or mistral backend" — a review + planning/assessment task (NOT implementation).
+   - **Request 2:** "Before moving on with the local model, let's separate the Voxtral local inference from @docs/personaplex-local-inference.md into a separate document under docs/ writing down what needs to be prepared for Voxtral. Then, track the new mistral focused local inference, push to remote branch, and create a PR to main." — This is the task that was executed and completed: (a) extract Voxtral content into its own doc with a preparation section, (b) commit ("track"), (c) push to the remote branch, (d) create a PR to main.
+
+   Standing security/workflow constraints that MUST persist (from CLAUDE.md, carried across compactions): secrets live in fnox — run secret-needing commands via `fnox exec -- <cmd>`; `.env*` writes are blocked by a hook (document env vars in README instead); use `rg` not grep/find (Bash hooks require rg); use the project `scratchpad/` dir, never /tmp; lint/format is oxc (oxlint/oxfmt), NOT eslint/prettier; gate order before declaring code done: `bunx tsc --noEmit` → `bun run lint` → `bun run fmt:check` → `bun run build`; HF_TOKEN/MISTRAL_API_KEY must stay server-side (browser never sees values); commit only when explicitly asked; 2-space indentation (oxfmt); `"use client"` only at the boundary; end commit messages with `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`; end PR bodies with the "🤖 Generated with [Claude Code]" line.
+
+2. Key Technical Concepts:
+   - **Cascade voice engine**: turn-based, half-duplex STT → LM → TTS pipeline behind the `MISTRAL` provider row (`engine: "cascade"`). `Provider.engine` union: `"elevenlabs" | "xai" | "openai" | "cascade"`.
+   - **Mistral realtime STT**: `wss://api.mistral.ai/v1/audio/transcriptions/realtime?model=voxtral-mini-transcribe-realtime-2602`, auth via `Authorization: Bearer` header on the WS handshake. Browsers can't set WS headers → a Bun WS proxy (`scripts/mistral-stt-proxy.ts`) bridges browser↔Mistral.
+   - **Silero VAD** (neural turn detection): v6.2.1 via onnxruntime-web (WASM, numThreads=1), model + ORT WASM from jsDelivr CDN pinned; 64-sample rolling context; hysteresis (positive/negative thresholds + redemption grace). Turn boundaries are client-side (VAD), not Mistral's.
+   - **LM catalog** (`config/lm-models.json`): backends (`url` + `envKey` + `supportsThinking`) + models + `default`; read by both `app/api/llm/route.ts` (resolves URL+secret) and `cascade-agent.ts` (picks model). `supportsThinking` sends `chat_template_kwargs.enable_thinking:false` (reasoning models emit CoT in a `reasoning` delta field and no `content` until thinking ends); must be false for APIs that reject unknown fields (Mistral → 422).
+   - **Local inference (validated on M5 Max)**: Voxtral STT via `awni/voxmlx` (4.2GB, RTF 0.09, <500ms streaming, Apache-2.0); Voxtral TTS via `mlx-audio` `voxtral_tts` (4.0GB, RTF ≤0.42, TTFA ~80–150ms, CC-BY-NC-4.0 non-commercial); cascade-LM prototype at `~/Develop/voice-cascade/` (Python, `LMConfig.engine` = hf|openai|local); end-to-end cloud cascade ~1.5s first-audio. PersonaPlex full-duplex (Moshi arch) q8 = 10.1GB, RTF 0.84.
+   - **OpenAI-compatible SSE**: `/api/llm` pipes upstream chat-completion SSE verbatim to the browser.
+   - **Local = backend choice, not new engine**: local execution keeps the `cascade` topology and repoints each leg; only full-duplex PersonaPlex warrants a new `moshi` engine.
+
+3. Files and Code Sections:
+   - **docs/voxtral-local-inference.md** (CREATED, 258 lines) — The core deliverable. Standalone doc for the Mistral/Voxtral cascade local-inference track. Structure: title + status; cascade-vs-full-duplex comparison table (cross-linked to personaplex doc); three legs (Voxtral STT via voxmlx, Voxtral TTS via mlx-audio, cascade LM stage + latency with the router-LM benchmark table and the reasoning-model gotcha); "What the app runs today (cloud Voxtral)" table mapping each leg to its local equivalent; **"What needs to be prepared for local Voxtral"** (the added value):
+     - Leg 1 LM-local: add catalog backend `"local": {"url": "http://localhost:8080/v1/chat/completions", "envKey": "", "supportsThinking": true}`; one code change — make auth header optional (`if (backend.envKey) headers.Authorization = ...`); serving via llama-server / mlx_lm.server / vLLM / LM Studio.
+     - Leg 2 TTS-local: catalog-ize `app/api/mistral/tts/route.ts` (it hardcodes Mistral, unlike /api/llm); stand up mlx-audio HTTP for `voxtral_tts`; per-persona voice map since Mistral `voice_id` slugs (`gb_jane_neutral`) ≠ mlx-audio presets (`cheerful_female`).
+     - Leg 3 STT-local: (a) local realtime WS shim wrapping voxmlx speaking the Mistral protocol → flip `NEXT_PUBLIC_MISTRAL_STT_WS`; or (b) per-turn batch `/api/stt` (Silero VAD already owns boundaries).
+     - Serving/ops (mise task group), license caveats, open next steps.
+   - **docs/personaplex-local-inference.md** (MODIFIED) — Replaced the Voxtral evaluation block (was ~lines 202–275: "## Voxtral evaluation", "### Where Voxtral fits", "### Voxtral TTS", "### Cascade LM stage + end-to-end latency") with a short pointer section:
+     ```
+     ## Voxtral cascade (Mistral) — moved
+
+     The Voxtral STT / TTS / cascade-LM evaluation ... now lives in its own document:
+     [voxtral-local-inference.md](voxtral-local-inference.md). ...
+     ```
+     Also changed heading "## Tsubaki integration (assessed, not yet built)" → "## Tsubaki integration — full-duplex `moshi` engine (assessed, not yet built)". Fixed line 70: "evaluate alternatives like Voxtral (below)." → "evaluate alternatives like the Voxtral cascade ([voxtral-local-inference.md](voxtral-local-inference.md))." The mlx-audio evaluation section (~lines 192–200) was intentionally KEPT (framed relative to PersonaPlex's codec).
+   - **memory/personaplex-local-mlx.md** (MODIFIED) — Added a "DOC SPLIT (2026-07-02 ... commit 0be3f42)" note recording the doc move, the three local-prep legs, that "local" is not a new engine, and PR #5 URL, inserted before the "mlx-audio (`~/Develop/mlx-audio`, Blaizzy)" paragraph.
+   - **Files READ for the review (not modified)**: `lib/data.ts` (PROVIDERS array — `mistral` row `engine:"cascade"`, exec "local / remote"; `fal` row `personaplex-rt` has no engine — natural home for future `moshi`), `lib/realtime/lm-config.ts` (`resolveLmBackend`, `resolveLmModel`, `DEFAULT_LM_MODEL`, `lmModelsForEngine`), `config/lm-models.json` (backends hf/mistral, default `gemma-4-31b`), `lib/realtime/cascade-agent.ts` (`resolveCascadeAgent(personaId?, overrideModelId?)`), `app/api/llm/route.ts` (returns 500 if `!apiKey` at lines 46–52 — the blocker for keyless local), `app/api/mistral/tts/route.ts` (hardcodes SPEECH_URL + MODEL `voxtral-mini-tts-2603`), `lib/realtime/use-cascade-session.ts`, `lib/realtime/mistral-stt.ts`, `scripts/mistral-stt-proxy.ts`.
+
+4. Errors and fixes:
+   - No build/lint errors encountered — the change set was docs-only + a memory file, so the gate order (tsc/lint/fmt/build) did not apply (oxfmt does not format markdown). I explicitly noted this: "Docs-only change (no code), so the build gates don't apply."
+   - No user corrections in this segment; the user's requests were followed as stated.
+
+5. Problem Solving:
+   - **Review of the branch**: identified two structural asymmetries — (1) TTS route is NOT catalog-driven (hardcodes Mistral URL+model) unlike the LM route; (2) `/api/llm` hard-requires a secret (500 if envKey unset), the one code blocker for a keyless local backend. Concluded the "local / remote" label is currently aspirational (only Silero VAD + mic capture run locally; all three model legs are cloud calls).
+   - **Doc separation**: cleanly split the Mistral/Voxtral cascade content from the NVIDIA/kyutai PersonaPlex full-duplex content, preserving hard-won benchmark tables verbatim, adding cross-links both directions, and fixing the dangling "(below)" reference.
+   - Completed the full commit → push → PR flow.
+
+6. All user messages:
+   - "Review the changes in feat/cascade-voice-engine (already pushed to remote) \n\n Then examine what's needed to prepare for local model execution, based on @lib/data.ts \n\n At the moment it's either using hf or mistral backend"
+   - "Before moving on with the local model, let's separate the Voxtral local inference from @docs/personaplex-local-inference.md into a separate document under docs/ writing down what needs to be prepared for Voxtral. \n\n Then, track the new mistral focused local inference, push to remote branch, and create a PR to main"
+   - [Final message]: the summarization instruction (respond text-only, no tools).
+
+7. Pending Tasks:
+   - None outstanding. The user's Request 2 (separate Voxtral doc, commit, push, PR) is fully complete. Request 1 was a review/assessment that was delivered as analysis (no implementation was requested). The phrase "Before moving on with the local model" signals the actual local-model implementation (LM-local, TTS-local, STT-local) is intended as a FUTURE step, deferred until after the doc work.
+
+8. Current Work:
+   Immediately before this summary, I completed all of Request 2:
+   - Created `docs/voxtral-local-inference.md` (258 lines) with the extracted Voxtral cascade content plus the "What needs to be prepared for local Voxtral" preparation section.
+   - Trimmed `docs/personaplex-local-inference.md` (replaced the Voxtral block with a pointer, updated a heading and the line-70 reference).
+   - Committed both: `git commit` → `0be3f42 docs: split Voxtral cascade local inference into its own doc` (2 files changed, 268 insertions, 75 deletions).
+   - Pushed: `764d781..0be3f42 feat/cascade-voice-engine -> feat/cascade-voice-engine`.
+   - Created PR to main: **https://github.com/jessearmand/subaki-realtime/pull/5** — title "Cascade voice engine (STT → LM → TTS) with Silero VAD + local-inference roadmap", body covering the whole branch (5 feature commits + the doc commit).
+   - Updated `memory/personaplex-local-mlx.md` with the doc-split note and PR reference. This was the last action taken.
+
+9. Optional Next Step:
+   No next step without user confirmation — the explicit request (separate doc, track, push, PR) is fully done and verified (PR #5 exists). The user's own framing "Before moving on with the local model, let's separate the Voxtral local inference ..." indicates the local-model implementation is the intended follow-on, but it should only begin on the user's go-ahead. If the user confirms, the natural first step (per the new doc and my earlier assessment) would be **Leg 1 (LM-local)**: add a `"local"` backend to `config/lm-models.json` and make the auth header optional in `app/api/llm/route.ts` (currently returns 500 when `envKey` is unset) — the smallest, self-contained change. I will not start this without explicit confirmation.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/jessearmand/.claude/projects/-Users-jessearmand-Develop-realtime-persona/fc8fe1bb-6e8d-44c4-8ca6-42ea8b66ea07.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.

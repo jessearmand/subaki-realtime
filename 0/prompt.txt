@@ -1,0 +1,44 @@
+Use the claude_design MCP (https://api.anthropic.com/v1/design/mcp, auth via /design-login) to import this project:
+https://claude.ai/design/p/70221de8-e3ca-4c57-a1b8-547e9eded928?file=index.html
+
+Focus on these files (the whole project is readable):
+- `index.html`
+
+Also read these files the selection imports:
+- `app.jsx`
+- `design-canvas.jsx`
+- `mount.jsx`
+- `orb.jsx`
+- `screens.jsx`
+- `styles.css`
+- `tweaks-panel.jsx`
+
+New updates on the multilingual feature design for providers that support Japanese voice model / agents. The known providers that support Japanese  are ElevenLabs, xAI, Gemini and OpenAI
+
+Review the updates in the interface on the personas section with auto-failover when the language is not available. Launch separate agents and use available skills to read the documentation from ai.google.dev about gemini live API, ElevenLabs 
+ 
+
+While for OpenAI, here's what I got:
+
+Yes. `gpt-realtime-2.1` can be used for a **Japanese speech-to-speech voice agent**: it accepts spoken Japanese and can respond with Japanese audio. The model supports realtime audio input/output, tool calling, and voice-agent conversations. [GPT-Realtime-2.1 model documentation](https://developers.openai.com/api/docs/models/gpt-realtime-2.1)
+
+Set Japanese explicitly in the agent instructions:
+
+```ts
+const agent = new RealtimeAgent({
+  name: "Japanese Assistant",
+  instructions: `
+    あなたは日本語の音声アシスタントです。
+    常に自然で丁寧な日本語で応答してください。
+    ユーザーが別の言語を明示的に希望しない限り、日本語を使用してください。
+  `,
+});
+
+const session = new RealtimeSession(agent, {
+  model: "gpt-realtime-2.1",
+});
+```
+
+This follows the current [voice-agent setup](https://developers.openai.com/api/docs/guides/voice-agents). There is no separate “Japanese voice” model or required `language: "ja"` setting for a standard voice-agent session—the selected voice controls vocal character, while the instructions control the response language.
+
+One caveat: OpenAI’s current documentation does not publish a language-by-language quality guarantee for `gpt-realtime-2.1`, so test pronunciation of names, numbers, honorifics, and domain terminology using real Japanese audio before production.

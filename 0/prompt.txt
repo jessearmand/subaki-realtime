@@ -1,0 +1,1 @@
+Where are all the agent_configs, the problem is we're on a worktree, and although I copied the gitignored elevenlabs files from root, we need the rest that you added, and then I've updated the permissions in the API key

@@ -1,0 +1,2 @@
+Yes, the turn never ends. Where does solero VAD: https://github.com/snakers4/silero-vad fit in the architecture? As a separate server? 
+It's probably suitable  when we use voxtral as a local model in python, but not exactly sure where it's on typescript codebase

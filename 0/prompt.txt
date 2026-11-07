@@ -1,0 +1,5 @@
+I've reorganized the repo a bit, perform some deduplication on the .gitignore of personaplex-mlx 
+
+/Users/jessearmand/Develop/realtime-persona/docs/personaplex-local-inference.md as the source of truth for the documentation
+
+I have forked personaplex-mlx. Next, create a branch for the local git changes, and keep main to be in-sync with upstream, after we commit the local changes to the new branch

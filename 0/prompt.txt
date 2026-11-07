@@ -1,0 +1,1 @@
+Examine the Chrome console logs and the transcript. The problem now is, I was speaking, and following your suggestion I continue to speak after a short silence, but at some point it's not listening anymore, and it freezes. I ended the call because there's no response.

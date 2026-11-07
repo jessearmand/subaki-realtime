@@ -1,0 +1,14 @@
+Let's continue on previous experiment to setup kyutai and personaplex. We have previous scratchpad project under `personaplex-mlx` `mlx-audio` and `voice-cascade`
+
+There are two ways persona-plex can be integrated:
+
+* Local inference with kyutai
+* fal.ai
+
+Let's explore local inference first. We have previous doc written under @docs/personaplex-local-inference.md 
+and using fal.ai might be useful to explore how the realtime full-duplex voice behaved in a GPU environment
+
+Also, we have examined some issues with VAD, and glitches at initial voice greeting in personaplex-mlx demo app, which is inherent in the architecture from our previous understanding. 
+
+Examine if we can actually resolve this voice greeting initial issue or it's still a problem. 
+Perform a search on github or huggingface for issues, gh-grep if you need more precise search, before implementing anything

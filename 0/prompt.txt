@@ -1,0 +1,21 @@
+We have integrated grok voice agent on the main branch, the next step is to understand what's needed for `gpt-realtime-2` model
+
+Use Chrome to start reading from:
+https://developers.openai.com/api/docs/guides/voice-agents
+
+Where it's the voice agents path from https://developers.openai.com/api/docs/guides/realtime
+
+The model that we're using is `gpt-realtime-2`
+
+This page is especially important, as it relates to how we integrate with elevenlabs agent and grok voice agent
+https://developers.openai.com/api/docs/guides/realtime-webrtc
+
+From my understanding, the unified interface is not how we built the voice agent with grok or eleven labs
+
+After we resolve the design decision of using WebRTC:
+
+We can continue with the following:
+https://developers.openai.com/api/docs/guides/realtime-conversations
+
+Prompting guide, this ideally can be organized similar to grok / elevenlabs, but we'll need to see how similar they are
+https://developers.openai.com/api/docs/guides/realtime-models-prompting

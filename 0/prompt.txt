@@ -1,0 +1,1 @@
+There are few related comments from github PR #8 after the fix. Analyze them, and resolve one-by-one. I think two of them refers to the same problem, while the first comment is a broader review

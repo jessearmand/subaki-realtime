@@ -1,0 +1,8 @@
+<!-- attach -->
+> For your testing session: the VAD debug tracing stays available via localStorage.setItem("tsubaki.vad-debug", "1") (it's off otherwise, zero cost), and the reconnect warnings appear regardless. The interesting thing to watch for is whether the STT session closed drop recurs and whether reconnect 1/2 rescues it.
+
+I have finished two conversation in Chrome, without the noticeable cut-off that I had earlier. I have the localhost app running with `mise run dev`  
+
+Where can I observe this `tsubaki.vad-debug` logs? Where would I see the warnings?
+
+Use Chrome or chrome-devtools if necessary

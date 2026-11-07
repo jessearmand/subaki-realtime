@@ -1,0 +1,4 @@
+@"/Users/jessearmand/Develop/voice-cascade/" @"/Users/jessearmand/Develop/voxmlx/" @"/Users/jessearmand/Develop/mlx-audio/"
+Next, let's prepare the local model for Voxtral according to @docs/voxtral-local-inference.md 
+
+Also there are previous experiment in ~/Develop/voice-cascade/ but we haven't settled on which local model to use. I think gemma-4-12B should be ideal for language model component

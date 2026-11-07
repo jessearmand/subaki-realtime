@@ -1,0 +1,12 @@
+The next plan is to add kyutai moshi
+https://github.com/kyutai-labs/moshi
+
+Which can be used also for PersonaPlex, review the model from huggingface
+https://huggingface.co/kyutai/personaplex-rl-seamless
+
+Use hf-cli  to download models
+
+I would first like to understand how should the local inference could be setup. 
+We can use MLX, and evaluate Rust if there's some noticeable performance or latency issue
+
+Then, how compatible it's with the existing realtime voice API via WebRTC, or we'd need a different realtime web architecture for this

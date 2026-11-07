@@ -1,0 +1,7 @@
+I've tested the VAD, works fine at the moment. 
+
+Next, use the claude_design MCP (https://api.anthropic.com/v1/design/mcp, auth via /design-login) to import this project:
+https://claude.ai/design/p/70221de8-e3ca-4c57-a1b8-547e9eded928?file=index.html
+
+Let's update a few things from the design on the main page, and on the providers page. 
+Let me know if you couldn't find what are the changes so far in the design, I'll have to explain in that case.

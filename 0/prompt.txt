@@ -1,0 +1,3 @@
+Examine the latest commit history on this branch, there's a refactor on elevenlabs agents, and now I think it's a good time to continue with the Japanese language agents. 
+
+/agents  First, review if there's a way to search for voice samples that's specifically made from Japanese native speakers from elevenlabs, then at least we can use the voice that have been setup with this agent ID: `f7d7lAUw08B7Qx2bCHlP`

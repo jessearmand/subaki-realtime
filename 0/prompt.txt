@@ -1,0 +1,5 @@
+Yes align `lib/data.ts` I think it's not just Cipher, I changed most of them. 
+
+* Eve and Ara are female
+* The rest are male
+* I can't tell their age, remove age from the accent

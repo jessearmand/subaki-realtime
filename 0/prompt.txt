@@ -1,0 +1,7 @@
+Create a new branch to focus on creating elevenlabs agents to the personas that have been set locally by default with xAI, OpenAI, Gemini, Mistral and the rest as a provider.
+
+Refer to this API: https://elevenlabs.io/docs/api-reference/voices/voice-library/get-shared.md
+
+To get the list of shared voices
+
+Then, use elevenlabs CLI and refer to elevenlabs agents skill to create new voice agents for the local personas. We can keep the existing ones that have been created as a reference. We only need to create new agents.

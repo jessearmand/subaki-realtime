@@ -1,0 +1,2 @@
+Examine two review comments on PR#12 from github advanced security and claude bot. 
+What's the security review from github about?

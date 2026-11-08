@@ -5,43 +5,43 @@
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "agents/SKILL.md",
-      "computedHash": "586906ebb2f116a1935b24da9b0a548f446287b07cc78bcc10e09acb638d5864"
+      "computedHash": "b08efb10464acd6f6759d19dc70949cf1deb2c46af31bd61aabc3aa9f90d485d"
     },
     "setup-api-key": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "setup-api-key/SKILL.md",
-      "computedHash": "4ac954d8b49696ad1ea0400e36f0170273dea547628896f7a37926db7011a8ae"
+      "computedHash": "cdfe132b922554fd7c2afe1ad22c0a96d95e5ed65af609a225131c6c7bd199cc"
     },
     "speech-engine": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "speech-engine/SKILL.md",
-      "computedHash": "5924f8fd6c5a3b94ad56652b40c82b52dc04d11958ef31161d4462c38fd65489"
+      "computedHash": "17401132ef042e2b949b6946a2df0734a5e54d3c8aba6cf884dff0c4228b58e1"
     },
     "speech-to-text": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "speech-to-text/SKILL.md",
-      "computedHash": "cf7b8359d0ad2bd5d2f515e6e3781497bc10efb9cd9875e8e6b1f346e4dcaefc"
+      "computedHash": "5fc18101504a58f47ce89feba6ba131fce5fb86998c867960e60ba5707557e6c"
     },
     "text-to-speech": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "text-to-speech/SKILL.md",
-      "computedHash": "3169d1b5dd35d6d13eadec47963daa2519d6c85cf480fe083688e4822193fd19"
+      "computedHash": "21391cae9c77ac1f843c2001e489f84091bfc8bd2e1199e7f63786a5609d5904"
     },
     "voice-changer": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "voice-changer/SKILL.md",
-      "computedHash": "57812f5a2885ce6005f0781ab534f4363366232cdf1cb53dcae4d3841e098446"
+      "computedHash": "013254bdcfcf979acaa4dd655b2ebc5c41bb05fa70b079a9eafb87df852c6d5d"
     },
     "voice-isolator": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "voice-isolator/SKILL.md",
-      "computedHash": "910411b8f1d1bfdf9b0633fd18b24525804391dbaf238913b5e790483813e3f7"
+      "computedHash": "101c969424cbfeedaaef20470f5e679fac016f7b57677fbc3b71f419ac5dd032"
     }
   }
 }

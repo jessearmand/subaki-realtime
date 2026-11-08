@@ -41,20 +41,6 @@ npm install @elevenlabs/react
 npm install @elevenlabs/client
 ```
 
-### Temporary LiveKit WebRTC Pin
-
-There is a known LiveKit server compatibility issue where WebRTC startup may hit the underlying LiveKit WebSocket path `/rtc/v1` and return 404, causing delays or failed sessions in React, Next.js, Electron, and other browser clients. Until the upstream issue is resolved, pin `livekit-client` to `2.16.1` when logs mention `/rtc/v1`, `v1 RTC path not found`, or `could not establish pc connection`:
-
-```json
-{
-  "overrides": {
-    "livekit-client": "2.16.1"
-  }
-}
-```
-
-This belongs in the app's `package.json`. Remove the override once the ElevenLabs LiveKit server or SDK no longer requires the workaround.
-
 Always use `@elevenlabs/elevenlabs-js`, `@elevenlabs/react`, or `@elevenlabs/client`. Do not use the deprecated `elevenlabs` npm package.
 
 ## Python
@@ -97,3 +83,12 @@ client = AsyncElevenLabs()
 - Store API keys in managed secrets.
 - Add shutdown handling so `SpeechEngineAttachment.close()` or the Python server process stops cleanly.
 - Pass TypeScript `AbortSignal` values to downstream async work to cancel interrupted responses.
+
+## Getting an API Key
+
+Run `npx -y @elevenlabs/cli@latest onboard init` from the app's folder and follow what it prints: it signs the user in and stores a key for the project. For an existing key that stopped working or was issued by an administrator, use the `setup-api-key` skill. To do it by hand instead:
+
+1. Sign up at [elevenlabs.io](https://elevenlabs.io)
+2. Go to [API Keys](https://elevenlabs.io/app/settings/api-keys)
+3. Click **Create API Key**
+4. Copy and store securely

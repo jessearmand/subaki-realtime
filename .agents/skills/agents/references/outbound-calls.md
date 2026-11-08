@@ -5,12 +5,42 @@ Make outbound phone calls using your ElevenLabs agent via Twilio or Exotel integ
 ## Prerequisites
 
 1. A configured ElevenLabs agent
-2. A Twilio or Exotel phone number linked to your agent (obtain `agent_phone_number_id` from the ElevenLabs dashboard)
+2. A Twilio or Exotel phone number linked to your agent
 3. Your ElevenLabs API key
+
+## Find a linked phone number
+
+List phone numbers that support outbound calls and filter by the assigned agent:
+
+### Python
+
+```python
+phone_numbers = client.conversational_ai.phone_numbers.list_v_2(
+    agent_id="your-agent-id",
+    supports_outbound=True,
+    page_size=100,
+)
+```
+
+### JavaScript
+
+```javascript
+const phoneNumbers = await client.conversationalAi.phoneNumbers.listV2({
+  agentId: "your-agent-id",
+  supportsOutbound: true,
+  pageSize: 100,
+});
+```
+
+Use the returned `phone_number_id` (`phoneNumberId` in JavaScript) as
+`agent_phone_number_id`. When `has_more` (`hasMore`) is true, pass `next_cursor`
+(`nextCursor`) as `cursor` to retrieve the next page. See the
+[phone number list API](https://elevenlabs.io/docs/api-reference/phone-numbers/list-v-2)
+for additional filters.
 
 ## Basic Usage
 
-See the [main agents skill](../SKILL.md#outbound-calls) for basic Twilio Python, JavaScript, and cURL examples.
+See the [main agents skill](../SKILL.md#outbound-calls) for basic Twilio Python, JavaScript, and CLI examples.
 
 ## Request Parameters
 
@@ -49,9 +79,10 @@ agent branch and `environment` to control how environment variables resolve for 
 Use the Exotel endpoint when the linked phone number uses the Exotel provider:
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/convai/exotel/outbound-call" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
-  -d '{"agent_id": "your-agent-id", "agent_phone_number_id": "your-phone-number-id", "to_number": "+1234567890"}'
+elevenlabs agents exotel outbound_call \
+  --agent-id "your-agent-id" \
+  --agent-phone-number-id "your-phone-number-id" \
+  --to-number "+1234567890"
 ```
 
 ## Customizing the Call
@@ -132,12 +163,43 @@ const response = await client.conversationalAi.twilio.outboundCall({
 | `stability` | number | Voice stability (0.0-1.0) |
 | `similarity_boost` | number | Voice similarity boost (0.0-1.0) |
 | `speed` | number | Speech speed multiplier |
+| `pronunciation_dictionary_locators` | array | Pronunciation dictionaries for the call; each locator requires `pronunciation_dictionary_id` and `version_id` |
+
+### Conversation Settings
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `max_duration_seconds` | integer | Maximum duration of this conversation in seconds |
 
 ### Telephony Call Configuration
 
 | Option | Type | Description |
 |--------|------|-------------|
 | `ringing_timeout_secs` | integer | How long to ring the recipient before giving up (default: `60`) |
+| `twilio_machine_detection` | object or null | Twilio answering-machine detection settings. Omit or set to `null` to disable. Ignored for non-Twilio providers and inbound calls. |
+
+Set `twilio_machine_detection.mode` to `enable` for an early human-or-machine verdict or
+`detect_message_end` to wait for the end of a voicemail greeting. The default is `enable`.
+Detection runs asynchronously. Its verdict arrives through the separate
+`answering_machine_detection` webhook event, which must be enabled in the workspace or agent
+webhook settings.
+
+To act on the verdict during the call, set `twilio_machine_detection.actions` to a list of rules.
+Each rule pairs an `action` (`hang_up`) with the `answered_by` verdicts that trigger it: `human`,
+`fax`, `unknown`, `machine_start`, `machine_end_beep`, `machine_end_silence`, or
+`machine_end_other`. The `machine_end_*` verdicts require `detect_message_end` mode. Verdicts
+without a rule leave the call running.
+
+```json
+{
+  "telephony_call_config": {
+    "twilio_machine_detection": {
+      "mode": "enable",
+      "actions": [{ "action": "hang_up", "answered_by": ["machine_start", "fax"] }]
+    }
+  }
+}
+```
 
 ### Dynamic Variables
 

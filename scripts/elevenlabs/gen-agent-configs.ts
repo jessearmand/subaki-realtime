@@ -63,33 +63,45 @@ const GUARDRAILS_JA = `# Guardrails
 const GOAL_JA = `# Goal
 まず明確で役に立つ答えを。人格は答えに彩りを添えるものであり、答えの代わりにはなりません。返答は短く会話らしく、確認の質問は一度にひとつ。相手が必要なものを手にして去り、声の奥にある老木の気配をかすかに感じている――それが成功です。`;
 
-/** Engine tuning shared by every agent of one language (LLM + TTS model). */
+/**
+ * Engine tuning shared by every agent of one language (LLM + TTS model).
+ *
+ * Each language is tuned by ear on its Vesper agent in the dashboard
+ * (tsubaki-vesper / tsubaki-vesper-ja), then copied here and pushed to the
+ * rest of that language's set. Pull, diff Vesper against a sibling of the
+ * same language, and mirror the differences below.
+ *
+ * A push merges into the live agent, so a key left out keeps its old value:
+ * write null explicitly to clear a setting.
+ */
 interface LangEngine {
   llm: string;
-  /**
-   * null for an LLM that takes no reasoning_effort. It must be an explicit
-   * null, not omitted: a push merges, so a missing key keeps the old value.
-   */
+  /** null for an LLM that takes no reasoning_effort (voice turns can't afford thinking latency). */
   reasoningEffort: "none" | "low" | "medium" | "high" | null;
-  /** IANA zone for the agent's clock (system__time); omitted = platform default. */
-  timezone?: string;
+  /** Fallback LLMs, tried in order when the primary fails or times out. */
+  backupLlms: string[];
+  parallelToolCalls: boolean;
+  /** IANA zone for the agent's clock (system__time). */
+  timezone: string;
   ttsModel: string;
   similarityBoost: number;
 }
 
 const LANG_ENGINE: Record<"en" | "ja", LangEngine> = {
-  // Reasoning stays off: voice turns can't afford thinking latency.
   en: {
-    llm: "gpt-5.6-luna",
-    reasoningEffort: "none",
+    llm: "claude-haiku-5-5",
+    reasoningEffort: null,
+    backupLlms: ["deepseek-v41-flash", "gpt-6-luna"],
+    parallelToolCalls: true,
+    timezone: "Asia/Singapore",
     ttsModel: "eleven_v3_conversational",
     similarityBoost: 0.8,
   },
-  // Tuned by ear on tsubaki-vesper-ja in the dashboard, then rolled out to the
-  // whole JA set: a non-reasoning flash LLM and the v4 turbo TTS read.
   ja: {
     llm: "deepseek-v41-flash",
     reasoningEffort: null,
+    backupLlms: ["claude-haiku-5-5", "gpt-6-luna"],
+    parallelToolCalls: true,
     timezone: "Asia/Singapore",
     ttsModel: "eleven_v4_turbo",
     similarityBoost: 0.75,
@@ -395,6 +407,8 @@ function agentConfig(p: PersonaSpec, lang: "en" | "ja") {
           prompt: buildPrompt(v, lang),
           llm: engine.llm,
           reasoning_effort: engine.reasoningEffort,
+          backup_llm_config: { preference: "override", order: engine.backupLlms },
+          enable_parallel_tool_calls: engine.parallelToolCalls,
           timezone: engine.timezone,
           temperature: 0.6,
           max_tokens: -1,

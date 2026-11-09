@@ -1,7 +1,7 @@
 // Sample data ported from the design bundle (screens.jsx).
 // Single source of truth for personas, providers, tools and the mock transcript.
 
-import { OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
+import { ELEVENLABS_TTS_MODEL, OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
 import type { Lang } from "@/lib/lang";
 
 /** The same manifestation voiced in Japanese — overrides the display fields. */
@@ -20,7 +20,7 @@ export interface PersonaJa {
   voice: string;
   /**
    * Opening line, spoken verbatim. Canonical with the JA agents' first_message
-   * in scripts/elevenlabs/gen-agent-configs.ts (minus its eleven_v3 audio tag);
+   * in scripts/elevenlabs/gen-agent-configs.ts (minus its audio tag);
    * prompt-level engines elicit the same line (lib/realtime/japanese.ts).
    */
   greet: string;
@@ -261,7 +261,8 @@ export const PROVIDERS: Provider[] = [
   {
     id: "elevenlabs",
     name: "ELEVENLABS",
-    model: "eleven-agents-v3",
+    // Static EN label; the UI shows the active language's model (providerModelLabel).
+    model: `agents · ${ELEVENLABS_TTS_MODEL.en}`,
     exec: "remote",
     note: "Best voice fidelity. One platform agent per persona, per language.",
     engine: "elevenlabs",

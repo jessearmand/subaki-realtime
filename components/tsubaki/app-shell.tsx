@@ -54,7 +54,7 @@ export function AppShell() {
     pushToTalk: tweaks.pushToTalk,
   });
   // What the UI shows as the active model — tracks the LM picker for cascade.
-  const providerModel = providerModelLabel(provider, lmModelId);
+  const providerModel = providerModelLabel(provider, lmModelId, lang);
   // Execution mode — for cascade, computed from the resolved backends.
   const providerExec = providerExecLabel(provider, resolveLmModel(lmModelId).backend);
   useRestartAfterRoute(session, routing);
@@ -123,6 +123,7 @@ export function AppShell() {
                 accent={tweaks.accent}
                 lmModelId={lmModelId}
                 setLmModelId={setLmModelId}
+                lang={lang}
               />
             )}
             {nav === "settings" && (

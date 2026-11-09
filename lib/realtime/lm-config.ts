@@ -8,6 +8,8 @@
 // API URLs live here; secret values stay in fnox and are read server-side.
 
 import catalog from "@/config/lm-models.json";
+import type { Lang } from "@/lib/lang";
+import { ELEVENLABS_TTS_MODEL } from "@/lib/realtime/realtime-model-config";
 
 export interface LmBackendConfig {
   /** OpenAI-compatible chat-completions endpoint. */
@@ -76,12 +78,19 @@ export function lmModelsForEngine(engine?: string): LmModel[] {
 /** MODEL label for a provider wherever the UI shows one (sidebar, call header,
  *  transcript drawer, providers table). Cascade reflects the *picked* catalog
  *  model — not the static string in lib/data.ts, which can't know the runtime
- *  selection; every other engine has a single fixed model. */
+ *  selection. ElevenLabs shows the TTS model of the active language's agents.
+ *  Every other engine has a single fixed model. */
 export function providerModelLabel(
   provider: { engine?: string; model: string },
-  lmModelId?: string,
+  lmModelId: string | undefined,
+  lang: Lang,
 ): string {
-  return provider.engine === "cascade"
-    ? `cascade · ${resolveLmModel(lmModelId).id}`
-    : provider.model;
+  switch (provider.engine) {
+    case "cascade":
+      return `cascade · ${resolveLmModel(lmModelId).id}`;
+    case "elevenlabs":
+      return `agents · ${ELEVENLABS_TTS_MODEL[lang]}`;
+    default:
+      return provider.model;
+  }
 }

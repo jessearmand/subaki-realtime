@@ -10,6 +10,7 @@ import {
   providerExecLabel,
 } from "@/lib/realtime/voice-config";
 import type { CSSProperties } from "react";
+import type { Lang } from "@/lib/lang";
 
 /** Marks a JA-capable transport and how it gets there (solid: agent, dashed: prompt). */
 function JaMark({ level }: { level: JaSupport }) {
@@ -27,12 +28,14 @@ export function ProvidersView({
   accent,
   lmModelId,
   setLmModelId,
+  lang,
 }: {
   provider: Provider;
   setProvider: (p: Provider) => void;
   accent: string;
   lmModelId: string;
   setLmModelId: (id: string) => void;
+  lang: Lang;
 }) {
   const t = useT();
   // Surface the headline transport changes in the active-provider detail:
@@ -86,7 +89,7 @@ export function ProvidersView({
                     {p.name}
                     {p.ja && <JaMark level={p.ja} />}
                   </td>
-                  <td className="tb-mono-num">{providerModelLabel(p, lmModelId)}</td>
+                  <td className="tb-mono-num">{providerModelLabel(p, lmModelId, lang)}</td>
                   <td>
                     <Tag mono dot>
                       {formatExec(t, providerExecLabel(p, lmBackend))}

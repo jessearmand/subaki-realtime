@@ -270,7 +270,7 @@ app/api/tts/               TTS route (per-clause MP3; Mistral or local mlx-audio
 app/api/stt/               batch STT route (per-turn WAV → local mlx-audio transcription)
 config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
 config/voice-models.json   cascade TTS/STT catalog (cloud/local backends + persona voice map)
-config/realtime-models.json  fixed realtime model ids (OpenAI session + mint + UI label) — edit to bump
+config/realtime-models.json  fixed model ids (OpenAI session + mint, ElevenLabs agents' TTS per language, UI labels) — edit to bump
 scripts/mistral-stt-proxy.ts  standalone bun WS proxy: browser ↔ Mistral realtime STT (adds Bearer header)
 components/ui/             ElevenLabs + shadcn components (copied, editable)
 components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,

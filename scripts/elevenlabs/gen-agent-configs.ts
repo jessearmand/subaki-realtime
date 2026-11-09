@@ -12,7 +12,7 @@
 // # Goal / # Guardrails — see .claude/skills/agents). first_message is a
 // literal spoken line (ElevenLabs plays it verbatim), unlike xAI where the
 // opening is elicited from a prompt, so each persona gets a fixed in-character
-// greeting with at most one eleven_v3 audio tag.
+// greeting with at most one expressive audio tag.
 //
 // The JA agents are dedicated single-language agents (language: "ja", JA
 // prompts, JA-native voices from the shared library — added by
@@ -94,8 +94,8 @@ const LANG_ENGINE: Record<"en" | "ja", LangEngine> = {
     backupLlms: ["deepseek-v41-flash", "gpt-6-luna"],
     parallelToolCalls: true,
     timezone: "Asia/Singapore",
-    ttsModel: "eleven_v3_conversational",
-    similarityBoost: 0.8,
+    ttsModel: "eleven_v4_turbo",
+    similarityBoost: 0.75,
   },
   ja: {
     llm: "deepseek-v41-flash",

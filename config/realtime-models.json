@@ -2,5 +2,11 @@
   "openai": {
     "model": "gpt-realtime-2.1",
     "transcriptionModel": "gpt-realtime-whisper"
+  },
+  "elevenlabs": {
+    "ttsModel": {
+      "en": "eleven_v4_turbo",
+      "ja": "eleven_v4_turbo"
+    }
   }
 }

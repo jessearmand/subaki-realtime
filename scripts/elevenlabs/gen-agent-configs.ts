@@ -12,7 +12,7 @@
 // # Goal / # Guardrails — see .claude/skills/agents). first_message is a
 // literal spoken line (ElevenLabs plays it verbatim), unlike xAI where the
 // opening is elicited from a prompt, so each persona gets a fixed in-character
-// greeting with at most one eleven_v3 audio tag.
+// greeting with at most one expressive audio tag.
 //
 // The JA agents are dedicated single-language agents (language: "ja", JA
 // prompts, JA-native voices from the shared library — added by
@@ -27,6 +27,7 @@
 //   bash scripts/elevenlabs/create-agents-ja.sh   # JA set
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import models from "../../config/realtime-models.json";
 
 const OUT_DIR = join(process.cwd(), "agent_configs");
 
@@ -83,6 +84,7 @@ interface LangEngine {
   parallelToolCalls: boolean;
   /** IANA zone for the agent's clock (system__time). */
   timezone: string;
+  /** From config/realtime-models.json, which the UI's model label also reads. */
   ttsModel: string;
   similarityBoost: number;
 }
@@ -94,8 +96,8 @@ const LANG_ENGINE: Record<"en" | "ja", LangEngine> = {
     backupLlms: ["deepseek-v41-flash", "gpt-6-luna"],
     parallelToolCalls: true,
     timezone: "Asia/Singapore",
-    ttsModel: "eleven_v3_conversational",
-    similarityBoost: 0.8,
+    ttsModel: models.elevenlabs.ttsModel.en,
+    similarityBoost: 0.75,
   },
   ja: {
     llm: "deepseek-v41-flash",
@@ -103,7 +105,7 @@ const LANG_ENGINE: Record<"en" | "ja", LangEngine> = {
     backupLlms: ["claude-haiku-5-5", "gpt-6-luna"],
     parallelToolCalls: true,
     timezone: "Asia/Singapore",
-    ttsModel: "eleven_v4_turbo",
+    ttsModel: models.elevenlabs.ttsModel.ja,
     similarityBoost: 0.75,
   },
 };

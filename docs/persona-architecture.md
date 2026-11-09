@@ -271,7 +271,7 @@ The same switch is the UI locale: `lib/i18n.ts` holds every label in English and
 through `useT()`, and `.tsubaki[data-lang]` drives the Japanese typography in `globals.css`.
 
 The Japanese greetings in `Persona.ja.greet` must match the JA agents' `first_message` in
-`scripts/elevenlabs/gen-agent-configs.ts` (minus the eleven_v3 audio tag).
+`scripts/elevenlabs/gen-agent-configs.ts` (minus the audio tag).
 
 ## Provider Notes
 

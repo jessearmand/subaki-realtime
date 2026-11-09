@@ -2156,6 +2156,12 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+/* Let the SESSION and VIA chips wrap too: a long transport · model label
+   would otherwise run past the screen edge. */
+.tb-mobile .tb-call-meta-l {
+  flex-wrap: wrap;
+  min-width: 0;
+}
 
 /* Japanese typography. Kinsoku (no 。、」 at line start) and breaking inside
    long kana runs. */

@@ -1,0 +1,4 @@
+Fetch the latest changes from main, review the existing Tinker API usage in @config/lm-models.json 
+
+create a branch to integrate new Inkling models 
+`thinkingmachines/Inkling-2-Small` and `thinkingmachines/Inkling-2-Small:peft:262144`

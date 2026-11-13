@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M79S3EVMH11MJ4GVEDFRFNTB",
+  "strategy": "manual-commit",
+  "branch": "feat/inkling-2-small",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 11016,
+    "cache_read_tokens": 657409,
+    "output_tokens": 2938,
+    "api_call_count": 4
+  },
+  "redaction": {
+    "replacements": 368,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 46,
+      "credentialed_uri": 0,
+      "entropy": 321,
+      "key_context": 1,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

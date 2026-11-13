@@ -140,9 +140,12 @@ list is fetched.
   `Inkling-Small`, each as base, 256K (`:peft:262144`), and serverless
   (`:peft:262144:sampling-nvfp4`, beta tier); plus `Inkling-2-Small` as base
   and 256K. Inkling 2 Small is text + vision (no audio input), which doesn't
-  matter here — the cascade sends it text. Tinker's public catalog
-  (`models.json`) no longer lists the `sampling-nvfp4` ids, but they still
-  resolve on the OpenAI-compatible endpoint; drop them if they start to 404.
+  matter here — the cascade sends it text.
+- Tinker publishes two machine-readable catalogs: `tinker/models.json` (all
+  models) and `tinker/serverless.json` (the serverless beta tier). Inkling and
+  Inkling-Small serverless ids end in `:sampling-nvfp4`; Inkling 2 Small's
+  serverless id is its plain `:peft:262144` id, so `inkling-2-small-256k` is
+  also the serverless entry. Re-check both files when adding variants.
 
 Model precedence at runtime: the Providers **LM MODEL** picker (persisted in
 localStorage `tsubaki.lm-model`, via `hooks/use-lm-model.ts`) > a persona's

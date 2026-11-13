@@ -90,6 +90,22 @@
       "maxTokens": 200
     },
     {
+      "id": "inkling-2-small",
+      "label": "Inkling 2 Small · Tinker",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling-2-Small",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
+      "id": "inkling-2-small-256k",
+      "label": "Inkling 2 Small 256K · Tinker",
+      "backend": "tinker",
+      "model": "thinkingmachines/Inkling-2-Small:peft:262144",
+      "temperature": 0.7,
+      "maxTokens": 200
+    },
+    {
       "id": "inkling-serverless",
       "label": "Inkling · Tinker serverless",
       "backend": "tinker",

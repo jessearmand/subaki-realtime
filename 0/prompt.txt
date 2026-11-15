@@ -1,0 +1,4 @@
+After merging there's a failed build 
+https://github.com/jessearmand/subaki-realtime/actions/runs/43680063430/job/132708539122#step:6:8947
+
+This is related to the noto fonts again

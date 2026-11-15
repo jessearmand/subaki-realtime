@@ -5,6 +5,7 @@ import { useConversation } from "@elevenlabs/react";
 import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { Lang } from "@/lib/lang";
 import type { CallState, SessionApi, SessionTurn } from "./types";
+import { useElevenLabsMemory } from "@/lib/memory/use-elevenlabs-memory";
 import { resolveElevenLabsAgentId } from "./elevenlabs-agent";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
@@ -100,8 +101,18 @@ export function useRealtimeSession({
 
   // ── ElevenLabs real conversation ──────────────────────────────────────────
   const realPhase = useRef<"idle" | "active" | "ended">("idle");
+  // mem0 long-term memory: recalled at CALL, injected at connect, ingested at end.
+  const memory = useElevenLabsMemory();
+  // Callbacks below outlive the render that created them; read the live object.
+  const conversationRef = useRef<ReturnType<typeof useConversation> | null>(null);
   const conversation = useConversation({
     micMuted: muted,
+    onConnect: ({ conversationId }: { conversationId: string }) => {
+      memory.connected(conversationId, (text) =>
+        conversationRef.current?.sendContextualUpdate(text),
+      );
+    },
+    onDisconnect: () => memory.ended(),
     onMessage: (msg: { source?: string; message?: string }) => {
       const who = msg.source === "user" ? "user" : "agent";
       const text = msg.message ?? "";
@@ -116,6 +127,7 @@ export function useRealtimeSession({
     },
   });
 
+  conversationRef.current = conversation;
   const { status, mode, isSpeaking, startSession, endSession } = conversation;
 
   // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
@@ -237,7 +249,10 @@ export function useRealtimeSession({
         setTurns([]);
         setCallState("connecting");
         setCaption("establishing session…");
-        startSession({ agentId, connectionType: "webrtc" } as Parameters<typeof startSession>[0]);
+        const userId = memory.begin(persona?.id, lang);
+        startSession({ agentId, connectionType: "webrtc", userId } as Parameters<
+          typeof startSession
+        >[0]);
       } else {
         realPhase.current = "ended";
         endSession();
@@ -255,7 +270,7 @@ export function useRealtimeSession({
     } else {
       setCallState("ended");
     }
-  }, [engine, custom, callState, persona, lang, startSession, endSession]);
+  }, [engine, custom, callState, persona, lang, startSession, endSession, memory]);
 
   const hangup = useCallback(() => {
     if (custom) {

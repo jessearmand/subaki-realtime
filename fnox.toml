@@ -36,6 +36,10 @@ service = "fnox"
 type = "keychain"
 service = "fnox"
 
+[providers.mem0]
+type = "keychain"
+service = "fnox"
+
 [secrets]
 ELEVENLABS_API_KEY= { provider = "ElevenLabs", value = "ELEVENLABS_API_KEY" }
 XAI_API_KEY= { provider = "xai", value = "XAI_API_KEY" }
@@ -45,6 +49,7 @@ HF_TOKEN= { provider = "huggingface", value = "HF_TOKEN" }
 FAL_API_KEY= { provider = "fal", value = "FAL_API_KEY" }
 GEMINI_API_KEY= { provider = "google", value = "GEMINI_API_KEY" }
 TINKER_API_KEY= { provider = "tinker", value = "TINKER_API_KEY" }
+MEM0_API_KEY= { provider = "mem0", value = "MEM0_API_KEY" }
 
 # Remote-control / CI only. Kept out of [secrets] so `fnox exec -- claude` in a
 # normal dev shell keeps using the Claude Max keychain login instead of this

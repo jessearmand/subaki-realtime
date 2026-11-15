@@ -1,5 +1,19 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Newsreader, Noto_Sans_JP, Noto_Serif_JP } from "next/font/google";
+import { IBM_Plex_Mono, Newsreader } from "next/font/google";
+// Japanese families are per-glyph fallbacks behind Plex Mono / Newsreader (which
+// carry no CJK). They are self-hosted from Fontsource rather than next/font:
+// next/font/google downloads every unicode-range slice from Google at build
+// time (~620 faces for these two families), and that fetch has failed CI builds.
+// Fontsource ships the same slices (124 per weight) with their unicode-range
+// rules, so a browser still fetches only the slices for characters on screen,
+// and plain @font-face rules are never preloaded, so English sessions load none.
+// The families are bound to --font-noto-sans-jp / --font-noto-serif-jp in
+// app/globals.css.
+import "@fontsource/noto-sans-jp/400.css";
+import "@fontsource/noto-sans-jp/500.css";
+import "@fontsource/noto-sans-jp/600.css";
+import "@fontsource/noto-serif-jp/400.css";
+import "@fontsource/noto-serif-jp/500.css";
 import "./globals.css";
 
 const plexMono = IBM_Plex_Mono({
@@ -14,24 +28,6 @@ const newsreader = Newsreader({
   style: ["normal", "italic"],
 });
 
-// Japanese families are per-glyph fallbacks behind Plex Mono / Newsreader (which
-// carry no CJK). next/font slices them by unicode-range, so a browser only
-// fetches the slices for characters actually on screen; `preload: false` keeps
-// them out of the first load for English sessions.
-const notoSansJp = Noto_Sans_JP({
-  variable: "--font-noto-sans-jp",
-  weight: ["400", "500", "600"],
-  display: "swap",
-  preload: false,
-});
-
-const notoSerifJp = Noto_Serif_JP({
-  variable: "--font-noto-serif-jp",
-  weight: ["400", "500"],
-  display: "swap",
-  preload: false,
-});
-
 export const metadata: Metadata = {
   title: "TSUBAKI — realtime voice console",
   description: "Brutalist editorial realtime voice console.",
@@ -44,10 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     // `lang` follows the session language at runtime (use-session-routing).
-    <html
-      lang="en"
-      className={`${plexMono.variable} ${newsreader.variable} ${notoSansJp.variable} ${notoSerifJp.variable} h-full`}
-    >
+    <html lang="en" className={`${plexMono.variable} ${newsreader.variable} h-full`}>
       <body className="h-full overflow-hidden">{children}</body>
     </html>
   );

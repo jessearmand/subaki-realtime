@@ -132,11 +132,16 @@
 /* ─────────────────────────────────────────────────────────────────────────
    TSUBAKI — brutalist editorial styles (ported from the design bundle).
    Mono everywhere, 1px hairlines, zero radius, ALL-CAPS tracked labels.
-   Scoped under .tsubaki. Fonts come from next/font (--font-plex-mono /
-   --font-newsreader), surfaced here as --tb-mono / --tb-serif.
+   Scoped under .tsubaki. Latin fonts come from next/font (--font-plex-mono /
+   --font-newsreader); the Japanese Noto families are self-hosted from
+   Fontsource (imported in app/layout.tsx). All are surfaced here as
+   --tb-mono / --tb-serif.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* Family names declared by the Fontsource @font-face rules. */
+  --font-noto-sans-jp: "Noto Sans JP";
+  --font-noto-serif-jp: "Noto Serif JP";
   /* A Japanese face sits behind the Latin ones as a per-glyph fallback: Latin
      stays Plex Mono / Newsreader, kana and kanji fall through. Noto by default;
      --tb-ja-sans / --tb-ja-serif are set from Tweaks (hooks/use-ja-fonts.ts). */

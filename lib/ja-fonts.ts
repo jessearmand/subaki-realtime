@@ -2,7 +2,7 @@
 // fallback behind Plex Mono (sans) / Newsreader (serif), so Latin text never
 // changes.
 //
-// Noto is the default and is self-hosted through next/font (app/layout.tsx).
+// Noto is the default and is self-hosted from Fontsource (app/layout.tsx).
 // The alternatives are for auditioning type: they load from Google Fonts on
 // demand, only when picked, so they add nothing to the bundle.
 

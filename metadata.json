@@ -1,0 +1,52 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M7EZX0GV3R80KGC02ESJRG1G",
+  "strategy": "manual-commit",
+  "branch": "feat/memory",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "AGENTS.md",
+    "README.md",
+    "app/api/memory/ingest/route.ts",
+    "app/api/memory/recall/route.ts",
+    "fnox.toml",
+    "lib/memory/client.ts",
+    "lib/memory/elevenlabs-conversation.ts",
+    "lib/memory/framing.ts",
+    "lib/memory/ids.ts",
+    "lib/memory/mem0-rest.ts",
+    "lib/memory/use-elevenlabs-memory.ts",
+    "lib/memory/user-id.ts",
+    "lib/realtime/use-realtime-session.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 108,
+    "cache_creation_tokens": 456429,
+    "cache_read_tokens": 11243729,
+    "output_tokens": 47488,
+    "api_call_count": 51
+  },
+  "redaction": {
+    "replacements": 387,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 73,
+      "credentialed_uri": 0,
+      "entropy": 471,
+      "key_context": 3,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

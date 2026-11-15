@@ -1,0 +1,87 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M7EZX0GV3R80KGC02ESJRG1G",
+  "session_id": "b106de61-fc7a-4a2e-ae16-6f69b1173ac1",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-15T06:56:48.190377Z",
+  "branch": "feat/memory",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "AGENTS.md",
+    "README.md",
+    "app/api/memory/ingest/route.ts",
+    "app/api/memory/recall/route.ts",
+    "fnox.toml",
+    "lib/memory/client.ts",
+    "lib/memory/elevenlabs-conversation.ts",
+    "lib/memory/framing.ts",
+    "lib/memory/ids.ts",
+    "lib/memory/mem0-rest.ts",
+    "lib/memory/use-elevenlabs-memory.ts",
+    "lib/memory/user-id.ts",
+    "lib/realtime/use-realtime-session.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "539a0aa8eb74",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 108,
+    "cache_creation_tokens": 456429,
+    "cache_read_tokens": 11243729,
+    "output_tokens": 47488,
+    "api_call_count": 51
+  },
+  "redaction": {
+    "replacements": 387,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 73,
+      "credentialed_uri": 0,
+      "entropy": 471,
+      "key_context": 3,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_018ZY1Yne3ixHCshucGywHWv",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "mem0"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "539a0aa8eb74",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 53,
+        "end": 54,
+        "entry_ids": [
+          "e313d309-a9f1-4c6a-a74e-a10a3a36a474"
+        ],
+        "tool_use_id": "toolu_018ZY1Yne3ixHCshucGywHWv"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_018ZY1Yne3ixHCshucGywHWv"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: mem0",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 1
+  }
+}

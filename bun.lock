@@ -7,6 +7,8 @@
       "dependencies": {
         "@base-ui/react": "^1.5.0",
         "@elevenlabs/react": "^1.13.0",
+        "@fontsource/noto-sans-jp": "5.3.1",
+        "@fontsource/noto-serif-jp": "5.3.1",
         "@google/genai": "^2.13.0",
         "@msgpack/msgpack": "^3.1.3",
         "@react-three/drei": "^10.7.7",
@@ -127,6 +129,10 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.8", "", { "dependencies": { "@floating-ui/dom": "^1.7.6" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-cC52bHwM/n/CxS87FH0yWdngEZrjdtLW/qVruo68qg+prK7ZQ4YGdut2GyDVpoGeAYe/h899rVeOVm6Oi40k2A=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.11", "", {}, "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg=="],
+
+    "@fontsource/noto-sans-jp": ["@fontsource/noto-sans-jp@5.3.1", "", {}, "sha512-9NNBB/M9PextLYVXGSfIaLZsPnrt5UDw8g2B6T0M775H2yb/oekApSjuS1XKOP7FPcMMEnTavR5rJGDM66qKtA=="],
+
+    "@fontsource/noto-serif-jp": ["@fontsource/noto-serif-jp@5.3.1", "", {}, "sha512-ewMVFXmG1Ip5u1Po1E1M3qqm8hsFqja0/26vkoaNylPXW9pnmEcBREqXxp+Fs03wpmhICE6qyYBN2bbfNtsR9Q=="],
 
     "@google/genai": ["@google/genai@2.13.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", "protobufjs": "^7.5.4", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.25.2" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-GM7C8Kaomvjz05x5JEO6+l3d/pciL9LxAG9dUjJLD7nTPZ9X0Cfsf2Z7eET6UjgWyUmxXCHtYnQoQ77F9+ZIOQ=="],
 

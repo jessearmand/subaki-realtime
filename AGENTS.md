@@ -86,7 +86,7 @@ One `Lang` (`lib/lang.ts`: `"en" | "ja"`) drives three things together: which ag
 - Personas carry their Japanese face in `Persona.ja` (name, aspect, traits, desc, voice, greet). Show it whenever the language is JA.
 - The Tweaks panel is a design tool and stays English on purpose. The vendored mic picker is also still English.
 
-**Type.** Plex Mono / Newsreader carry no CJK, so `--tb-mono` / `--tb-serif` fall back per glyph to Noto Sans/Serif JP (next/font, `preload: false`), or to the Tweaks pick (`lib/ja-fonts.ts`, loaded from Google Fonts on demand). JA-specific typography (strict kinsoku line-breaking, upright instead of synthesized-italic serif, extra leading, sizing) lives under `.tsubaki[data-lang="ja"]` in `app/globals.css`; put JA type fixes there, not in component styles.
+**Type.** Plex Mono / Newsreader carry no CJK, so `--tb-mono` / `--tb-serif` fall back per glyph to Noto Sans/Serif JP (self-hosted from `@fontsource/noto-*-jp`, unicode-range sliced, never preloaded), or to the Tweaks pick (`lib/ja-fonts.ts`, loaded from Google Fonts on demand). JA-specific typography (strict kinsoku line-breaking, upright instead of synthesized-italic serif, extra leading, sizing) lives under `.tsubaki[data-lang="ja"]` in `app/globals.css`; put JA type fixes there, not in component styles.
 
 **Adding a language** means extending `Lang`/`LANGS`, adding a full `STRINGS` table, giving each persona that language's fields, deciding each provider's support level, and generalizing what is currently Japanese-specific (`japanese.ts`, `Persona.ja`, `Provider.ja`, the JA agent IDs, the CJK font fallback). Treat it as a design task, not a find-and-replace.
 
@@ -115,6 +115,9 @@ Before writing ElevenLabs API code, read the matching skill in `.claude/skills/`
 - **livekit-client is unpinned.** `@elevenlabs/react` 1.13 / client 1.21 resolves livekit-client 2.22, and the WebRTC handshake is clean there. The skill's old `livekit-client 2.16.1` override would now break the dependency range; re-add a pin only if `/rtc/v1` 404s reappear.
 - **Account-level TTS failures look like agent bugs.** If a session dies at the greeting with `dependency_error` 1002 "payment issue", TTS is blocked on the account side. Probe with a direct `POST /v1/text-to-speech`. A `401 detected_unusual_activity` or a `free_disabled` subscription needs a paid plan, not a config change. The conversation log (`GET /v1/convai/conversations/{id}` → `metadata.error`) has the real reason.
 - **API key scopes are dashboard-managed.** A write failing with 401 `missing_permissions` (e.g. `convai_write`, `add_voice_from_voice_library`) means the key needs rescoping in the dashboard; it isn't an auth bug. The CLI has its own stored login (`elevenlabs auth whoami`), separate from the fnox key.
+
+### Fonts
+- **Don't move the Japanese families back to `next/font/google`.** It downloads all ~620 Noto JP slices from Google at build time, and that fetch flakily failed CI (Turbopack: "next/font/google queries have exactly one entry"). Fontsource ships the same slices as plain CSS. Latin families (Plex Mono, Newsreader) are small and stay on `next/font`.
 
 ### Tooling
 - **There is deliberately no `CLAUDE.md`; this file is the only instruction file.** Codex and other AGENTS.md-native agents read it directly. Local Claude Code loads it through the `agents-md` mod ([`anthropics/claude-code` · `mods/agents-md`](https://github.com/anthropics/claude-code/tree/main/mods/agents-md), `claude-md-and-agents-md` mode). The mod is installed per user, not from a marketplace, and isn't part of this repo. Claude Code without it, such as the GitHub Actions in `.github/workflows/claude*.yml`, must be told to read `AGENTS.md` explicitly. Don't recreate `CLAUDE.md` to fix that.

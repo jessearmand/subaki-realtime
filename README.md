@@ -103,6 +103,29 @@ This needs the `add_voice_from_voice_library` scope on the key. Audition by
 ear and recast freely — edit `voiceId` in the generator, regenerate, and
 `elevenlabs agents push`.
 
+### Long-term memory (mem0)
+
+ElevenLabs calls remember the visitor across sessions, through
+[mem0](https://docs.mem0.ai). Memory is shared by all seven personas: they are
+aspects of one spirit, so any of them may recall what you told another. The
+persona and language of each call are kept as mem0 metadata.
+
+1. **Recall.** When you press CALL, `POST /api/memory/recall` lists your recent
+   memories in parallel with connecting. Once the call is up they go to the agent
+   as a contextual update (`lib/memory/framing.ts`, EN and JA), so the greeting
+   is not personalised but every later turn is. Recall times out after 5 s and
+   never blocks a call.
+2. **Ingest.** On hangup the browser posts the conversation id to
+   `POST /api/memory/ingest`. The server waits for ElevenLabs to finish the
+   conversation, checks that it belongs to you, and sends its spoken turns to
+   mem0, which extracts the facts asynchronously.
+
+Your identity is an opaque `tsubaki-<uuid>` in localStorage
+(`tsubaki.memory-user`). It is passed to ElevenLabs as the session `userId` and
+to mem0 as `user_id`. Clearing site data starts a fresh memory. The secret is
+`MEM0_API_KEY` in **fnox**; without it the routes return 503 and calls run
+without memory.
+
 ## Wiring the real xAI Grok provider
 
 xAI's realtime API is **WebSocket-only** (no native browser WebRTC). The browser
@@ -268,6 +291,7 @@ app/api/openai/token/      route handler that mints the OpenAI ephemeral key
 app/api/llm/               streaming chat-completion route (catalog-driven backend) for the cascade engine
 app/api/tts/               TTS route (per-clause MP3; Mistral or local mlx-audio, catalog-driven)
 app/api/stt/               batch STT route (per-turn WAV → local mlx-audio transcription)
+app/api/memory/            mem0 recall (pre-call) and ingest (post-call, from the stored ElevenLabs transcript)
 config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
 config/voice-models.json   cascade TTS/STT catalog (cloud/local backends + persona voice map)
 config/realtime-models.json  fixed model ids (OpenAI session + mint, ElevenLabs agents' TTS per language, UI labels) — edit to bump
@@ -277,6 +301,7 @@ components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
                            orb-visualizer (hybrid), custom-orb, bars, tools-button,
                            transcript-drawer, scroll-area, primitives, glyphs, tweaks-panel
 hooks/                     use-tweaks (localStorage), use-media-query
+lib/memory/                mem0 REST + ElevenLabs transcript (server), visitor id, recall framing, use-elevenlabs-memory
 lib/data.ts                personas, providers (with engine discriminator), tools, mock transcript
 lib/realtime/              types (CallState, SessionApi), use-realtime-session (dispatcher),
                            use-xai-session (Grok WS engine), xai-audio (PCM16 + playback),

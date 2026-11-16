@@ -24,7 +24,7 @@ This is a **dev environment only; there is no production deployment yet.**
 
 ## Secrets & local services
 
-Secrets live in **fnox** (`fnox.toml`, OS keychain-backed): `ELEVENLABS_API_KEY`, `XAI_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `FAL_API_KEY`, `HF_TOKEN`, `TINKER_API_KEY`. Each is used only by a server route that mints a short-lived token or proxies the call. No secret reaches the client.
+Secrets live in **fnox** (`fnox.toml`, OS keychain-backed): `ELEVENLABS_API_KEY`, `XAI_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `FAL_API_KEY`, `HF_TOKEN`, `TINKER_API_KEY`, `MEM0_API_KEY`. Each is used only by a server route that mints a short-lived token or proxies the call. No secret reaches the client.
 
 - Run secret-needing commands as **`fnox exec -- <cmd>`**. `fnox activate`'s shell hook doesn't fire in non-interactive shells (agent tool calls), so don't rely on it.
 - **mise tasks** (`mise.toml`) wrap the common processes:
@@ -64,6 +64,19 @@ Secrets live in **fnox** (`fnox.toml`, OS keychain-backed): `ELEVENLABS_API_KEY`
   - **Not fenced yet:** fal and KYUTAI still rely on a shared `endedRef`, and the cascade has no per-start guard. Routing never restarts them in place, because they have no Japanese path and any route change moves the session to another hook. A fast manual hang-up → CALL could still hit the race.
   - Add the token before giving an engine a Japanese path, and in any new engine.
 - Engine hooks emit status captions as **English sentinel strings**, and `localizeCaption` (`lib/i18n.ts`, `CAPTION_KEYS`) maps them to keys. Adding a caption means adding the sentinel to `CAPTION_KEYS` and its key to both tables; otherwise it shows in English during a Japanese session. Rarer error captions still pass through untranslated.
+
+### Long-term memory (`lib/memory/`)
+
+mem0 gives the ElevenLabs engine a memory of the visitor across calls. Other engines don't use it yet.
+
+- **Shared, not per persona.** Memory is scoped by mem0 `user_id` only, and persona, language and source go in metadata. That fits the fiction (seven aspects of one spirit), and it avoids a mem0 trap: an AND of `user_id` + `agent_id` returns nothing, because mem0 stores the entities separately.
+- **Identity** is an opaque `tsubaki-<uuid>` in localStorage (`lib/memory/user-id.ts`). It is the ElevenLabs session `userId` and the mem0 `user_id`. Never put a name or email in it.
+- **Lifecycle** (`call-lifecycle.ts`, wrapped by `use-elevenlabs-memory.ts`): `begin()` at CALL starts recall in parallel with connecting, `connected()` at `onConnect` sends the recalled memories as a contextual update, and `ended()` at `onDisconnect` ingests. The SDK callbacks carry no attempt, and a restart's old `onDisconnect` can land after the new `begin()`. So `ended()` never ends "the current call": each connect opens a conversation and each disconnect retires the oldest open one. Each `begin()` also takes an attempt token, so a recall from the previous call never reaches a restarted one.
+- **Ingest reads ElevenLabs, not the browser.** `/api/memory/ingest` polls the stored conversation until it is `done`, refuses one whose `user_id` isn't the caller's, and sends only spoken turns to mem0.
+- **Recall lists, it doesn't search.** Before the first utterance there is no query, and a broad "who is this" search scores barely above mem0's default threshold.
+- **The framing stays in-world** (`framing.ts`, EN and JA): the persona just remembers. It never mentions notes or systems and never recites the list. A change there must keep both languages.
+- **Memory is best-effort.** Recall resolves to `[]` on failure or after 5 s, and ingest is fire-and-forget. Without `MEM0_API_KEY` both routes return 503 and calls work as before.
+- *Local check:* make a call, tell the persona something, hang up, wait a minute, then call any persona and ask what it remembers. The fact should come back in the session's language. The conversation's `user_id` on ElevenLabs should be your `tsubaki.memory-user` value.
 
 ## Multilingual
 

@@ -5,8 +5,10 @@
 // and the call must belong to the posting visitor: the session is started with
 // that `userId`, and ElevenLabs records it on the conversation.
 //
-// Ingest runs at most once per conversation in this server process; mem0 also
-// merges facts it has already extracted, so a repeat after a restart is harmless.
+// Ingest runs at most once per (visitor, conversation) in this server process.
+// The reservation is keyed by both, so a refused request for someone else's call
+// can never mark that call as done for its real owner. mem0 also merges facts it
+// has already extracted, so a repeat after a server restart is harmless.
 //
 // Dev only: MEM0_API_KEY and ELEVENLABS_API_KEY come from fnox.
 
@@ -54,12 +56,14 @@ export async function POST(req: Request): Promise<Response> {
   const personaId = typeof persona === "string" && PERSONA_ID_RE.test(persona) ? persona : "";
   const sessionLang: Lang = LANGS.includes(lang as Lang) ? (lang as Lang) : "en";
 
-  if (ingested.has(conversationId)) return Response.json({ status: "duplicate" });
-  ingested.add(conversationId);
+  const key = `${userId}:${conversationId}`;
+  if (ingested.has(key)) return Response.json({ status: "duplicate" });
+  ingested.add(key);
 
   try {
     const conv = await fetchFinishedConversation(elevenKey, conversationId);
     if (conv.user_id !== userId) {
+      ingested.delete(key);
       return fail("conversation does not belong to this visitor.", 403);
     }
     const messages = toMem0Messages(conv);
@@ -82,7 +86,7 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ status: "queued", turns: messages.length, event_id: event.event_id });
   } catch (err) {
     // Let a later attempt retry a call that failed upstream.
-    ingested.delete(conversationId);
+    ingested.delete(key);
     const status = err instanceof ConversationError || err instanceof Mem0Error ? err.status : 502;
     const message = err instanceof Error ? err.message : "network error";
     return fail(message, status >= 400 && status < 600 ? status : 502);

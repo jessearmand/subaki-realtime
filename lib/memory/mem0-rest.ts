@@ -65,8 +65,16 @@ export async function addMemories(
   });
 }
 
-// mem0 doesn't document get-all ordering, so fetch a wide page and sort locally.
+// mem0 doesn't document get-all ordering, so the newest memories can sit on any
+// page. Read every page (while mem0 reports a `next`), then sort locally. The cap
+// bounds recall latency for a very long-lived visitor at 1,000 memories.
 const LIST_PAGE_SIZE = 100;
+const LIST_MAX_PAGES = 10;
+
+interface Mem0Page {
+  results?: Mem0Memory[];
+  next?: string | null;
+}
 
 /** The user's most recently updated memories, newest first. */
 export async function listRecentMemories(
@@ -74,11 +82,16 @@ export async function listRecentMemories(
   userId: string,
   limit: number,
 ): Promise<Mem0Memory[]> {
-  const page = await mem0Post<{ results?: Mem0Memory[] }>(
-    apiKey,
-    `/v3/memories/?page=1&page_size=${LIST_PAGE_SIZE}`,
-    { filters: { user_id: userId } },
-  );
+  const all: Mem0Memory[] = [];
+  for (let page = 1; page <= LIST_MAX_PAGES; page++) {
+    const res = await mem0Post<Mem0Page>(
+      apiKey,
+      `/v3/memories/?page=${page}&page_size=${LIST_PAGE_SIZE}`,
+      { filters: { user_id: userId } },
+    );
+    all.push(...(res.results ?? []));
+    if (!res.next || !res.results?.length) break;
+  }
   const stamp = (m: Mem0Memory) => Date.parse(m.updated_at ?? m.created_at ?? "") || 0;
-  return [...(page.results ?? [])].sort((a, b) => stamp(b) - stamp(a)).slice(0, limit);
+  return all.sort((a, b) => stamp(b) - stamp(a)).slice(0, limit);
 }

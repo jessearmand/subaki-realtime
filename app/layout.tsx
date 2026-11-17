@@ -16,6 +16,7 @@ import "@fontsource/noto-serif-jp/400.css";
 import "@fontsource/noto-serif-jp/500.css";
 import "./globals.css";
 import "./styles/conversations.css";
+import "./styles/tweaks-dock.css";
 
 const plexMono = IBM_Plex_Mono({
   variable: "--font-plex-mono",

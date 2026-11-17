@@ -101,7 +101,7 @@ export function AppShell() {
   return (
     <I18nContext.Provider value={t}>
       <div
-        className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}
+        className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""} ${tweaks.dock === "sidebar" && !isMobile ? "tb-tweaks-in-side" : ""}`}
         data-lang={lang}
       >
         <TopBar

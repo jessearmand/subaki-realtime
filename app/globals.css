@@ -1903,10 +1903,10 @@
 
 /* ── Tweaks panel (in-app preferences) ────────────────────────────────── */
 
+/* Position (and the panel's height cap) comes from the dock classes in
+   app/styles/tweaks-dock.css. */
 .tb-tweaks-toggle {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
   z-index: 2147483646;
   appearance: none;
   cursor: pointer;
@@ -1926,8 +1926,6 @@
 }
 .tb-tweaks {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
   z-index: 2147483646;
   width: 280px;
   background: var(--paper);

@@ -1,7 +1,9 @@
 import { useState, type CSSProperties } from "react";
 import { SwitchRow } from "./primitives";
 import { ACCENTS, type OrbStyle, type Tweaks, type TranscriptMode } from "@/hooks/use-tweaks";
+import { useDockDrag, type DockDrag } from "@/hooks/use-dock-drag";
 import { JA_SANS, JA_SERIF, type JaFont } from "@/lib/ja-fonts";
+import { TWEAKS_DOCKS, type TweaksDock } from "@/lib/tweaks-dock";
 
 function Segmented<T extends string>({
   value,
@@ -56,6 +58,24 @@ function FontSelect<V extends string>({
   );
 }
 
+/**
+ * The spots the button can snap to. Always laid out (hidden until a drag
+ * starts), because their rects are the snap anchors the drag measures.
+ */
+function DockTargets({ drag }: { drag: DockDrag }) {
+  return (
+    <div className={`tb-dock-targets ${drag.hover ? "on" : ""}`} aria-hidden="true">
+      {TWEAKS_DOCKS.map((dock) => (
+        <span
+          key={dock}
+          ref={drag.targetRef(dock)}
+          className={`tb-dock-target tb-dock-${dock} ${drag.hover === dock ? "hit" : ""}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function TweaksPanel({
   tweaks,
   setTweak,
@@ -64,33 +84,42 @@ export function TweaksPanel({
   setTweak: <K extends keyof Tweaks>(key: K, value: Tweaks[K]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const drag = useDockDrag((dock) => setTweak("dock", dock));
+  const docked = `tb-dock-${tweaks.dock}`;
 
   if (!open) {
     return (
-      <button
-        type="button"
-        className="tb-tweaks-toggle"
-        aria-label="Open tweaks"
-        onClick={() => setOpen(true)}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          aria-hidden="true"
+      <>
+        <DockTargets drag={drag} />
+        <button
+          type="button"
+          className={`tb-tweaks-toggle ${docked} ${drag.hover ? "dragging" : ""}`}
+          aria-label="Open tweaks"
+          title="Tweaks · drag to move"
+          {...drag.handlers}
+          onClick={() => {
+            if (!drag.consumeDragClick()) setOpen(true);
+          }}
         >
-          <circle cx="8" cy="8" r="2.4" />
-          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M13 3l-1.5 1.5M4.5 11.5L3 13" />
-        </svg>
-      </button>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            aria-hidden="true"
+          >
+            <circle cx="8" cy="8" r="2.4" />
+            <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M13 3l-1.5 1.5M4.5 11.5L3 13" />
+          </svg>
+        </button>
+      </>
     );
   }
 
   return (
-    <div className="tb-tweaks">
+    <div className={`tb-tweaks ${docked}`}>
       <div className="tb-tweaks-hd">
         <span>Tweaks</span>
         <button
@@ -162,6 +191,14 @@ export function TweaksPanel({
             onChange={(v) => setTweak("providerPreview", v)}
           />
         </div>
+
+        {/* The keyboard path to what dragging the closed button does. */}
+        <div className="tb-tweaks-sect">Button position</div>
+        <Segmented<TweaksDock>
+          value={tweaks.dock}
+          options={TWEAKS_DOCKS}
+          onChange={(v) => setTweak("dock", v)}
+        />
       </div>
     </div>
   );

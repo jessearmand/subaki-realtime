@@ -1,0 +1,81 @@
+/* ── Tweaks dock: where the floating Tweaks button and panel sit ──────── */
+
+/* The three spots (lib/tweaks-dock.ts). The button, its panel and the snap
+   targets shown while dragging share these classes, so the geometry lives
+   only here; the drag measures the targets to find the nearest spot. */
+.tsubaki {
+  --tb-dock-gap: 16px;
+  /* Clear the top bar (48px; 38px in the mobile layout). */
+  --tb-dock-top: calc(48px + var(--tb-dock-gap));
+}
+.tsubaki.tb-mobile {
+  --tb-dock-top: calc(38px + var(--tb-dock-gap));
+}
+
+.tb-dock-bottom-right {
+  right: var(--tb-dock-gap);
+  bottom: var(--tb-dock-gap);
+}
+.tb-dock-top-right {
+  right: var(--tb-dock-gap);
+  top: var(--tb-dock-top);
+}
+/* Bottom of the left sidebar; bottom-left of the viewport when there is no
+   sidebar on screen (mobile drawer layout). */
+.tb-dock-sidebar {
+  left: var(--tb-dock-gap);
+  bottom: var(--tb-dock-gap);
+}
+
+/* Docked in the sidebar, the button gets its own room below the sidebar
+   footer instead of covering it. */
+.tsubaki.tb-tweaks-in-side .tb-side {
+  padding-bottom: calc(40px + 2 * var(--tb-dock-gap));
+}
+
+/* The open panel grows away from its corner and scrolls if the window is
+   too short for it. */
+.tb-tweaks {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - var(--tb-dock-top) - var(--tb-dock-gap));
+}
+.tb-tweaks-body {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── Dragging ─────────────────────────────────────────────────────────── */
+
+.tb-tweaks-toggle {
+  /* Pointer drags, not page scrolls or text selection, on touch screens. */
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  translate: var(--tb-drag-x, 0) var(--tb-drag-y, 0);
+}
+.tb-tweaks-toggle.dragging {
+  cursor: grabbing;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 6px 6px 0 var(--line);
+}
+
+.tb-dock-targets {
+  visibility: hidden;
+}
+.tb-dock-targets.on {
+  visibility: visible;
+}
+.tb-dock-target {
+  position: fixed;
+  z-index: 2147483645;
+  width: 40px;
+  height: 40px;
+  border: 1px dashed var(--ink-3);
+  pointer-events: none;
+}
+.tb-dock-target.hit {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}

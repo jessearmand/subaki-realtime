@@ -21,6 +21,7 @@ import { isLive, type SessionApi } from "@/lib/realtime/types";
 import type { Provider, ResolvedPersona, Tool } from "@/lib/data";
 import type { Lang } from "@/lib/lang";
 import type { Tweaks } from "@/hooks/use-tweaks";
+import type { ConversationDetail } from "@/lib/conversations/types";
 
 export function CallView({
   tweaks,
@@ -32,6 +33,8 @@ export function CallView({
   setLang,
   compact,
   tools,
+  resuming,
+  onClearResume,
 }: {
   tweaks: Tweaks;
   session: SessionApi;
@@ -45,6 +48,9 @@ export function CallView({
   /** Mobile layout — the language switch uses its short labels. */
   compact?: boolean;
   tools: Tool[];
+  /** The stored conversation this call continues (ElevenLabs), if any. */
+  resuming: ConversationDetail | null;
+  onClearResume: () => void;
 }) {
   const t = useT();
   const { callState, muted, elapsed, canSendTurn, sendTurnEnabled } = session;
@@ -90,6 +96,18 @@ export function CallView({
             </Tag>
           </div>
         </div>
+        {resuming && (
+          <div className="tb-call-resume">
+            <Tag accent dot>
+              {t("call.resuming", { title: resuming.title || t("convs.untitled") })}
+            </Tag>
+            {!live && (
+              <Btn small onClick={onClearResume}>
+                {t("convs.clear")}
+              </Btn>
+            )}
+          </div>
+        )}
 
         {/* 50/50 vertical split: orb half on top, caption half on bottom. */}
         <div className="tb-call-body">

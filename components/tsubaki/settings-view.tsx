@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Hr, FieldRow, PreviewTag, SwitchRow, ToolRow } from "./primitives";
+import { Hr, FieldRow, SwitchRow, ToolRow } from "./primitives";
 import { useT } from "./i18n-context";
 import { MicSelector } from "@/components/ui/mic-selector";
 import { useAudioOutputDevices } from "@/hooks/use-audio-output-devices";
@@ -157,20 +157,14 @@ export function SettingsView({
         </section>
 
         <section className="tb-settings-sec">
-          <Hr
-            label={
-              <>
-                {t("sec.tools")}
-                <PreviewTag />
-              </>
-            }
-          />
+          <Hr label={t("sec.tools")} />
           {tools.map((tool) => (
             <ToolRow
               key={tool.name}
               name={tool.name}
               label={tool.label}
               on={tool.on}
+              preview={tool.preview}
               onToggle={() => toggleTool(tool.name)}
             />
           ))}

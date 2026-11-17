@@ -566,12 +566,16 @@
   padding: 28px 28px 24px;
   min-width: 0;
   min-height: 0;
+  /* The meta row reacts to the stage's own width, not the viewport: the
+     transcript column and the sidebar both eat into it. */
+  container: call-stage / inline-size;
 }
 
 .tb-call-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding-bottom: 16px;
   border-bottom: 1px dashed var(--hair);
   flex: 0 0 auto;
@@ -579,8 +583,23 @@
 .tb-call-meta-l,
 .tb-call-meta-r {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  min-width: 0;
+}
+/* Narrow stage: stack SESSION/VIA above LANGUAGE/PERSONA instead of letting
+   the two halves collide or spill into the transcript column. A long
+   transport · model label may then wrap inside its chip. */
+@container call-stage (max-width: 760px) {
+  .tb-call-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .tb-call-meta .tb-tag {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 .tb-call-body {
@@ -1440,15 +1459,19 @@
 .tb-tools-pop-row:last-child {
   border-bottom: 0;
 }
+/* Tool ids never break; the label (with its PREVIEW tag) wraps instead. */
 .tb-tools-pop-name {
   color: var(--accent);
   font-weight: 500;
   font-size: 11px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .tb-tools-pop-label {
   color: var(--ink-2);
   font-size: 10px;
   text-align: right;
+  min-width: 0;
 }
 .tb-tools-pop-foot {
   padding: 8px 12px;
@@ -2157,16 +2180,6 @@
   flex-wrap: wrap;
   gap: 12px;
 }
-.tb-mobile .tb-call-meta {
-  flex-wrap: wrap;
-  gap: 8px;
-}
-/* Let the SESSION and VIA chips wrap too: a long transport · model label
-   would otherwise run past the screen edge. */
-.tb-mobile .tb-call-meta-l {
-  flex-wrap: wrap;
-  min-width: 0;
-}
 
 /* Japanese typography. Kinsoku (no 。、」 at line start) and breaking inside
    long kana runs. */
@@ -2186,6 +2199,14 @@
 }
 .tsubaki[data-lang="ja"] .tb-mobile-caption {
   font-size: 16px;
+  line-height: 1.8;
+}
+/* Conversation history: titles upright like other JA serif copy; summaries
+   get the same extra leading as body text. */
+.tsubaki[data-lang="ja"] .tb-conv-item-title {
+  font-style: normal;
+}
+.tsubaki[data-lang="ja"] .tb-conv-summary {
   line-height: 1.8;
 }
 .tsubaki[data-lang="ja"] .tb-turn-text {

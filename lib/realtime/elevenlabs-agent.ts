@@ -54,3 +54,19 @@ export function resolveElevenLabsAgentId(
     undefined
   );
 }
+
+/**
+ * The persona and language a platform agent speaks for, from the same maps.
+ * Conversation history uses it to label a stored call and to reopen it on the
+ * right agent. Undefined for the env fallback agent or a retired agent ID.
+ */
+export function agentPersona(agentId: string): { personaId: string; lang: Lang } | undefined {
+  for (const [lang, ids] of [
+    ["en", PERSONA_AGENT_IDS],
+    ["ja", PERSONA_AGENT_IDS_JA],
+  ] as const) {
+    const personaId = Object.keys(ids).find((p) => ids[p] === agentId);
+    if (personaId) return { personaId, lang };
+  }
+  return undefined;
+}

@@ -124,7 +124,19 @@ Your identity is an opaque `tsubaki-<uuid>` in localStorage
 (`tsubaki.memory-user`). It is passed to ElevenLabs as the session `userId` and
 to mem0 as `user_id`. Clearing site data starts a fresh memory. The secret is
 `MEM0_API_KEY` in **fnox**; without it the routes return 503 and calls run
-without memory.
+without memory. Memory is the `memory.recall` tool in Settings; turning it off
+skips recall and ingest.
+
+### Conversation history
+
+The **CONVERSATIONS** section lists your stored ElevenLabs calls, newest first,
+with ElevenLabs' title and summary, and reads one back. **CONTINUE** switches to
+ELEVENLABS with that call's persona and language. On the next CALL the end of
+the old transcript goes to the agent as context, so it picks up the thread
+after its usual greeting. ElevenLabs has no native resume, and the other
+transports can't read ElevenLabs calls yet. The routes
+(`POST /api/conversations`, `POST /api/conversations/[id]`) use
+`ELEVENLABS_API_KEY` and only return calls whose `user_id` is yours.
 
 ## Wiring the real xAI Grok provider
 
@@ -292,16 +304,19 @@ app/api/llm/               streaming chat-completion route (catalog-driven backe
 app/api/tts/               TTS route (per-clause MP3; Mistral or local mlx-audio, catalog-driven)
 app/api/stt/               batch STT route (per-turn WAV → local mlx-audio transcription)
 app/api/memory/            mem0 recall (pre-call) and ingest (post-call, from the stored ElevenLabs transcript)
+app/api/conversations/     conversation history: list the visitor's ElevenLabs calls, read one back
+app/styles/                per-view stylesheets imported after globals.css (conversations)
 config/lm-models.json      cascade LM catalog (backends + models + default) — edit to switch the model
 config/voice-models.json   cascade TTS/STT catalog (cloud/local backends + persona voice map)
 config/realtime-models.json  fixed model ids (OpenAI session + mint, ElevenLabs agents' TTS per language, UI labels) — edit to bump
 scripts/mistral-stt-proxy.ts  standalone bun WS proxy: browser ↔ Mistral realtime STT (adds Bearer header)
 components/ui/             ElevenLabs + shadcn components (copied, editable)
-components/tsubaki/   app-shell (client boundary), top-bar, nav, the four views,
+components/tsubaki/   app-shell (client boundary), top-bar, nav, the five views,
                            orb-visualizer (hybrid), custom-orb, bars, tools-button,
                            transcript-drawer, scroll-area, primitives, glyphs, tweaks-panel
 hooks/                     use-tweaks (localStorage), use-media-query
 lib/memory/                mem0 REST + ElevenLabs transcript (server), visitor id, recall framing, use-elevenlabs-memory
+lib/conversations/         history types, ElevenLabs list/detail (server), browser client, resume framing
 lib/data.ts                personas, providers (with engine discriminator), tools, mock transcript
 lib/realtime/              types (CallState, SessionApi), use-realtime-session (dispatcher),
                            use-xai-session (Grok WS engine), xai-audio (PCM16 + playback),

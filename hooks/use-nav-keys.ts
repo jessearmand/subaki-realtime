@@ -1,5 +1,5 @@
 // Global section-navigation shortcuts. The sidebar has always *advertised*
-// single-letter keys (C / P / V / S in `NAV`) — this hook is what actually
+// single-letter keys (C / H / P / V / S in `NAV`) — this hook is what actually
 // binds them. Plain keypresses only: anything typed into a form control,
 // handled by a focused widget, or with a modifier held is left alone.
 

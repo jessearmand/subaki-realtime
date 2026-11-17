@@ -46,6 +46,11 @@ export interface SessionRouting {
   restartPending: boolean;
   changeLang: (next: Lang, session: SessionApi) => void;
   changeProvider: (next: Provider, session: SessionApi) => void;
+  /**
+   * Move to an exact (transport, language) pair, e.g. to continue a stored call
+   * where it ran. The pair must be valid (Japanese only on a JA transport).
+   */
+  routeTo: (provider: Provider, lang: Lang, session: SessionApi) => void;
   /** Called by useRestartAfterRoute once the new session has been opened (or abandoned). */
   settleRestart: () => void;
 }
@@ -157,6 +162,14 @@ export function useSessionRouting(): SessionRouting {
     [lang, provider, route],
   );
 
+  const routeTo = useCallback(
+    (nextProvider: Provider, nextLang: Lang, session: SessionApi) => {
+      if (nextProvider.id === provider.id && nextLang === lang) return;
+      route({ provider: nextProvider, lang: nextLang }, "switch", session);
+    },
+    [lang, provider, route],
+  );
+
   const settleRestart = useCallback(() => {
     setRestartPending(false);
     setNotice((n) => {
@@ -167,7 +180,16 @@ export function useSessionRouting(): SessionRouting {
     });
   }, []);
 
-  return { lang, provider, notice, restartPending, changeLang, changeProvider, settleRestart };
+  return {
+    lang,
+    provider,
+    notice,
+    restartPending,
+    changeLang,
+    changeProvider,
+    routeTo,
+    settleRestart,
+  };
 }
 
 /**

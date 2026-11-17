@@ -142,6 +142,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "convs.more": "LOAD MORE",
     "convs.empty":
       "No stored calls yet. Calls on ELEVENLABS show up here a minute or so after you hang up.",
+    "convs.emptyPage":
+      "None of your recent calls has anything you said. LOAD MORE looks further back.",
     "convs.unconfigured": "History needs ELEVENLABS_API_KEY on the server.",
     "convs.failed": "Couldn't load conversations. Try REFRESH.",
     "convs.pick": "Pick a conversation to read it back.",
@@ -343,6 +345,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "convs.more": "さらに読み込む",
     "convs.empty":
       "保存された通話はまだありません。ELEVENLABS での通話は、切ってから1分ほどでここに表示されます。",
+    "convs.emptyPage":
+      "最近の通話には、あなたの発話が残っているものがありません。さらに読み込むと、もっと前の通話を探します。",
     "convs.unconfigured": "履歴の表示には、サーバー側の ELEVENLABS_API_KEY が必要です。",
     "convs.failed": "会話を読み込めませんでした。再読み込みしてください。",
     "convs.pick": "読み返す会話を選んでください。",

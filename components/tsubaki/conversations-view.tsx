@@ -58,22 +58,30 @@ export function ConversationsView({
   }, [loadedId]);
   const { items, loading, failure, detail, detailLoading, detailFailure } = convs;
 
+  // The server drops calls where the visitor never spoke and stops after a
+  // few upstream pages, so an empty page can still have older calls behind
+  // it: keep LOAD MORE reachable instead of calling it the end of history.
+  const emptyPage = items.length === 0 && convs.hasMore;
   let list;
   if (failure) list = <Status>{t(failureKey(failure))}</Status>;
-  else if (loading && items.length === 0) list = <Status>{t("convs.loading")}</Status>;
-  else if (items.length === 0) list = <Status>{t("convs.empty")}</Status>;
+  else if (loading && items.length === 0 && !convs.hasMore)
+    list = <Status>{t("convs.loading")}</Status>;
+  else if (items.length === 0 && !convs.hasMore) list = <Status>{t("convs.empty")}</Status>;
   else
     list = (
-      <ConversationList
-        items={items}
-        lang={lang}
-        selectedId={convs.selectedId}
-        onSelect={select}
-        resumingId={resumeId}
-        hasMore={convs.hasMore}
-        loading={loading}
-        onLoadMore={convs.loadMore}
-      />
+      <>
+        {emptyPage && <Status>{t("convs.emptyPage")}</Status>}
+        <ConversationList
+          items={items}
+          lang={lang}
+          selectedId={convs.selectedId}
+          onSelect={select}
+          resumingId={resumeId}
+          hasMore={convs.hasMore}
+          loading={loading}
+          onLoadMore={convs.loadMore}
+        />
+      </>
     );
 
   let pane;

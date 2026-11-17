@@ -83,6 +83,9 @@ function useConversationDetail(selectedId: string | null) {
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [failure, setFailure] = useState<HistoryFailure | null>(null);
+  // Bumped to fetch the selected transcript again after a failure: the id
+  // alone doesn't change, so the effect would not rerun.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -105,17 +108,24 @@ function useConversationDetail(selectedId: string | null) {
         setLoading(false);
       });
     return () => ctrl.abort();
-  }, [selectedId]);
+  }, [selectedId, attempt]);
 
-  return { detail, loading, failure };
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  return { detail, loading, failure, retry };
 }
 
 export function useConversations(initialId: string | null = null): ConversationsState {
   const list = useConversationList();
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
-  const { detail, loading, failure } = useConversationDetail(selectedId);
+  const { detail, loading, failure, retry } = useConversationDetail(selectedId);
   return {
     ...list,
+    // REFRESH also retries a transcript that failed to load. A loaded one is
+    // kept: a finished call's transcript does not change.
+    reload: () => {
+      list.reload();
+      if (failure) retry();
+    },
     selectedId,
     select: setSelectedId,
     detail,

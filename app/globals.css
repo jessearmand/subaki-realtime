@@ -1920,9 +1920,12 @@
   justify-content: center;
   box-shadow: 3px 3px 0 var(--line);
 }
-.tb-tweaks-toggle:hover {
-  background: var(--ink);
-  color: var(--paper);
+/* Touch screens keep :hover after a tap, which would leave the button inked. */
+@media (hover: hover) {
+  .tb-tweaks-toggle:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
 }
 .tb-tweaks {
   position: fixed;

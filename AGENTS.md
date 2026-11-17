@@ -20,6 +20,7 @@ This is a **dev environment only; there is no production deployment yet.**
 - Types: `bunx tsc --noEmit`
 - Gates, in order, before declaring done: `bunx tsc --noEmit` → `bun run lint` → `bun run fmt:check` → `bun run build`. In a fresh checkout run `bun install` first; without `node_modules`, tsc fails with hundreds of misleading "cannot find module" errors.
 - oxlint ignores `components/ui` and `scripts` (`.oxlintrc.json`); oxfmt ignores `*.md`, YAML, `package.json` and `fnox.toml` (`.oxfmtrc.json`).
+- Phones can open `next dev` through `tailscale serve` (`*.ts.net`) or Bonjour (`*.local`): `allowedDevOrigins` in `next.config.ts` lets those hosts load the dev scripts. Without it the page never hydrates and shows the desktop layout squeezed to phone width. Another host needs adding there, and a config change needs a dev-server restart.
 - One-off CLIs via `bunx` (e.g. `bunx shadcn@latest init -d -y`).
 
 ## Secrets & local services

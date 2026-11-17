@@ -1,0 +1,72 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M7MGMTRKD30G4AR84VGAKY8D",
+  "strategy": "manual-commit",
+  "branch": "feat/elevenlabs-conversation",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "AGENTS.md",
+    "README.md",
+    "app/api/conversations/[id]/route.ts",
+    "app/api/conversations/route.ts",
+    "app/globals.css",
+    "app/layout.tsx",
+    "app/styles/conversations.css",
+    "components/tsubaki/app-shell.tsx",
+    "components/tsubaki/call-view.tsx",
+    "components/tsubaki/conversation-detail.tsx",
+    "components/tsubaki/conversation-format.ts",
+    "components/tsubaki/conversation-list.tsx",
+    "components/tsubaki/conversations-view.tsx",
+    "components/tsubaki/nav.tsx",
+    "components/tsubaki/primitives.tsx",
+    "components/tsubaki/settings-view.tsx",
+    "components/tsubaki/tools-button.tsx",
+    "hooks/use-conversations.ts",
+    "hooks/use-nav-keys.ts",
+    "hooks/use-resume.ts",
+    "hooks/use-session-routing.ts",
+    "lib/conversations/client.ts",
+    "lib/conversations/elevenlabs-history.ts",
+    "lib/conversations/resume.ts",
+    "lib/conversations/route-helpers.ts",
+    "lib/conversations/types.ts",
+    "lib/data.ts",
+    "lib/i18n.ts",
+    "lib/memory/call-lifecycle.ts",
+    "lib/memory/elevenlabs-conversation.ts",
+    "lib/memory/use-elevenlabs-memory.ts",
+    "lib/realtime/elevenlabs-agent.ts",
+    "lib/realtime/use-realtime-session.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 364,
+    "cache_creation_tokens": 1197223,
+    "cache_read_tokens": 41255717,
+    "output_tokens": 130740,
+    "api_call_count": 176
+  },
+  "redaction": {
+    "replacements": 1130,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 83,
+      "credentialed_uri": 0,
+      "entropy": 1299,
+      "key_context": 14,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

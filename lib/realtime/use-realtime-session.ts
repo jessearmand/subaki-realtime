@@ -174,8 +174,19 @@ export function useRealtimeSession({
   const activeCallState: CallState = custom ? custom.callState : callState;
 
   // Derive real CallState from the conversation status/mode (ElevenLabs only).
+  const prevStatusRef = useRef(status);
   useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
     if (engine !== "elevenlabs" || realPhase.current === "idle") return;
+    // A call that drops on its own (remote hangup, network) never passes
+    // through hangup() or onError, so mark it ended here. Only a transition
+    // out of a live status counts: right after CALL the SDK still reports the
+    // previous call's "disconnected" while realPhase is already "active".
+    const live = prev === "connecting" || prev === "connected";
+    if (live && (status === "disconnected" || status === "error")) {
+      realPhase.current = "ended";
+    }
     if (realPhase.current === "ended") {
       setCallState("ended");
       return;

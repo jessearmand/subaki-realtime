@@ -120,6 +120,7 @@ One `Lang` (`lib/lang.ts`: `"en" | "ja"`) drives three things together: which ag
 - **Keep `"use client"` at boundaries.** Next's TS plugin flags function props on components exported from a `"use client"` file (error 71007). Leaf components stay plain modules inside the client graph so they can take function props. Hooks and engine modules carry the directive harmlessly.
 - **Client-only providers go behind a wrapper.** `@elevenlabs/react`'s `ConversationProvider` calls `createContext` at module load. Import it only from a `"use client"` file (`providers.tsx`); importing it into a Server Component (`page.tsx`) fails the build with "createContext is not a function".
 - **No SSR for the WebGL `Orb`** (R3F). Render it only behind a mounted guard (`orb-visualizer.tsx`).
+- **`<html>` carries `suppressHydrationWarning`** (`app/layout.tsx`). Chrome for iOS adds a `__gcrremoteframetoken` attribute to `<html>` before React hydrates, and the dev overlay shows a hydration mismatch on every load. The flag covers only `<html>`'s own attributes, not its children, so it hides no mismatch in our components. Don't remove it, and don't add the flag further down to quiet a real mismatch.
 - **Height chain:** `.tsubaki` is `height:100%`, so `<body>` must stay `h-full overflow-hidden` (not `min-h-full`), or the 50/50 call layout overflows the viewport.
 - Dark mode toggles `.dark` on `<html>` (shadcn and the vendored orb read it) **and** `.tsubaki-dark` on `.tsubaki` (our CSS vars `--bg/--ink/--accent`). Set both.
 

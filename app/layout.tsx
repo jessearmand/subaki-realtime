@@ -42,7 +42,14 @@ export default function RootLayout({
 }>) {
   return (
     // `lang` follows the session language at runtime (use-session-routing).
-    <html lang="en" className={`${plexMono.variable} ${newsreader.variable} h-full`}>
+    // suppressHydrationWarning covers only this element's own attributes:
+    // Chrome for iOS adds `__gcrremoteframetoken` to <html> before React
+    // hydrates, which otherwise fails hydration on every load in dev.
+    <html
+      lang="en"
+      className={`${plexMono.variable} ${newsreader.variable} h-full`}
+      suppressHydrationWarning
+    >
       <body className="h-full overflow-hidden">{children}</body>
     </html>
   );

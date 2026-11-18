@@ -12,7 +12,7 @@ const FINAL_STATUSES = new Set(["done", "failed"]);
 const POLL_INTERVAL_MS = 3000;
 const POLL_DEADLINE_MS = 90_000;
 
-interface TranscriptTurn {
+export interface TranscriptTurn {
   role?: string;
   message?: string | null;
 }
@@ -24,7 +24,12 @@ export interface StoredConversation {
   status?: string;
   user_id?: string | null;
   transcript?: TranscriptTurn[];
-  metadata?: { start_time_unix_secs?: number } | null;
+  metadata?: {
+    start_time_unix_secs?: number;
+    call_duration_secs?: number;
+    main_language?: string | null;
+  } | null;
+  analysis?: { transcript_summary?: string | null; call_summary_title?: string | null } | null;
 }
 
 export class ConversationError extends Error {
@@ -37,7 +42,10 @@ export class ConversationError extends Error {
 }
 
 /** The stored conversation, or null while ElevenLabs hasn't created the record yet. */
-async function fetchConversation(apiKey: string, id: string): Promise<StoredConversation | null> {
+export async function fetchConversation(
+  apiKey: string,
+  id: string,
+): Promise<StoredConversation | null> {
   const res = await fetch(`${CONVERSATIONS_URL}/${id}`, {
     headers: { "xi-api-key": apiKey },
     cache: "no-store",

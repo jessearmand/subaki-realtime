@@ -104,8 +104,8 @@ export function FieldRow({
 }
 
 /**
- * Marks a surface that is still a mock — today the tool roster, which isn't
- * wired to a live backend. Sits inline after a section or popover label.
+ * Marks a surface that is still a mock — today the tools that aren't wired to
+ * a live backend (Tool.preview). Sits inline after the tool's label.
  */
 export function PreviewTag() {
   const t = useT();
@@ -137,18 +137,23 @@ export function ToolRow({
   name,
   label,
   on,
+  preview,
   onToggle,
 }: {
   name: string;
   label: string;
   on: boolean;
+  preview?: boolean;
   onToggle: () => void;
 }) {
   const t = useT();
   return (
     <button type="button" className={`tb-tool ${on ? "on" : "off"}`} onClick={onToggle}>
       <span className="tb-tool-name">{name}</span>
-      <span className="tb-tool-label">{t(`tool.${name}`, null, label)}</span>
+      <span className="tb-tool-label">
+        {t(`tool.${name}`, null, label)}
+        {preview && <PreviewTag />}
+      </span>
       <span className={`tb-tool-status ${on ? "on" : "off"}`}>
         {t(on ? "tool.on" : "tool.off")}
       </span>

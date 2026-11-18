@@ -35,6 +35,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "side.activeTransport": "active transport",
     "side.exec": "exec",
     "nav.call": "SESSIONS",
+    "nav.conversations": "CONVERSATIONS",
     "nav.personas": "PERSONAS",
     "nav.providers": "PROVIDERS",
     "nav.settings": "SETTINGS",
@@ -57,6 +58,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "call.persona": "PERSONA",
     "call.manualHint": "MANUAL TURN · PRESS SEND TO REPLY",
     "caption.idle": "press CALL to begin",
+    "caption.continue": "press CALL to continue",
+    "call.resuming": "CONTINUING · {title}",
     "caption.connecting": "establishing session…",
     "caption.interrupted": "… you interrupted",
     "caption.ended": "— call ended —",
@@ -78,7 +81,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "tools.active": "ACTIVE TOOLS",
     "tools.configure": "↳ CONFIGURE IN SETTINGS",
     "tag.preview": "PREVIEW",
-    "tag.previewTitle": "Mock — tools are not wired to a live backend yet",
+    "tag.previewTitle": "Mock — this tool is not wired to a live backend yet",
 
     // Accessible names
     "aria.mute": "Mute microphone",
@@ -129,6 +132,31 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "slot.drop": "DRAG · .wav · .mp3 · ≤ 30s",
 
     // Providers
+    "convs.eyebrow": "004 / HISTORY",
+    "convs.title": "Conversations.",
+    "convs.lede":
+      "Calls you've had, newest first. Read one back, or continue it: the same aspect picks up the thread on your next call.",
+    "convs.source": "ELEVENLABS · STORED CALLS",
+    "convs.refresh": "REFRESH",
+    "convs.loading": "loading…",
+    "convs.more": "LOAD MORE",
+    "convs.empty":
+      "No stored calls yet. Calls on ELEVENLABS show up here a minute or so after you hang up.",
+    "convs.emptyPage":
+      "None of your recent calls has anything you said. LOAD MORE looks further back.",
+    "convs.unconfigured": "History needs ELEVENLABS_API_KEY on the server.",
+    "convs.failed": "Couldn't load conversations. Try REFRESH.",
+    "convs.pick": "Pick a conversation to read it back.",
+    "convs.untitled": "Untitled call",
+    "convs.unknownPersona": "Unknown agent",
+    "convs.continue": "CONTINUE",
+    "convs.armed": "CONTINUING",
+    "convs.clear": "CLEAR",
+    "convs.continueNote":
+      "Switches to ELEVENLABS with {name}. {name} opens with a greeting, then picks up the thread.",
+    "convs.continueUnmapped":
+      "This call ran on an agent that isn't one of the seven aspects, so it can't be continued.",
+    "convs.busy": "Hang up the current call first, then continue this one.",
     "providers.eyebrow": "002 / TRANSPORT",
     "providers.title": "Realtime providers.",
     "providers.lede":
@@ -219,6 +247,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "side.activeTransport": "使用中の通信経路",
     "side.exec": "実行",
     "nav.call": "セッション",
+    "nav.conversations": "会話履歴",
     "nav.personas": "ペルソナ",
     "nav.providers": "プロバイダ",
     "nav.settings": "設定",
@@ -239,6 +268,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "call.persona": "ペルソナ",
     "call.manualHint": "手動ターン · 送信を押して応答",
     "caption.idle": "通話ボタンを押して開始",
+    "caption.continue": "通話ボタンを押して続きを話す",
+    "call.resuming": "続きから · {title}",
     "caption.connecting": "セッションを確立中…",
     "caption.interrupted": "……割り込みました",
     "caption.ended": "— 通話終了 —",
@@ -258,7 +289,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "tools.active": "有効なツール",
     "tools.configure": "↳ 設定で変更",
     "tag.preview": "プレビュー",
-    "tag.previewTitle": "モック — ツールはまだ実際のバックエンドに接続されていません",
+    "tag.previewTitle": "モック — このツールはまだ実際のバックエンドに接続されていません",
 
     "aria.mute": "マイクをミュート",
     "aria.unmute": "マイクのミュートを解除",
@@ -304,6 +335,31 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "slot.desc": "30秒の音声サンプルをドロップしてクローン。同意の確認は最初から最後まで行われる。",
     "slot.drop": "ドラッグ · .wav · .mp3 · 30秒以内",
 
+    "convs.eyebrow": "004 / 履歴",
+    "convs.title": "会話。",
+    "convs.lede":
+      "これまでの通話を新しい順に。読み返すことも、続きを話すこともできます。次の通話で、同じ相が話の続きを引き取ります。",
+    "convs.source": "ELEVENLABS · 保存された通話",
+    "convs.refresh": "再読み込み",
+    "convs.loading": "読み込み中…",
+    "convs.more": "さらに読み込む",
+    "convs.empty":
+      "保存された通話はまだありません。ELEVENLABS での通話は、切ってから1分ほどでここに表示されます。",
+    "convs.emptyPage":
+      "最近の通話には、あなたの発話が残っているものがありません。さらに読み込むと、もっと前の通話を探します。",
+    "convs.unconfigured": "履歴の表示には、サーバー側の ELEVENLABS_API_KEY が必要です。",
+    "convs.failed": "会話を読み込めませんでした。再読み込みしてください。",
+    "convs.pick": "読み返す会話を選んでください。",
+    "convs.untitled": "無題の通話",
+    "convs.unknownPersona": "不明なエージェント",
+    "convs.continue": "続きを話す",
+    "convs.armed": "続きから",
+    "convs.clear": "解除",
+    "convs.continueNote":
+      "ELEVENLABS の{name}に切り替えます。{name}はあいさつのあと、話の続きを引き取ります。",
+    "convs.continueUnmapped":
+      "この通話は七つの相のどれでもないエージェントで行われたため、続きは話せません。",
+    "convs.busy": "いまの通話を切ってから、この会話の続きを話してください。",
     "providers.eyebrow": "002 / 通信経路",
     "providers.title": "リアルタイム・プロバイダ。",
     "providers.lede":
@@ -382,7 +438,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "tool.search.web": "ウェブ検索 · Tavily",
     "tool.screen.capture": "スクリーンショット · 画面取得",
     "tool.shell.exec": "シェル実行 · サンドボックス",
-    "tool.memory.recall": "長期記憶 · ベクトル",
+    "tool.memory.recall": "長期記憶 · mem0",
   },
 };
 
@@ -409,6 +465,7 @@ export function makeT(lang: Lang): Translate {
 // Status captions the engine hooks emit (in English) → string keys.
 const CAPTION_KEYS: Record<string, string> = {
   "press CALL to begin": "caption.idle",
+  "press CALL to continue": "caption.continue",
   "— call ended —": "caption.ended",
   "establishing session…": "caption.connecting",
   "… you interrupted": "caption.interrupted",

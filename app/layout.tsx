@@ -15,6 +15,8 @@ import "@fontsource/noto-sans-jp/600.css";
 import "@fontsource/noto-serif-jp/400.css";
 import "@fontsource/noto-serif-jp/500.css";
 import "./globals.css";
+import "./styles/conversations.css";
+import "./styles/tweaks-dock.css";
 
 const plexMono = IBM_Plex_Mono({
   variable: "--font-plex-mono",
@@ -40,7 +42,14 @@ export default function RootLayout({
 }>) {
   return (
     // `lang` follows the session language at runtime (use-session-routing).
-    <html lang="en" className={`${plexMono.variable} ${newsreader.variable} h-full`}>
+    // suppressHydrationWarning covers only this element's own attributes:
+    // Chrome for iOS adds `__gcrremoteframetoken` to <html> before React
+    // hydrates, which otherwise fails hydration on every load in dev.
+    <html
+      lang="en"
+      className={`${plexMono.variable} ${newsreader.variable} h-full`}
+      suppressHydrationWarning
+    >
       <body className="h-full overflow-hidden">{children}</body>
     </html>
   );

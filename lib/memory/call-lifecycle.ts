@@ -11,6 +11,11 @@
 //
 // begin() also takes an attempt token, so a recall from a replaced call never
 // reaches the new one. Each conversation ingests at most once.
+//
+// A call may also carry a preface (a resumed conversation, see
+// lib/conversations/resume.ts). It goes out at connect, ahead of the memories,
+// whether or not memory is on. With memory off, the call neither recalls nor
+// ingests.
 
 import type { Lang } from "@/lib/lang";
 import type { IngestTarget } from "./client";
@@ -22,14 +27,25 @@ export interface LifecycleDeps {
   ingest: (target: IngestTarget) => void;
 }
 
+export interface BeginOptions {
+  /** Recall before and ingest after this call (the memory.recall tool). */
+  memory: boolean;
+  /** Context to send first at connect, e.g. an earlier conversation being continued. */
+  preface?: string | null;
+}
+
 interface CallRecord {
   attempt: number;
   userId: string;
   persona?: string;
   lang: Lang;
+  memory: boolean;
+  preface: string | null;
   recall: Promise<string[]>;
   injecting?: boolean;
 }
+
+const NO_MEMORIES: Promise<string[]> = Promise.resolve([]);
 
 export class MemoryCallLifecycle {
   private attempt = 0;
@@ -42,19 +58,25 @@ export class MemoryCallLifecycle {
   constructor(private readonly deps: LifecycleDeps) {}
 
   /** CALL pressed: start recall in parallel with connecting. Returns the session userId. */
-  begin(persona: string | undefined, lang: Lang): string {
+  begin(
+    persona: string | undefined,
+    lang: Lang,
+    { memory, preface = null }: BeginOptions = { memory: true },
+  ): string {
     const userId = this.deps.userId();
     this.current = {
       attempt: ++this.attempt,
       userId,
       persona,
       lang,
-      recall: this.deps.recall(userId),
+      memory,
+      preface,
+      recall: memory ? this.deps.recall(userId) : NO_MEMORIES,
     };
     return userId;
   }
 
-  /** onConnect: open the conversation, then send its recalled memories once. */
+  /** onConnect: open the conversation, then send its preface and recalled memories once. */
   connected(conversationId: string, send: (text: string) => void): void {
     const call = this.current;
     if (!call) return;
@@ -62,15 +84,12 @@ export class MemoryCallLifecycle {
     if (call.injecting) return;
     call.injecting = true;
     const { attempt } = call;
+    if (call.preface) trySend(send, call.preface);
+    if (!call.memory) return;
     void call.recall.then((memories) => {
       if (this.attempt !== attempt || this.current !== call) return;
       const text = this.deps.format(memories, call.lang);
-      if (!text) return;
-      try {
-        send(text);
-      } catch {
-        // The call ended between recall and send; nothing to inject.
-      }
+      if (text) trySend(send, text);
     });
   }
 
@@ -80,7 +99,7 @@ export class MemoryCallLifecycle {
     if (!open) return;
     // A recall still in flight for this call has nothing left to reach.
     if (this.current === open.call) this.current = null;
-    if (this.ingested.has(open.id)) return;
+    if (!open.call.memory || this.ingested.has(open.id)) return;
     this.ingested.add(open.id);
     this.deps.ingest({
       userId: open.call.userId,
@@ -88,5 +107,13 @@ export class MemoryCallLifecycle {
       persona: open.call.persona,
       lang: open.call.lang,
     });
+  }
+}
+
+function trySend(send: (text: string) => void, text: string): void {
+  try {
+    send(text);
+  } catch {
+    // The call ended before the update could go out; nothing to inject.
   }
 }

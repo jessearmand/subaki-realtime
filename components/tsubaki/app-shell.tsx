@@ -7,11 +7,13 @@ import { I18nContext } from "./i18n-context";
 import { CallView } from "./call-view";
 import { PersonasView } from "./personas-view";
 import { ProvidersView } from "./providers-view";
+import { ConversationsView } from "./conversations-view";
 import { SettingsView } from "./settings-view";
 import { TweaksPanel } from "./tweaks-panel";
 import { RoutingNotice } from "./routing-notice";
 import {
   PERSONAS,
+  PROVIDERS,
   TOOLS_DEFAULT,
   resolvePersona,
   type Persona,
@@ -26,6 +28,9 @@ import { useTweaks } from "@/hooks/use-tweaks";
 import { useLmModel } from "@/hooks/use-lm-model";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useNavKeys } from "@/hooks/use-nav-keys";
+import { useResume, useSpendResumeAfterCall } from "@/hooks/use-resume";
+import type { ConversationDetail } from "@/lib/conversations/types";
+import { isLive } from "@/lib/realtime/types";
 import { providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
 import { providerExecLabel } from "@/lib/realtime/voice-config";
 import { useRealtimeSession } from "@/lib/realtime/use-realtime-session";
@@ -42,8 +47,11 @@ export function AppShell() {
   const { lang, provider } = routing;
   const [tools, setTools] = useState<Tool[]>(TOOLS_DEFAULT);
   const isMobile = useMediaQuery("(max-width: 760px)");
-  // Bind the C/P/V/S section keys the sidebar advertises.
+  // Bind the C/H/P/V/S section keys the sidebar advertises.
   useNavKeys(setNav);
+  // A stored conversation the next call continues (ElevenLabs, same persona).
+  const resume = useResume(provider, persona);
+  const memoryEnabled = tools.find((tool) => tool.name === "memory.recall")?.on ?? true;
 
   const session = useRealtimeSession({
     provider,
@@ -52,7 +60,10 @@ export function AppShell() {
     lmModelId,
     voiceBargeIn: tweaks.voiceBargeIn,
     pushToTalk: tweaks.pushToTalk,
+    resume: resume.armed,
+    memoryEnabled,
   });
+  useSpendResumeAfterCall(resume, session.callState, routing.restartPending);
   // What the UI shows as the active model — tracks the LM picker for cascade.
   const providerModel = providerModelLabel(provider, lmModelId, lang);
   // Execution mode — for cascade, computed from the resolved backends.
@@ -60,6 +71,16 @@ export function AppShell() {
   useRestartAfterRoute(session, routing);
   const setLang = (next: Lang) => routing.changeLang(next, session);
   const setProvider = (next: Provider) => routing.changeProvider(next, session);
+  // CONTINUE on a stored call: its persona, on ElevenLabs, in the language it ran in.
+  const continueConversation = (detail: ConversationDetail) => {
+    const target = PERSONAS.find((p) => p.id === detail.personaId);
+    const transport = PROVIDERS.find((p) => p.engine === "elevenlabs");
+    if (!target || !transport || isLive(session.callState)) return;
+    setPersona(target);
+    routing.routeTo(transport, detail.lang, session);
+    resume.select(detail);
+    setNav("call");
+  };
   // The persona as displayed in the session language (engines key off persona.id).
   const shown = resolvePersona(persona, lang);
   // The session language is also the UI locale.
@@ -80,7 +101,7 @@ export function AppShell() {
   return (
     <I18nContext.Provider value={t}>
       <div
-        className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""}`}
+        className={`tsubaki ${tweaks.dark ? "tsubaki-dark" : ""} ${isMobile ? "tb-mobile" : ""} ${tweaks.dock === "sidebar" && !isMobile ? "tb-tweaks-in-side" : ""} ${tweaks.dock === "top-right" && isMobile ? "tb-tweaks-in-bar" : ""}`}
         data-lang={lang}
       >
         <TopBar
@@ -104,6 +125,17 @@ export function AppShell() {
                 setLang={setLang}
                 compact={isMobile}
                 tools={tools}
+                resuming={resume.armed}
+                onClearResume={resume.clear}
+              />
+            )}
+            {nav === "conversations" && (
+              <ConversationsView
+                lang={lang}
+                resumeId={resume.target?.id ?? null}
+                callLive={isLive(session.callState)}
+                onContinue={continueConversation}
+                onClearResume={resume.clear}
               />
             )}
             {nav === "personas" && (
@@ -145,7 +177,7 @@ export function AppShell() {
             )}
           </main>
         </div>
-        {/* Mobile reaches the same four sections through a drawer hosting the
+        {/* Mobile reaches the same sections through a drawer hosting the
           desktop Sidebar. */}
         {isMobile && (
           <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)}>

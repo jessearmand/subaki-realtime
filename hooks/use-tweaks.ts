@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { JaSans, JaSerif } from "@/lib/ja-fonts";
+import { isTweaksDock, type TweaksDock } from "@/lib/tweaks-dock";
 
 export type OrbStyle = "gradient" | "mono" | "particles";
 export type TranscriptMode = "caption" | "drawer" | "off";
@@ -26,6 +27,8 @@ export interface Tweaks {
   /** Japanese fallback faces (see lib/ja-fonts.ts) — sans for UI, serif for display. */
   jaSans: JaSans;
   jaSerif: JaSerif;
+  /** Where the floating Tweaks button docks (drag it, or pick in the panel). */
+  dock: TweaksDock;
 }
 
 export const TWEAK_DEFAULTS: Tweaks = {
@@ -38,6 +41,7 @@ export const TWEAK_DEFAULTS: Tweaks = {
   pushToTalk: false,
   jaSans: "noto",
   jaSerif: "noto",
+  dock: "bottom-right",
 };
 
 // Camellia crimson is the Tsubaki default; burnt orange (#C2410C) stays selectable.
@@ -52,7 +56,12 @@ export function useTweaks(): [Tweaks, <K extends keyof Tweaks>(key: K, value: Tw
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) setTweaks((prev) => ({ ...prev, ...JSON.parse(raw) }));
+      if (raw) {
+        const stored = JSON.parse(raw) as Partial<Tweaks>;
+        // A dock name from an older build would leave the button with no position.
+        if (!isTweaksDock(stored.dock)) delete stored.dock;
+        setTweaks((prev) => ({ ...prev, ...stored }));
+      }
     } catch {
       // ignore malformed storage
     }

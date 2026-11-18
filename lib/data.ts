@@ -87,6 +87,8 @@ export interface Tool {
   name: string;
   label: string;
   on: boolean;
+  /** Still a mock: shown, toggleable, but not wired to a live backend. */
+  preview?: boolean;
 }
 
 export interface TranscriptTurn {
@@ -304,10 +306,11 @@ export const PROVIDERS: Provider[] = [
 ];
 
 export const TOOLS_DEFAULT: Tool[] = [
-  { name: "search.web", label: "Web search · Tavily", on: true },
-  { name: "screen.capture", label: "Screenshot · screen grab", on: true },
-  { name: "shell.exec", label: "Shell exec · sandboxed", on: false },
-  { name: "memory.recall", label: "Long-term memory · vector", on: true },
+  { name: "search.web", label: "Web search · Tavily", on: true, preview: true },
+  { name: "screen.capture", label: "Screenshot · screen grab", on: true, preview: true },
+  { name: "shell.exec", label: "Shell exec · sandboxed", on: false, preview: true },
+  // Live: mem0 recall + ingest on ElevenLabs calls (lib/memory/). Off skips both.
+  { name: "memory.recall", label: "Long-term memory · mem0", on: true },
 ];
 
 export const TRANSCRIPT_SCRIPT: TranscriptTurn[] = [

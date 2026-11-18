@@ -1,0 +1,156 @@
+/* ── Conversations (history) ──────────────────────────────────────────────
+   Stored calls on the left, one read back on the right. Same brutalist
+   vocabulary as Providers: hairline rows, accent outline for the selection,
+   serif italic for spoken text (the .tb-turn rows are shared with the live
+   transcript). Imported after globals.css by app/layout.tsx. */
+
+.tb-convs {
+  padding: 0 0 24px;
+}
+.tb-convs-body {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  align-items: start;
+}
+.tb-convs-list-col {
+  border-right: 1px solid var(--hair);
+  min-width: 0;
+}
+.tb-convs-detail-col {
+  min-width: 0;
+  padding: 8px 28px 0;
+}
+
+.tb-conv-status {
+  margin: 0;
+  padding: 18px 28px;
+  font-size: 11px;
+  color: var(--ink-3);
+  max-width: 56ch;
+}
+.tb-convs-detail-col .tb-conv-status {
+  padding: 10px 0;
+}
+
+.tb-conv-list {
+  display: flex;
+  flex-direction: column;
+}
+.tb-conv-item {
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+  padding: 12px 18px 12px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.08s;
+}
+.tb-conv-item:hover {
+  background: var(--paper);
+}
+.tb-conv-item.on {
+  background: var(--paper);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.tb-conv-item-hd,
+.tb-conv-item-ft {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+.tb-conv-item-who {
+  color: var(--ink);
+  font-weight: 500;
+}
+.tb-conv-item-title {
+  font-family: var(--tb-serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.25;
+  text-wrap: pretty;
+}
+.tb-conv-item-armed {
+  color: var(--accent);
+}
+.tb-conv-more {
+  padding: 12px 28px;
+}
+
+.tb-conv-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tb-conv-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tb-conv-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+.tb-conv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.tb-conv-note {
+  font-size: 10px;
+  color: var(--ink-3);
+  max-width: 52ch;
+}
+.tb-conv-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 72ch;
+}
+
+/* Call view: which stored conversation this call continues. */
+.tb-call-resume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--hair);
+  flex: 0 0 auto;
+}
+.tb-call-resume .tb-tag {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.tb-mobile .tb-convs-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.tb-mobile .tb-convs-list-col {
+  border-right: 0;
+  border-bottom: 1px solid var(--line);
+}
+.tb-mobile .tb-conv-item,
+.tb-mobile .tb-convs-list-col .tb-conv-status,
+.tb-mobile .tb-conv-more {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.tb-mobile .tb-convs-detail-col {
+  padding: 8px 16px 0;
+}

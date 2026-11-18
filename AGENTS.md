@@ -20,6 +20,7 @@ This is a **dev environment only; there is no production deployment yet.**
 - Types: `bunx tsc --noEmit`
 - Gates, in order, before declaring done: `bunx tsc --noEmit` → `bun run lint` → `bun run fmt:check` → `bun run build`. In a fresh checkout run `bun install` first; without `node_modules`, tsc fails with hundreds of misleading "cannot find module" errors.
 - oxlint ignores `components/ui` and `scripts` (`.oxlintrc.json`); oxfmt ignores `*.md`, YAML, `package.json` and `fnox.toml` (`.oxfmtrc.json`).
+- Phones can open `next dev` through `tailscale serve` (`*.ts.net`) or Bonjour (`*.local`): `allowedDevOrigins` in `next.config.ts` lets those hosts load the dev scripts. Without it the page never hydrates and shows the desktop layout squeezed to phone width. Another host needs adding there, and a config change needs a dev-server restart.
 - One-off CLIs via `bunx` (e.g. `bunx shadcn@latest init -d -y`).
 
 ## Secrets & local services
@@ -41,7 +42,7 @@ Secrets live in **fnox** (`fnox.toml`, OS keychain-backed): `ELEVENLABS_API_KEY`
 - `components/tsubaki/`: our components. `app-shell.tsx` is the client boundary for the page; `providers.tsx` is the `"use client"` wrapper for client-only context providers.
 - `components/ui/`: vendored ElevenLabs/shadcn. Editable, but excluded from oxlint; don't hand-fix its lint warnings.
 - Mobile (`tb-mobile`) swaps the sidebar for `MobileDrawer` (`nav.tsx`), which hosts the desktop `Sidebar` unchanged. A nav change therefore lands on both layouts.
-- `hooks/`: `use-session-routing` (transport + language), `use-tweaks` (localStorage settings, dark mode), `use-ja-fonts`, `use-lm-model`, `use-audio-output-devices`, `use-media-query`, `use-nav-keys`.
+- `hooks/`: `use-session-routing` (transport + language), `use-tweaks` (localStorage settings, dark mode), `use-ja-fonts`, `use-lm-model`, `use-audio-output-devices`, `use-media-query`, `use-nav-keys`, `use-conversations` (history list + detail), `use-resume` (which stored call the next CALL continues).
 
 ### Session layer (`lib/realtime/`)
 
@@ -67,16 +68,26 @@ Secrets live in **fnox** (`fnox.toml`, OS keychain-backed): `ELEVENLABS_API_KEY`
 
 ### Long-term memory (`lib/memory/`)
 
-mem0 gives the ElevenLabs engine a memory of the visitor across calls. Other engines don't use it yet.
+mem0 gives the ElevenLabs engine a memory of the visitor across calls. Other engines don't use it yet. It is the live `memory.recall` tool (`lib/data.ts`; the other tools are still `preview` mocks): turning it off in Settings skips both recall and ingest.
 
 - **Shared, not per persona.** Memory is scoped by mem0 `user_id` only, and persona, language and source go in metadata. That fits the fiction (seven aspects of one spirit), and it avoids a mem0 trap: an AND of `user_id` + `agent_id` returns nothing, because mem0 stores the entities separately.
 - **Identity** is an opaque `tsubaki-<uuid>` in localStorage (`lib/memory/user-id.ts`). It is the ElevenLabs session `userId` and the mem0 `user_id`. Never put a name or email in it.
-- **Lifecycle** (`call-lifecycle.ts`, wrapped by `use-elevenlabs-memory.ts`): `begin()` at CALL starts recall in parallel with connecting, `connected()` at `onConnect` sends the recalled memories as a contextual update, and `ended()` at `onDisconnect` ingests. The SDK callbacks carry no attempt, and a restart's old `onDisconnect` can land after the new `begin()`. So `ended()` never ends "the current call": each connect opens a conversation and each disconnect retires the oldest open one. Each `begin()` also takes an attempt token, so a recall from the previous call never reaches a restarted one.
+- **Lifecycle** (`call-lifecycle.ts`, wrapped by `use-elevenlabs-memory.ts`): `begin()` at CALL starts recall in parallel with connecting, `connected()` at `onConnect` sends the call's preface (a continued conversation, if any) and then the recalled memories as contextual updates, and `ended()` at `onDisconnect` ingests. The SDK callbacks carry no attempt, and a restart's old `onDisconnect` can land after the new `begin()`. So `ended()` never ends "the current call": each connect opens a conversation and each disconnect retires the oldest open one. Each `begin()` also takes an attempt token, so a recall from the previous call never reaches a restarted one.
 - **Ingest reads ElevenLabs, not the browser.** `/api/memory/ingest` polls the stored conversation until it is `done`, refuses one whose `user_id` isn't the caller's, and sends only spoken turns to mem0.
 - **Recall lists, it doesn't search.** Before the first utterance there is no query, and a broad "who is this" search scores barely above mem0's default threshold.
 - **The framing stays in-world** (`framing.ts`, EN and JA): the persona just remembers. It never mentions notes or systems and never recites the list. A change there must keep both languages.
 - **Memory is best-effort.** Recall resolves to `[]` on failure or after 5 s, and ingest is fire-and-forget. Without `MEM0_API_KEY` both routes return 503 and calls work as before.
 - *Local check:* make a call, tell the persona something, hang up, wait a minute, then call any persona and ask what it remembers. The fact should come back in the session's language. The conversation's `user_id` on ElevenLabs should be your `tsubaki.memory-user` value.
+
+### Conversation history (`lib/conversations/`)
+
+The CONVERSATIONS section (key H) lists the visitor's stored ElevenLabs calls and reads one back; CONTINUE lets the next call pick it up.
+
+- **ElevenLabs is the store.** `/api/conversations` lists by the visitor's `user_id` (finished calls where they spoke), and `/api/conversations/[id]` returns one transcript only if its `user_id` matches; otherwise it answers 404, like a missing call. Persona and language come from the agent id (`agentPersona` in `elevenlabs-agent.ts`), not from the agent name.
+- **Continuing is replay, not resume.** ElevenLabs has no way to reopen a conversation. CONTINUE selects the call's persona, routes to ELEVENLABS in the call's language (`routeTo`), and arms it (`hooks/use-resume.ts`). At connect, the tail of the old transcript goes to the agent as an in-world contextual update (`resume.ts`, EN and JA, last 40 turns). The agent's static first message still plays first; overriding it would need `platform_settings.overrides` on all 14 agents.
+- **Armed only where it can run:** on the ELEVENLABS row with the call's own persona. A continued call that ends spends the target, except when routing replaced it mid-call (a language change); the replacement continues the same conversation.
+- **Other transports can't read these calls.** xAI and OpenAI could seed a session with `conversation.item.create`, and Gemini with `clientContent` turns, but none of that is wired; continuing elsewhere is pending.
+- *Local check:* continue a stored call, press CALL, and ask what you were talking about. The persona should answer from the old call without reading it back.
 
 ## Multilingual
 
@@ -109,6 +120,7 @@ One `Lang` (`lib/lang.ts`: `"en" | "ja"`) drives three things together: which ag
 - **Keep `"use client"` at boundaries.** Next's TS plugin flags function props on components exported from a `"use client"` file (error 71007). Leaf components stay plain modules inside the client graph so they can take function props. Hooks and engine modules carry the directive harmlessly.
 - **Client-only providers go behind a wrapper.** `@elevenlabs/react`'s `ConversationProvider` calls `createContext` at module load. Import it only from a `"use client"` file (`providers.tsx`); importing it into a Server Component (`page.tsx`) fails the build with "createContext is not a function".
 - **No SSR for the WebGL `Orb`** (R3F). Render it only behind a mounted guard (`orb-visualizer.tsx`).
+- **`<html>` carries `suppressHydrationWarning`** (`app/layout.tsx`). Chrome for iOS adds a `__gcrremoteframetoken` attribute to `<html>` before React hydrates, and the dev overlay shows a hydration mismatch on every load. The flag covers only `<html>`'s own attributes, not its children, so it hides no mismatch in our components. Don't remove it, and don't add the flag further down to quiet a real mismatch.
 - **Height chain:** `.tsubaki` is `height:100%`, so `<body>` must stay `h-full overflow-hidden` (not `min-h-full`), or the 50/50 call layout overflows the viewport.
 - Dark mode toggles `.dark` on `<html>` (shadcn and the vendored orb read it) **and** `.tsubaki-dark` on `.tsubaki` (our CSS vars `--bg/--ink/--accent`). Set both.
 

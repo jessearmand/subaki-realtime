@@ -4,11 +4,12 @@ import type { Provider, ResolvedPersona } from "@/lib/data";
 import { formatExec } from "@/lib/i18n";
 import { LANG_LABEL } from "@/lib/lang";
 
-export type NavId = "call" | "personas" | "providers" | "settings";
+export type NavId = "call" | "conversations" | "personas" | "providers" | "settings";
 
 // Labels come from the string layer (`nav.<id>`).
 export const NAV: { id: NavId; key: string }[] = [
   { id: "call", key: "C" },
+  { id: "conversations", key: "H" },
   { id: "personas", key: "P" },
   { id: "providers", key: "V" },
   { id: "settings", key: "S" },

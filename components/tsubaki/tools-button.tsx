@@ -54,10 +54,7 @@ export function ToolsButton({
       {open && !allOff && (
         <div className="tb-tools-pop" role="dialog" aria-label={t("aria.activeTools")}>
           <div className="tb-tools-pop-hd">
-            <span>
-              {t("tools.active")}
-              <PreviewTag />
-            </span>
+            <span>{t("tools.active")}</span>
             <span className="tb-tools-pop-count">
               {active.length} / {total}
             </span>
@@ -68,6 +65,7 @@ export function ToolsButton({
                 <span className="tb-tools-pop-name">{tool.name}</span>
                 <span className="tb-tools-pop-label">
                   {t(`tool.${tool.name}`, null, tool.label)}
+                  {tool.preview && <PreviewTag />}
                 </span>
               </div>
             ))}

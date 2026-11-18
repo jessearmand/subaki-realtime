@@ -6,6 +6,8 @@ import { TRANSCRIPT_SCRIPT, type Persona, type Provider } from "@/lib/data";
 import type { Lang } from "@/lib/lang";
 import type { CallState, SessionApi, SessionTurn } from "./types";
 import { useElevenLabsMemory } from "@/lib/memory/use-elevenlabs-memory";
+import { formatResumeUpdate } from "@/lib/conversations/resume";
+import type { ConversationDetail } from "@/lib/conversations/types";
 import { resolveElevenLabsAgentId } from "./elevenlabs-agent";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
@@ -21,6 +23,11 @@ const SCRIPT_TURNS: SessionTurn[] = TRANSCRIPT_SCRIPT.map((t, i) => ({
 }));
 
 const LAST = TRANSCRIPT_SCRIPT.length - 1;
+
+/** An earlier call's turns, shown above the new call's while it is being continued. */
+function priorTurns(resume: ConversationDetail): SessionTurn[] {
+  return resume.transcript.map((t, i) => ({ id: `h${i}`, who: t.who, text: t.text }));
+}
 
 function mockCaption(state: CallState): string {
   switch (state) {
@@ -64,6 +71,8 @@ export function useRealtimeSession({
   lmModelId,
   voiceBargeIn,
   pushToTalk,
+  resume = null,
+  memoryEnabled = true,
 }: {
   provider: Provider;
   persona?: Persona;
@@ -79,6 +88,14 @@ export function useRealtimeSession({
   voiceBargeIn?: boolean;
   /** Cascade-only: only the Send button ends a turn (settings PUSH-TO-TALK toggle). */
   pushToTalk?: boolean;
+  /**
+   * ElevenLabs-only: an earlier call to continue. While idle its turns fill the
+   * transcript; at CALL its tail goes to the agent as context. The caller arms
+   * it only for the call's own persona on the ElevenLabs row.
+   */
+  resume?: ConversationDetail | null;
+  /** ElevenLabs-only: long-term memory (the memory.recall tool). */
+  memoryEnabled?: boolean;
 }): SessionApi {
   const engine = provider.engine;
   const isReal = !!engine;
@@ -157,8 +174,19 @@ export function useRealtimeSession({
   const activeCallState: CallState = custom ? custom.callState : callState;
 
   // Derive real CallState from the conversation status/mode (ElevenLabs only).
+  const prevStatusRef = useRef(status);
   useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
     if (engine !== "elevenlabs" || realPhase.current === "idle") return;
+    // A call that drops on its own (remote hangup, network) never passes
+    // through hangup() or onError, so mark it ended here. Only a transition
+    // out of a live status counts: right after CALL the SDK still reports the
+    // previous call's "disconnected" while realPhase is already "active".
+    const live = prev === "connecting" || prev === "connected";
+    if (live && (status === "disconnected" || status === "error")) {
+      realPhase.current = "ended";
+    }
     if (realPhase.current === "ended") {
       setCallState("ended");
       return;
@@ -230,6 +258,23 @@ export function useRealtimeSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine]);
 
+  // Arming or clearing a resume between calls shows (or drops) the earlier
+  // call's turns. A call in progress keeps its transcript, and so does a
+  // finished call: only turns this effect put up are taken down.
+  const showingPriorRef = useRef(false);
+  useEffect(() => {
+    if (engine !== "elevenlabs" || realPhase.current === "active") return;
+    if (resume) {
+      showingPriorRef.current = true;
+      setTurns(priorTurns(resume));
+      setCaption("press CALL to continue");
+    } else if (showingPriorRef.current) {
+      showingPriorRef.current = false;
+      setTurns([]);
+      setCaption(stateRef.current === "ended" ? "— call ended —" : "press CALL to begin");
+    }
+  }, [engine, resume]);
+
   useEffect(() => () => clearTimers(), []);
 
   // ── Controls ────────────────────────────────────────────────────────────────
@@ -246,10 +291,14 @@ export function useRealtimeSession({
           return;
         }
         realPhase.current = "active";
-        setTurns([]);
+        showingPriorRef.current = false;
+        setTurns(resume ? priorTurns(resume) : []);
         setCallState("connecting");
         setCaption("establishing session…");
-        const userId = memory.begin(persona?.id, lang);
+        const userId = memory.begin(persona?.id, lang, {
+          memory: memoryEnabled,
+          preface: resume ? formatResumeUpdate(resume, lang) : null,
+        });
         startSession({ agentId, connectionType: "webrtc", userId } as Parameters<
           typeof startSession
         >[0]);
@@ -270,7 +319,18 @@ export function useRealtimeSession({
     } else {
       setCallState("ended");
     }
-  }, [engine, custom, callState, persona, lang, startSession, endSession, memory]);
+  }, [
+    engine,
+    custom,
+    callState,
+    persona,
+    lang,
+    startSession,
+    endSession,
+    memory,
+    resume,
+    memoryEnabled,
+  ]);
 
   const hangup = useCallback(() => {
     if (custom) {

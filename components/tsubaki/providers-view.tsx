@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Tag, Hr, Spec } from "./primitives";
 import { useT } from "./i18n-context";
-import { formatExec } from "@/lib/i18n";
+import { formatExec, type Translate } from "@/lib/i18n";
 import { PROVIDERS, type JaSupport, type Provider } from "@/lib/data";
 import { lmModelsForEngine, providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
 import {
@@ -12,7 +12,19 @@ import {
 import type { CSSProperties } from "react";
 import type { Lang } from "@/lib/lang";
 
-/** Marks a JA-capable transport and how it gets there (solid: agent, dashed: prompt). */
+const FULL_DUPLEX_ENGINES = new Set<Provider["engine"]>(["openai-live", "fal", "moshi"]);
+
+function turnValue(t: Translate, cascade: boolean, duplex: boolean): string {
+  if (cascade) return "Silero VAD";
+  return t(duplex ? "spec.turn.duplex" : "spec.turn.server");
+}
+
+function turnSubKey(cascade: boolean, duplex: boolean): string {
+  if (cascade) return "spec.turn.cascadeSub";
+  return duplex ? "spec.turn.duplexSub" : "spec.turn.serverSub";
+}
+
+/** Marks a JA-capable transport and how it gets there (solid: agent or native voice, dashed: prompt). */
 function JaMark({ level }: { level: JaSupport }) {
   const t = useT();
   return (
@@ -41,6 +53,8 @@ export function ProvidersView({
   // Surface the headline transport changes in the active-provider detail:
   // the cascade engine (STT→LM→TTS) and neural Silero VAD turn detection.
   const isCascade = provider.engine === "cascade";
+  // Full-duplex engines take turns in the model itself: no VAD end-of-turn.
+  const isDuplex = FULL_DUPLEX_ENGINES.has(provider.engine);
   // The cascade's EXECUTION cell reflects the resolved backends, so it follows
   // the LM picker live (TTS/STT come from config/voice-models.json + env).
   const lmBackend = resolveLmModel(lmModelId).backend;
@@ -156,8 +170,8 @@ export function ProvidersView({
           )}
           <Spec
             label={t("spec.turn")}
-            value={isCascade ? "Silero VAD" : t("spec.turn.server")}
-            sub={t(isCascade ? "spec.turn.cascadeSub" : "spec.turn.serverSub")}
+            value={turnValue(t, isCascade, isDuplex)}
+            sub={t(turnSubKey(isCascade, isDuplex))}
           />
           <Spec
             label={t("spec.language")}

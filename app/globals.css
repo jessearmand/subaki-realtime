@@ -2123,6 +2123,10 @@
 .tb-ja-mark-prompt {
   border-style: dashed;
 }
+/* Native cast voice (OPENAI LIVE): solid like an agent, a step quieter. */
+.tb-ja-mark-voice {
+  color: var(--ink-2);
+}
 
 /* Settings: full-width band above the 2×2 grid. */
 .tb-settings-sec-wide {

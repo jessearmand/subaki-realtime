@@ -2,10 +2,10 @@
 
 // Which stored conversation (if any) the next call continues.
 //
-// Continuing is ElevenLabs-only and per persona: the earlier call is handed to
-// the same persona's agent. So the target is only *armed* while the ElevenLabs
-// row and that persona are selected; switching away leaves it pending, and
-// switching back re-arms it. Once a continued call ends it is spent, unless the
+// Continuing is per transport and per persona: a stored call continues on the
+// transport that stored it (ElevenLabs or OPENAI LIVE), with the same persona.
+// So the target is only *armed* while that row and that persona are selected;
+// switching away leaves it pending, and switching back re-arms it. Once a continued call ends it is spent, unless the
 // call ended only because routing is replacing it (a language change mid-call):
 // the replacement call continues the same conversation.
 //
@@ -14,7 +14,7 @@
 // useSpendResumeAfterCall() after it.
 
 import { useEffect, useRef, useState } from "react";
-import type { ConversationDetail } from "@/lib/conversations/types";
+import type { ConversationDetail, HistorySource } from "@/lib/conversations/types";
 import type { Persona, Provider } from "@/lib/data";
 import { isLive, type CallState } from "@/lib/realtime/types";
 
@@ -27,10 +27,18 @@ export interface ResumeState {
   clear: () => void;
 }
 
+/** The engine that can continue a call from this store. */
+export const SOURCE_ENGINE: Record<HistorySource, NonNullable<Provider["engine"]>> = {
+  elevenlabs: "elevenlabs",
+  "openai-live": "openai-live",
+};
+
 export function useResume(provider: Provider, persona: Persona): ResumeState {
   const [target, setTarget] = useState<ConversationDetail | null>(null);
   const armed =
-    target && provider.engine === "elevenlabs" && target.personaId === persona.id ? target : null;
+    target && provider.engine === SOURCE_ENGINE[target.source] && target.personaId === persona.id
+      ? target
+      : null;
   return { target, armed, select: setTarget, clear: () => setTarget(null) };
 }
 

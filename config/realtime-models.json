@@ -3,6 +3,9 @@
     "model": "gpt-realtime-2.1",
     "transcriptionModel": "gpt-realtime-whisper"
   },
+  "openaiLive": {
+    "model": "gpt-live-1"
+  },
   "elevenlabs": {
     "ttsModel": {
       "en": "eleven_v4_turbo",

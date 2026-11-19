@@ -24,6 +24,7 @@
     "@types/three": "^0.184.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "disk": "^1.12.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "onnxruntime-web": "^1.27.0",

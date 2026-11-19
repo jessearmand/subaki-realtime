@@ -15,6 +15,9 @@ import type { Lang } from "@/lib/lang";
 /** OpenAI realtime model — used for the ephemeral-token mint and `session.update`. */
 export const OPENAI_REALTIME_MODEL: string = catalog.openai.model;
 
+/** GPT-Live model — the OPENAI LIVE row (session created server-side, app/api/openai-live). */
+export const OPENAI_LIVE_MODEL: string = catalog.openaiLive.model;
+
 /** OpenAI input-audio transcription model paired with the realtime model. */
 export const OPENAI_TRANSCRIPTION_MODEL: string = catalog.openai.transcriptionModel;
 

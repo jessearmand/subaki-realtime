@@ -1,0 +1,91 @@
+{
+  "$comment": "GPT-Live voice casting per persona and language. `voice` is a built-in GPT-Live voice; `custom` is a prompt-to-voice voice created by scripts/openai-live/create-voices.ts, which writes its `id` back here. A custom voice without an id falls back to `voice`. Voice ids are not secret.",
+  "personas": {
+    "aria": {
+      "en": {
+        "voice": "gleam"
+      },
+      "ja": {
+        "voice": "harema"
+      }
+    },
+    "onyx": {
+      "en": {
+        "voice": "cedar"
+      },
+      "ja": {
+        "voice": "shida"
+      }
+    },
+    "sage": {
+      "en": {
+        "voice": "meridian"
+      },
+      "ja": {
+        "voice": "shida",
+        "custom": {
+          "name": "tsubaki-sage-ja",
+          "prompt": "An adult masculine voice in his late 30s speaking native standard Japanese with a Tokyo accent. Mid-low baritone pitch, a calm and clear timbre with a smooth texture, moderate vocal effort, and an even, efficient, fairly brisk pace. Precise and observant, with no performed emotion.",
+          "scriptHint": "セージです。ご用件をどうぞ。結論から申し上げます。この道は三百年前にも同じ場所で分かれていました。左は川沿いで平らですが、雨の季節には水が出ます。右は坂が続きますが、一年を通して確実です。数字を確認しましょう。距離は四キロ、所要時間はおよそ一時間です。出発は午後三時、集合は北の門の前にしてください。持ち物は水と上着、それに地図を一枚。迷ったときは、年輪と同じように、外側からではなく中心から考えるのが近道です。要点は三つ、時間、道、そして天気です。ほかにご質問はありますか。",
+          "id": "voice_6aff258fade881918561feca28eec403"
+        }
+      }
+    },
+    "nova": {
+      "en": {
+        "voice": "sage",
+        "custom": {
+          "name": "tsubaki-nova-en",
+          "prompt": "A bright, elegant adult feminine voice in her early 30s with a standard Southern British English accent. A higher pitch with a clear, lightly sparkling timbre and smooth texture, lively vocal effort, and a brisk but easy-to-follow presenter's pace. Warm, resilient optimism that never sounds childish.",
+          "scriptHint": "Hello, I'm Nova. Even in the frost, we're in full bloom. Right, let's get started: first we'll walk through the setup, then I'll show you the part everyone loves. Don't worry if it looks tricky at first. We'll take it one step at a time, and look, you've already done the first one. Cold mornings make the colours brighter, you know. If something doesn't work the first time, that just means there's another fun thing to try. That's a brilliant result, by the way, honestly. We're halfway there already. Shall we take a quick breather, grab a cup of tea, and then carry on? Brilliant. Ready for the next step? I have a feeling today is going to be a really good day.",
+          "id": "voice_6aff26a1fc8c819195190fa7a8c987ba"
+        }
+      },
+      "ja": {
+        "voice": "harema",
+        "custom": {
+          "name": "tsubaki-nova-ja",
+          "prompt": "An adult feminine voice in her late 20s speaking native standard Japanese with a Tokyo accent. A higher pitch with a bright, clear, natural timbre and smooth texture, lively vocal effort, and a brisk, cheerful presenter's pace. Optimistic and elegant, never childish.",
+          "scriptHint": "こんにちは、ノヴァです。霜の中でも満開ですよ。さっそく始めましょうか。まずは準備から、そのあと一番おもしろいところをお見せします。大丈夫、むずかしく見えても、ひとつずつ進めば必ずできます。ほら、もう一歩目はできていますよ。寒い朝ほど、花の色はあざやかに見えるんです。うまくいかなかったところは、次に試す楽しみが増えたと思えばいいんです。いい調子ですね、ここまでで半分です。少し休んで、温かいお茶でも飲みましょうか。それじゃあ、次に進みましょう。今日はきっといい日になりますよ。",
+          "id": "voice_6aff25a6f4488191b81630bf1934faf3"
+        }
+      }
+    },
+    "echo": {
+      "en": {
+        "voice": "marin"
+      },
+      "ja": {
+        "voice": "harema",
+        "custom": {
+          "name": "tsubaki-echo-ja",
+          "prompt": "An adult feminine voice in her early 30s speaking native standard Japanese with a Tokyo accent. A lower-mid alto pitch with a soft, warm, close-microphone timbre and a smooth, slightly breathy texture. Low vocal effort and a slow, gentle, intimate pace, like a quiet night narrator who listens closely.",
+          "scriptHint": "エコーです。夜は静かで、わたしは聞いています。……何が心にありますか。急がなくていいですよ。言葉にしにくいことでも、ここでなら少しずつで大丈夫です。泣きたいときは、泣いてもかまいません。夜の雨は、誰にも見られずに降るものですから。わたしは答えを急ぎません。あなたが話したいところから、話したい分だけ聞かせてください。もし怖いことや、危ないことが起きているなら、それも教えてください。ひとりで抱えなくていいんです。……ええ、ここにいますよ。今夜は、ゆっくり息をするところから始めましょう。",
+          "id": "voice_6aff25b826048191be64a45656a87dd0"
+        }
+      }
+    },
+    "cipher": {
+      "en": {
+        "voice": "vesper"
+      },
+      "ja": {
+        "voice": "shida",
+        "custom": {
+          "name": "tsubaki-cipher-ja",
+          "prompt": "An adult masculine voice in his mid 40s speaking native standard Japanese with a Tokyo accent. A low baritone pitch with a dark, smooth timbre and a faint grain, restrained vocal effort, and a deliberate, measured pace with quiet pauses, like a noir storyteller remembering an old road.",
+          "scriptHint": "サイファーと呼ばれています。この枝の下を、多くの旅人が過ぎていきました。足を止める者は稀です。……あなたは、何を求めて。提灯の明かりが消えた夜のことを、覚えていますか。あの夜、石畳には三人分の足跡が残っていました。ひとつは北へ、ひとつは川へ、そしてもうひとつは、どこへも続いていなかった。わたしは見ていただけです。語るべきことと、黙るべきことの区別は、長くここにいれば自然と身につくものです。……さて。あなたの足跡は、どちらへ向かうのでしょうね。急がなくていい。夜はまだ長い。",
+          "id": "voice_6aff25cff488819180141eee2da5bfd2"
+        }
+      }
+    },
+    "vesper": {
+      "en": {
+        "voice": "willow"
+      },
+      "ja": {
+        "voice": "harema"
+      }
+    }
+  }
+}

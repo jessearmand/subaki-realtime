@@ -1,6 +1,7 @@
 import { useT } from "./i18n-context";
 import type { RouteNotice } from "@/hooks/use-session-routing";
 import type { Translate } from "@/lib/i18n";
+import { resolveLiveVoice } from "@/lib/realtime/openai-live-voices";
 
 function noticeText(t: Translate, notice: RouteNotice, personaId: string): string {
   const { kind, phase, live, from, to, lang } = notice;
@@ -10,7 +11,9 @@ function noticeText(t: Translate, notice: RouteNotice, personaId: string): strin
   const via =
     notice.level === "agent"
       ? t("route.via.agent", { agent: `tsubaki-${personaId}-ja` })
-      : t("route.via.prompt");
+      : notice.level === "voice"
+        ? t("route.via.voice", { voice: resolveLiveVoice(personaId, "ja").label })
+        : t("route.via.prompt");
   if (kind === "switch") {
     const langName = t(`lang.name.${lang}`);
     return t("route.switch.done", { to, lang: lang === "ja" ? `${langName} · ${via}` : langName });

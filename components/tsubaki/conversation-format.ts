@@ -1,7 +1,14 @@
 // Display helpers shared by the conversation list and detail panes.
 
 import { PERSONAS, resolvePersona } from "@/lib/data";
+import type { HistorySource } from "@/lib/conversations/types";
 import type { Lang } from "@/lib/lang";
+
+/** Where a call is stored, by its transport's name (an identifier, never translated). */
+export const SOURCE_LABEL: Record<HistorySource, string> = {
+  elevenlabs: "ELEVENLABS",
+  "openai-live": "OPENAI LIVE",
+};
 
 const LOCALE: Record<Lang, string> = { en: "en-GB", ja: "ja-JP" };
 

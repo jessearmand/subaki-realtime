@@ -105,7 +105,7 @@ ear and recast freely — edit `voiceId` in the generator, regenerate, and
 
 ### Long-term memory (mem0)
 
-ElevenLabs calls remember the visitor across sessions, through
+ElevenLabs and OPENAI LIVE calls remember the visitor across sessions, through
 [mem0](https://docs.mem0.ai). Memory is shared by all seven personas: they are
 aspects of one spirit, so any of them may recall what you told another. The
 persona and language of each call are kept as mem0 metadata.
@@ -129,14 +129,17 @@ skips recall and ingest.
 
 ### Conversation history
 
-The **CONVERSATIONS** section lists your stored ElevenLabs calls, newest first,
-with ElevenLabs' title and summary, and reads one back. **CONTINUE** switches to
-ELEVENLABS with that call's persona and language. On the next CALL the end of
+The **CONVERSATIONS** section lists your stored ElevenLabs and OPENAI LIVE calls
+(see [below](#wiring-the-openai-live-provider-gpt-live)), newest first,
+with a title (ElevenLabs' own, or your first line on OPENAI LIVE), and reads one
+back. **CONTINUE** switches to the transport that stored the call, with that
+call's persona and language. On the next CALL the end of
 the old transcript goes to the agent as context, so it picks up the thread
 after its usual greeting. ElevenLabs has no native resume, and the other
 transports can't read ElevenLabs calls yet. The routes
 (`POST /api/conversations`, `POST /api/conversations/[id]`) use
-`ELEVENLABS_API_KEY` and only return calls whose `user_id` is yours.
+`ELEVENLABS_API_KEY` and `ARCHIL_API_KEY` (either one lists its own calls) and
+only return calls that are yours.
 
 ## Wiring the real xAI Grok provider
 
@@ -191,6 +194,36 @@ mints a key, negotiates WebRTC, plays the agent's audio, shows the user + agent
 transcripts (whisper for input), and barges in on server-VAD speech detection.
 Without `OPENAI_API_KEY` set, CALL shows a clear "OPENAI_API_KEY is not set"
 caption instead of connecting.
+
+## Wiring the OPENAI LIVE provider (GPT-Live)
+
+The **OPENAI LIVE** row runs `gpt-live-1`, OpenAI's full-duplex voice model:
+it listens while it speaks, so you can talk over it at any time. GPT-Live has no
+browser token, so the server creates the session:
+
+1. The browser posts its SDP offer to `POST /api/openai-live/session`.
+2. The server recalls your memories (mem0, at most 2 s) and, for CONTINUE,
+   reads the earlier call. It sends them with the persona prompt and voice to
+   `POST /v1/live/sessions` and returns the SDP answer.
+3. The server attaches a sideband WebSocket to the session and records the
+   transcript to an **Archil** disk (`config/archil.json`). When the call
+   ends, the record is closed and sent to mem0.
+
+Japanese uses a native voice for each persona (`config/openai-live-voices.json`):
+`harema` (feminine) or `shida` (masculine), or a custom voice made from a
+text description. To create the custom voices, give the OpenAI key the
+`api.voices.write` scope and run:
+
+```sh
+fnox exec -- bun scripts/openai-live/create-voices.ts
+```
+
+The script writes each voice id back to the config. Until a voice has an id,
+the built-in voice speaks.
+
+Secrets in **fnox**: `OPENAI_API_KEY` (required), `ARCHIL_API_KEY` (to store
+and list calls) and `MEM0_API_KEY` (memory). Without the Archil or mem0 key,
+calls still work, but they are not stored or remembered.
 
 ### Web tools via Firecrawl MCP (OAuth)
 

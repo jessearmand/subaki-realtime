@@ -40,6 +40,10 @@ service = "fnox"
 type = "keychain"
 service = "fnox"
 
+[providers.archil]
+type = "keychain"
+service = "fnox"
+
 [secrets]
 ELEVENLABS_API_KEY= { provider = "ElevenLabs", value = "ELEVENLABS_API_KEY" }
 XAI_API_KEY= { provider = "xai", value = "XAI_API_KEY" }
@@ -50,10 +54,7 @@ FAL_API_KEY= { provider = "fal", value = "FAL_API_KEY" }
 GEMINI_API_KEY= { provider = "google", value = "GEMINI_API_KEY" }
 TINKER_API_KEY= { provider = "tinker", value = "TINKER_API_KEY" }
 MEM0_API_KEY= { provider = "mem0", value = "MEM0_API_KEY" }
+ARCHIL_API_KEY= { provider = "archil", value = "ARCHIL_API_KEY" }
 
-# Remote-control / CI only. Kept out of [secrets] so `fnox exec -- claude` in a
-# normal dev shell keeps using the Claude Max keychain login instead of this
-# token — an OAuth token in the env overrides the stored session.
-# Use with: fnox -P remote exec -- <cmd>
 [profiles.remote.secrets]
 CLAUDE_CODE_OAUTH_TOKEN= { provider = "anthropic", value = "CLAUDE_CODE_OAUTH_TOKEN" }

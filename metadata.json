@@ -1,0 +1,46 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M7TE1PKXSKVFQYF4QA450G31",
+  "strategy": "manual-commit",
+  "branch": "feat/gpt-live-conversation",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "AGENTS.md",
+    "app/globals.css",
+    "components/tsubaki/app-shell.tsx",
+    "components/tsubaki/settings-view.tsx",
+    "components/tsubaki/visitor-id-field.tsx",
+    "lib/i18n.ts",
+    "lib/memory/user-id.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 134,
+    "cache_creation_tokens": 705236,
+    "cache_read_tokens": 14856994,
+    "output_tokens": 51167,
+    "api_call_count": 61
+  },
+  "redaction": {
+    "replacements": 359,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 28,
+      "credentialed_uri": 0,
+      "entropy": 559,
+      "key_context": 6,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

@@ -174,6 +174,8 @@ export function AppShell() {
                 onBargeInChange={(v) => setTweak("voiceBargeIn", v)}
                 pushToTalk={tweaks.pushToTalk}
                 onPushToTalkChange={(v) => setTweak("pushToTalk", v)}
+                // A call picked for CONTINUE belongs to the previous visitor id.
+                onVisitorIdChange={resume.clear}
               />
             )}
           </main>

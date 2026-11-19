@@ -1247,6 +1247,52 @@
   background-position: right 8px center;
 }
 
+.tb-input {
+  appearance: none;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font: inherit;
+  color: var(--ink);
+  padding: 7px 10px;
+  font-size: 11px;
+  width: 100%;
+  border-radius: 0;
+}
+.tb-input[aria-invalid="true"] {
+  border-color: var(--accent);
+}
+
+/* Settings → VISITOR ID: the id with its two actions; they wrap under the
+   input on a phone. */
+.tb-visitor-id {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tb-visitor-id-input {
+  flex: 1 1 300px;
+  width: auto;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tb-visitor-id-status {
+  min-height: 1.5em;
+  margin: 6px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.tb-visitor-id-status[data-invalid="true"] {
+  color: var(--accent);
+}
+.tb-visitor-id-note {
+  margin: 2px 0 0;
+  max-width: 68ch;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
 .tb-meter {
   height: 8px;
   border: 1px solid var(--line);

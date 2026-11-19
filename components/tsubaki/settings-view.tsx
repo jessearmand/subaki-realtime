@@ -4,6 +4,7 @@ import { useT } from "./i18n-context";
 import { MicSelector } from "@/components/ui/mic-selector";
 import { useAudioOutputDevices } from "@/hooks/use-audio-output-devices";
 import { LangSwitch } from "./lang-switch";
+import { VisitorIdField } from "./visitor-id-field";
 import type { Tool } from "@/lib/data";
 import type { Lang } from "@/lib/lang";
 
@@ -19,6 +20,7 @@ export function SettingsView({
   onBargeInChange,
   pushToTalk,
   onPushToTalkChange,
+  onVisitorIdChange,
 }: {
   accent: string;
   /** Session language — interface and voice. */
@@ -34,6 +36,8 @@ export function SettingsView({
   /** Push-to-talk — only the Send button ends a turn (cascade engine). */
   pushToTalk: boolean;
   onPushToTalkChange: (v: boolean) => void;
+  /** The visitor switched to another browser's id (history and memory follow it). */
+  onVisitorIdChange: () => void;
 }) {
   const t = useT();
   const [device, setDevice] = useState("");
@@ -70,6 +74,7 @@ export function SettingsView({
           <FieldRow label={t("field.language")} hint={t("field.language.hint")}>
             <LangSwitch lang={lang} onChange={setLang} />
           </FieldRow>
+          <VisitorIdField onChange={onVisitorIdChange} />
         </section>
 
         <section className="tb-settings-sec">

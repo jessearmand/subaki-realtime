@@ -154,6 +154,11 @@ const store = globalThis as typeof globalThis & {
 };
 const captures = (store.__tsubakiLiveCaptures ??= new Map<string, LiveCapture>());
 
+/** Whether this server process is still recording the call; its record is not final yet. */
+export function isCapturing(callId: string): boolean {
+  return captures.has(callId);
+}
+
 /** Attach to a just-created session and record its transcript until it closes. */
 export function startLiveCapture(opts: CaptureOptions): void {
   if (captures.has(opts.record.id)) return;

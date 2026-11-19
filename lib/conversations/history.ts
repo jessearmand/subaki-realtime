@@ -13,20 +13,63 @@ import {
   takeLiveWindow,
   type HistoryCursor,
 } from "./history-cursor";
-import { detailOfCall, getCall, isListable, listIndex, nowSecs, summarizeCall } from "./live-store";
+import { isCapturing } from "./live-capture";
+import { needsDigest, withDigest } from "./live-digest";
+import {
+  detailOfCall,
+  getCall,
+  isListable,
+  listIndex,
+  nowSecs,
+  summarizeCall,
+  type LiveCallRecord,
+} from "./live-store";
 import type { ConversationDetail, ConversationPage, ConversationSummary } from "./types";
 
 /** Which stores the server can read: the ElevenLabs key, and whether Archil is set up. */
 export interface HistorySources {
   elevenLabsKey?: string;
   liveStore: boolean;
+  /** Titles OPENAI LIVE calls that have none yet; without it they keep their opening line. */
+  openaiKey?: string;
 }
 
 // Index entries scanned per request, and Live calls taken once ElevenLabs is done.
 const LIVE_SCAN = 60;
 const LIVE_PAGE = 30;
 
+// How long a history request waits for missing titles. One that takes longer
+// keeps generating and is there on the next load.
+const DIGEST_WAIT_MS = 5000;
+
 export class CursorError extends Error {}
+
+/**
+ * Finished calls with their generated titles. A call normally gets its title
+ * when it ends (app/api/openai-live/session); this covers the ones that didn't:
+ * calls stored before titles existed, abandoned calls, and failed attempts.
+ */
+async function titled(
+  sources: HistorySources,
+  records: LiveCallRecord[],
+): Promise<LiveCallRecord[]> {
+  const key = sources.openaiKey;
+  // A long silence makes a running call look abandoned. Its record is still
+  // being written by the capture, so it is titled when it ends, not here.
+  const due = (r: LiveCallRecord) => needsDigest(r) && !isCapturing(r.id);
+  if (!key || !records.some(due)) return records;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), DIGEST_WAIT_MS);
+  });
+  const out = await Promise.all(
+    records.map((r) =>
+      due(r) ? Promise.race([withDigest(key, r), deadline]).then((done) => done ?? r) : r,
+    ),
+  );
+  clearTimeout(timer);
+  return out;
+}
 
 export async function listHistory(
   sources: HistorySources,
@@ -59,9 +102,8 @@ export async function listHistory(
     const { take, consumedAll } = takeLiveWindow(entries, floor, max);
     const records = await Promise.all(take.map((e) => getCall(userId, e.callId)));
     const now = nowSecs();
-    liveItems = records
-      .filter((r) => r !== null && isListable(r, now))
-      .map((r) => summarizeCall(r!));
+    const listable = records.filter((r): r is LiveCallRecord => r !== null && isListable(r, now));
+    liveItems = (await titled(sources, listable)).map(summarizeCall);
     if (take.length) lastLive = take[take.length - 1].name;
     liveDone = consumedAll && !truncated;
   }
@@ -82,7 +124,8 @@ export async function getHistoryDetail(
       throw new ConversationError("ARCHIL_API_KEY is not set on the server.", 503);
     const record = await getCall(userId, id);
     if (!record) throw new ConversationError(`conversation ${id} not found`, 404);
-    return detailOfCall(record);
+    if (!isListable(record)) return detailOfCall(record);
+    return detailOfCall((await titled(sources, [record]))[0]);
   }
   if (!sources.elevenLabsKey) {
     throw new ConversationError("ELEVENLABS_API_KEY is not set on the server.", 503);

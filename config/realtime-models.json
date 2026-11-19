@@ -4,7 +4,8 @@
     "transcriptionModel": "gpt-realtime-whisper"
   },
   "openaiLive": {
-    "model": "gpt-live-1"
+    "model": "gpt-live-1",
+    "summaryModel": "gpt-6-luna"
   },
   "elevenlabs": {
     "ttsModel": {

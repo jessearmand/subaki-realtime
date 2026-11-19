@@ -30,6 +30,9 @@ export interface LiveCallRecord {
   status: "open" | "done";
   /** The stored call this one continued, if any. */
   resumedFrom?: string;
+  /** Generated once the call is over (live-digest.ts); absent until then. */
+  title?: string;
+  summary?: string;
   turns: ConversationTurn[];
 }
 
@@ -118,17 +121,20 @@ export function isListable(record: LiveCallRecord, now = nowSecs()): boolean {
   return record.status === "done" || now - record.updatedAt > ABANDONED_SECS;
 }
 
-export function summarizeCall(record: LiveCallRecord): ConversationSummary {
+/** Stands in for the title until one is generated: the visitor's first words. */
+function openingLine(record: LiveCallRecord): string {
   const firstUser = record.turns.find((t) => t.who === "user")?.text ?? "";
-  // GPT-Live gives no generated title; the visitor's opening line stands in.
-  const title = firstUser.length > TITLE_CHARS ? `${firstUser.slice(0, TITLE_CHARS)}…` : firstUser;
+  return firstUser.length > TITLE_CHARS ? `${firstUser.slice(0, TITLE_CHARS)}…` : firstUser;
+}
+
+export function summarizeCall(record: LiveCallRecord): ConversationSummary {
   return {
     id: record.id,
     source: "openai-live",
     personaId: record.personaId,
     lang: record.lang,
-    title,
-    summary: "",
+    title: record.title || openingLine(record),
+    summary: record.summary ?? "",
     startedAt: record.startedAt,
     durationSecs: Math.max(0, (record.endedAt ?? record.updatedAt) - record.startedAt),
     messageCount: record.turns.length,

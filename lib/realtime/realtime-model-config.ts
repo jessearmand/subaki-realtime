@@ -18,6 +18,9 @@ export const OPENAI_REALTIME_MODEL: string = catalog.openai.model;
 /** GPT-Live model — the OPENAI LIVE row (session created server-side, app/api/openai-live). */
 export const OPENAI_LIVE_MODEL: string = catalog.openaiLive.model;
 
+/** Text model that titles and summarizes a finished OPENAI LIVE call (lib/conversations/live-digest.ts). */
+export const OPENAI_LIVE_SUMMARY_MODEL: string = catalog.openaiLive.summaryModel;
+
 /** OpenAI input-audio transcription model paired with the realtime model. */
 export const OPENAI_TRANSCRIPTION_MODEL: string = catalog.openai.transcriptionModel;
 

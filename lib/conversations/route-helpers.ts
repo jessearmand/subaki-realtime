@@ -19,6 +19,7 @@ export async function parseHistoryRequest(req: Request): Promise<ParsedRequest> 
   const sources: HistorySources = {
     elevenLabsKey: process.env.ELEVENLABS_API_KEY || undefined,
     liveStore: archilConfigured(),
+    openaiKey: process.env.OPENAI_API_KEY || undefined,
   };
   if (!sources.elevenLabsKey && !sources.liveStore) {
     return {

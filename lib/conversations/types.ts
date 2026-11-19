@@ -14,9 +14,9 @@ export interface ConversationSummary {
   /** Our persona id, or undefined when the agent isn't one of the mapped personas. */
   personaId?: string;
   lang: Lang;
-  /** ElevenLabs' generated title, or an OPENAI LIVE call's opening line; may be empty. */
+  /** Generated title; an OPENAI LIVE call not yet titled shows its opening line. May be empty. */
   title: string;
-  /** ElevenLabs' generated summary (either language); empty for OPENAI LIVE. */
+  /** Generated summary: ElevenLabs' (either language) or ours in the call's language. May be empty. */
   summary: string;
   /** Unix seconds. */
   startedAt: number;

@@ -19,6 +19,7 @@
 import { PERSONAS } from "@/lib/data";
 import { LANGS, type Lang } from "@/lib/lang";
 import { startLiveCapture } from "@/lib/conversations/live-capture";
+import { withDigest } from "@/lib/conversations/live-digest";
 import { buildLiveInput } from "@/lib/conversations/live-seed";
 import { createCall, getCall, nowSecs, type LiveCallRecord } from "@/lib/conversations/live-store";
 import { isLiveCallId, isMemoryUserId, newLiveCallId } from "@/lib/memory/ids";
@@ -190,7 +191,15 @@ export async function POST(req: Request): Promise<Response> {
   let callId: string | null = null;
   if (record && (await storing)) {
     callId = record.id;
-    startLiveCapture({ apiKey, sessionId, record, onFinished: ingestLiveCall });
+    startLiveCapture({
+      apiKey,
+      sessionId,
+      record,
+      // Independent post-call steps: remember the call, and title it for history.
+      onFinished: async (finished) => {
+        await Promise.all([ingestLiveCall(finished), withDigest(apiKey, finished)]);
+      },
+    });
   }
 
   return Response.json(

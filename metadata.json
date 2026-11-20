@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M7VEGD1GXB45WBJ156HNDZEE",
+  "strategy": "manual-commit",
+  "branch": "feat/gpt-live-conversation",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/memory/user-id.test.ts",
+    "lib/memory/user-id.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 7038,
+    "cache_read_tokens": 1479732,
+    "output_tokens": 4070,
+    "api_call_count": 34
+  },
+  "redaction": {
+    "replacements": 322,
+    "layers": {
+      "betterleaks": 4,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 87,
+      "credentialed_uri": 0,
+      "entropy": 373,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

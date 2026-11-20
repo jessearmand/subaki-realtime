@@ -44,6 +44,17 @@ export interface CaptureOptions {
 // typings only know the protocols argument.
 type HeaderWebSocket = new (url: string, init: { headers: Record<string, string> }) => WebSocket;
 
+/**
+ * Upstream text for one log line: control characters (newlines included)
+ * become spaces and the length is capped, so it can't forge or flood entries.
+ */
+function logSafe(text: unknown, max = 300): string {
+  if (typeof text !== "string") return "error";
+  // oxlint-disable-next-line no-control-regex -- stripping control characters is the point
+  const flat = text.replace(/[\u{0}-\u{1f}\u{7f}-\u{9f}\u{2028}\u{2029}]+/gu, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max)}…` : flat || "error";
+}
+
 class LiveCapture {
   private turns: LiveTurn[] = [];
   private seen = new Set<string>();
@@ -94,7 +105,7 @@ class LiveCapture {
         void this.finish();
         break;
       case "error":
-        console.warn(`[live-capture] ${this.opts.record.id}: ${ev.error?.message ?? "error"}`);
+        console.warn(`[live-capture] ${this.opts.record.id}: ${logSafe(ev.error?.message)}`);
         break;
       default:
         break;
@@ -164,5 +175,12 @@ export function startLiveCapture(opts: CaptureOptions): void {
   if (captures.has(opts.record.id)) return;
   const capture = new LiveCapture(opts);
   captures.set(opts.record.id, capture);
-  capture.start();
+  try {
+    capture.start();
+  } catch (err) {
+    // The session already exists upstream: let the call go on unrecorded
+    // rather than fail the route, and don't leave it looking "capturing".
+    captures.delete(opts.record.id);
+    console.warn(`[live-capture] could not attach to ${opts.record.id}:`, err);
+  }
 }

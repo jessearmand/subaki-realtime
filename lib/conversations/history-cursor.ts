@@ -3,9 +3,16 @@
 //
 // ElevenLabs pages through its own cursor. OPENAI LIVE calls come from our index,
 // newest first. Each request takes one ElevenLabs page and then the Live calls
-// that are at least as new as that page's oldest call, so the merged list stays
-// in time order. Once ElevenLabs runs out, Live calls page on their own. Either
-// store may be absent (no key), which reads as exhausted from the start.
+// that are at least as new as that page's oldest call. Once ElevenLabs runs
+// out, Live calls page on their own. Either store may be absent (no key), which
+// reads as exhausted from the start.
+//
+// The client appends pages, so every item of one response must be newer than
+// every item of the next. When more Live calls are newer than the ElevenLabs
+// page than one response takes, the page is *held*: only its calls at least as
+// new as the last Live call taken are sent, its cursor is not advanced, and
+// `eb` records that boundary so the next request (which reads the same page
+// again) skips what was already sent.
 
 export interface HistoryCursor {
   /** ElevenLabs cursor for the next page. */
@@ -16,6 +23,8 @@ export interface HistoryCursor {
   l?: string;
   /** Live calls are exhausted (or storage not configured). */
   ld?: boolean;
+  /** Held ElevenLabs page: its calls started at or after this (unix s) were already sent. */
+  eb?: number;
 }
 
 const MAX_CURSOR_CHARS = 2000;
@@ -38,33 +47,65 @@ export function decodeCursor(raw: unknown): HistoryCursor | null {
       (v.e === undefined || (typeof v.e === "string" && EL_CURSOR_RE.test(v.e))) &&
       (v.ed === undefined || typeof v.ed === "boolean") &&
       (v.l === undefined || (typeof v.l === "string" && LIVE_NAME_RE.test(v.l))) &&
-      (v.ld === undefined || typeof v.ld === "boolean");
+      (v.ld === undefined || typeof v.ld === "boolean") &&
+      (v.eb === undefined || (typeof v.eb === "number" && Number.isFinite(v.eb)));
     return ok ? (v as HistoryCursor) : null;
   } catch {
     return null;
   }
 }
 
+/** What this request read from ElevenLabs. */
+export type ElevenLabsRead =
+  | { kind: "done" }
+  | { kind: "page"; startTimes: number[]; hasMore: boolean };
+
 /**
- * The lowest start time Live calls may have on this page. With ElevenLabs
- * still paging, it is that page's oldest call (an empty page takes no Live
- * calls, since it says nothing about time); once ElevenLabs is done, anything.
+ * The lowest start time Live calls may have on this page: the ElevenLabs
+ * page's oldest call. An empty page with more behind it takes no Live calls,
+ * since it says nothing about time; once ElevenLabs is done, anything goes.
  */
-export function liveFloor(elFinished: boolean, elStartTimes: number[]): number {
-  if (elFinished) return Number.NEGATIVE_INFINITY;
-  return elStartTimes.length ? Math.min(...elStartTimes) : Number.POSITIVE_INFINITY;
+export function liveFloor(el: ElevenLabsRead): number {
+  if (el.kind === "done") return Number.NEGATIVE_INFINITY;
+  if (el.startTimes.length) return Math.min(...el.startTimes);
+  return el.hasMore ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
 }
 
-/** Newest-first entries at or above the floor, at most `max`, and whether that took them all. */
-export function takeLiveWindow<T extends { startedAt: number }>(
+export interface LiveWindow<T> {
+  take: T[];
+  /** No Live calls remain after `take`. */
+  liveDone: boolean;
+  /**
+   * Live calls at or above the floor were left for the next request: hold the
+   * ElevenLabs page at this start time (the oldest call taken). Null when the
+   * window reached the floor.
+   */
+  holdAt: number | null;
+}
+
+/**
+ * Newest-first entries at or above the floor, at most `max`. `truncated` says
+ * the index listing stopped early, so more entries exist past `entries`.
+ */
+export function planLiveWindow<T extends { startedAt: number }>(
   entries: T[],
+  truncated: boolean,
   floor: number,
   max: number,
-): { take: T[]; consumedAll: boolean } {
+): LiveWindow<T> {
   const take: T[] = [];
   for (const e of entries) {
     if (take.length >= max || e.startedAt < floor) break;
     take.push(e);
   }
-  return { take, consumedAll: take.length === entries.length };
+  const next = entries[take.length];
+  const liveDone = !next && !truncated;
+  // Cut by the size limit rather than the floor (or the listing ran out
+  // before reaching it): newer Live calls may still be waiting.
+  const moreAboveFloor = next ? next.startedAt >= floor : truncated;
+  const holdAt =
+    moreAboveFloor && take.length && floor !== Number.NEGATIVE_INFINITY
+      ? take[take.length - 1].startedAt
+      : null;
+  return { take, liveDone, holdAt };
 }

@@ -10,7 +10,8 @@ import {
   decodeCursor,
   encodeCursor,
   liveFloor,
-  takeLiveWindow,
+  planLiveWindow,
+  type ElevenLabsRead,
   type HistoryCursor,
 } from "./history-cursor";
 import { isCapturing } from "./live-capture";
@@ -79,38 +80,49 @@ export async function listHistory(
   const cursor: HistoryCursor | null = rawCursor ? decodeCursor(rawCursor) : {};
   if (!cursor) throw new CursorError("cursor is malformed.");
 
-  let elItems: ConversationSummary[] = [];
+  // One ElevenLabs page: the cursor's (again, if it was held) or the next one.
+  let elPage: ConversationSummary[] = [];
   let elNext: string | null = null;
-  const elDone = cursor.ed || !sources.elevenLabsKey;
-  if (!elDone && sources.elevenLabsKey) {
+  let el: ElevenLabsRead = { kind: "done" };
+  if (!cursor.ed && sources.elevenLabsKey) {
     const page = await listConversations(sources.elevenLabsKey, userId, cursor.e);
-    elItems = page.items;
+    elPage = page.items;
     elNext = page.nextCursor;
+    el = { kind: "page", startTimes: elPage.map((c) => c.startedAt), hasMore: !!elNext };
   }
-  const elFinished = elDone || !elNext;
+  // A held page was partly sent already: everything from its boundary up.
+  const elUnsent =
+    cursor.eb === undefined ? elPage : elPage.filter((c) => c.startedAt < cursor.eb!);
 
   let liveItems: ConversationSummary[] = [];
   let lastLive = cursor.l;
-  let liveDone = cursor.ld || !sources.liveStore;
-  const floor = liveFloor(
-    elFinished,
-    elItems.map((c) => c.startedAt),
-  );
+  let liveDone = !!cursor.ld || !sources.liveStore;
+  let holdAt: number | null = null;
+  const floor = liveFloor(el);
   if (!liveDone && floor !== Number.POSITIVE_INFINITY) {
     const { entries, truncated } = await listIndex(userId, cursor.l ?? null, LIVE_SCAN);
-    const max = elFinished ? LIVE_PAGE : LIVE_SCAN;
-    const { take, consumedAll } = takeLiveWindow(entries, floor, max);
-    const records = await Promise.all(take.map((e) => getCall(userId, e.callId)));
+    const max = floor === Number.NEGATIVE_INFINITY ? LIVE_PAGE : LIVE_SCAN;
+    const plan = planLiveWindow(entries, truncated, floor, max);
+    const records = await Promise.all(plan.take.map((e) => getCall(userId, e.callId)));
     const now = nowSecs();
     const listable = records.filter((r): r is LiveCallRecord => r !== null && isListable(r, now));
     liveItems = (await titled(sources, listable)).map(summarizeCall);
-    if (take.length) lastLive = take[take.length - 1].name;
-    liveDone = consumedAll && !truncated;
+    if (plan.take.length) lastLive = plan.take[plan.take.length - 1].name;
+    liveDone = plan.liveDone;
+    holdAt = plan.holdAt;
   }
 
+  // Held: send only the page's calls at least as new as the last Live call
+  // taken, and read the same page again next time. Otherwise move past it.
+  const held = el.kind === "page" && holdAt !== null;
+  const elItems = held ? elUnsent.filter((c) => c.startedAt >= holdAt!) : elUnsent;
+  const next: HistoryCursor = held
+    ? { e: cursor.e, ed: false, eb: holdAt!, l: lastLive, ld: liveDone }
+    : { e: elNext ?? undefined, ed: el.kind === "done" || !elNext, l: lastLive, ld: liveDone };
+
   const items = [...elItems, ...liveItems].sort((a, b) => b.startedAt - a.startedAt);
-  const next: HistoryCursor = { e: elNext ?? undefined, ed: elFinished, l: lastLive, ld: liveDone };
-  return { items, nextCursor: elFinished && liveDone ? null : encodeCursor(next) };
+  const exhausted = !!next.ed && !!next.ld;
+  return { items, nextCursor: exhausted ? null : encodeCursor(next) };
 }
 
 /** One stored call. Throws 404 for a missing call or one that isn't the visitor's. */

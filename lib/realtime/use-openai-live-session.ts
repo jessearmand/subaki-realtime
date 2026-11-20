@@ -123,6 +123,8 @@ export function useOpenaiLiveSession(
   const resumeRef = useRef(resume);
   resumeRef.current = resume;
   const mutedRef = useRef(false);
+  // The transcript shows an armed resume's earlier turns only, not a call's.
+  const showingPriorRef = useRef(false);
 
   // The current call's transcript. Updated here, then handed to setTurns as a
   // value: setTurns updaters must stay pure (StrictMode runs them twice).
@@ -238,6 +240,9 @@ export function useOpenaiLiveSession(
     connRef.current = conn;
     const prior = priorTurns(resumeRef.current);
     priorRef.current = prior;
+    // From here the transcript is this call's: spending the resume target
+    // when it ends must not clear it.
+    showingPriorRef.current = false;
     liveTurnsRef.current = [];
     lastLoudRef.current = 0;
     setTurns(prior);
@@ -303,7 +308,6 @@ export function useOpenaiLiveSession(
   const getOutputVolume = useCallback(() => connRef.current?.outputLevel() ?? 0, []);
 
   // Between calls, an armed resume shows the earlier call's turns.
-  const showingPriorRef = useRef(false);
   useEffect(() => {
     if (!active || isLive(stateRef.current)) return;
     if (resume) {

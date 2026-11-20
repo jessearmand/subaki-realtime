@@ -233,15 +233,17 @@ export class LiveConnection {
     if (this.disposed || this.closing) return;
     this.closing = true;
     if (this.dc?.readyState === "open") {
+      let timer: ReturnType<typeof setTimeout> | undefined;
       const closed = new Promise<void>((resolve) => {
         this.resolveClosed = resolve;
-        setTimeout(resolve, CLOSE_TIMEOUT_MS);
+        timer = setTimeout(resolve, CLOSE_TIMEOUT_MS);
       });
       this.send({ type: "session.close" });
       // Nothing more should reach the caller while the session drains.
       this.setMicEnabled(false);
       this.setOutputMuted(true);
       await closed;
+      clearTimeout(timer);
     }
     this.dispose();
   }

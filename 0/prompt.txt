@@ -1,0 +1,6 @@
+yes, add the test to this PR
+
+> - One side effect: a line break in an OpenAI error message now joins the two lines with no space.
+
+We should keep the line break in two separate lines or use spacing, why is this a problem with
+the log injection?

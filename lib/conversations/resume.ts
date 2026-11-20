@@ -16,14 +16,16 @@ export interface ResumeSource {
 // The tail of a long call carries the thread; the beginning is mostly greetings.
 // The bound keeps the update well inside the agent's context on a long call.
 export const RESUME_MAX_TURNS = 40;
-const RESUME_MAX_CHARS_PER_TURN = 600;
+export const RESUME_MAX_CHARS_PER_TURN = 600;
 
 const FRAMING: Record<
   Lang,
-  { head: string; you: string; them: string; rules: string[]; otherLang: string }
+  { head: string; seedHead: string; you: string; them: string; rules: string[]; otherLang: string }
 > = {
   en: {
     head: "You are picking up an earlier conversation with the person you are speaking with. This is how it went, oldest first:",
+    seedHead:
+      "You are picking up an earlier conversation with the person you are speaking with. The messages that follow are how it went, oldest first.",
     you: "You",
     them: "Them",
     rules: [
@@ -34,6 +36,8 @@ const FRAMING: Record<
   },
   ja: {
     head: "いま話している相手との、以前の会話の続きをするところです。そのときのやり取りは次のとおり（古い順）：",
+    seedHead:
+      "いま話している相手との、以前の会話の続きをするところです。続くメッセージが、そのときのやり取りです（古い順）。",
     you: "あなた",
     them: "相手",
     rules: [
@@ -48,6 +52,16 @@ function clip(text: string): string {
   return text.length > RESUME_MAX_CHARS_PER_TURN
     ? `${text.slice(0, RESUME_MAX_CHARS_PER_TURN)}…`
     : text;
+}
+
+/**
+ * The framing for a session seeded with the earlier turns as messages (GPT-Live
+ * startup `input`): the same rules, without the lines themselves.
+ */
+export function formatResumePreamble(sourceLang: Lang, lang: Lang): string {
+  const f = FRAMING[lang];
+  const rules = sourceLang === lang ? f.rules : [...f.rules, f.otherLang];
+  return [f.seedHead, "", ...rules].join("\n");
 }
 
 /** The contextual-update text that resumes `source` in a `lang` session, or null if it has no turns. */

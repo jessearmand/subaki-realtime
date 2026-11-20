@@ -11,6 +11,7 @@ import type { ConversationDetail } from "@/lib/conversations/types";
 import { resolveElevenLabsAgentId } from "./elevenlabs-agent";
 import { useXaiSession } from "./use-xai-session";
 import { useOpenaiSession } from "./use-openai-session";
+import { useOpenaiLiveSession } from "./use-openai-live-session";
 import { useGeminiSession } from "./use-gemini-session";
 import { useCascadeSession } from "./use-cascade-session";
 import { useFalSession } from "./use-fal-session";
@@ -52,6 +53,7 @@ function mockCaption(state: CallState): string {
  *   - "elevenlabs" → real conversation via `@elevenlabs/react`
  *   - "xai" → real Grok voice via a direct WebSocket (useXaiSession)
  *   - "openai" → real gpt-realtime voice via WebRTC (useOpenaiSession)
+ *   - "openai-live" → GPT-Live via WebRTC, session made server-side (useOpenaiLiveSession)
  *   - "gemini" → real Gemini Live voice via a direct WebSocket (useGeminiSession)
  *   - "fal" → full-duplex PersonaPlex via a direct WebSocket (useFalSession)
  *   - "moshi" → full-duplex PersonaPlex on the LOCAL MLX server (useMoshiSession)
@@ -89,12 +91,13 @@ export function useRealtimeSession({
   /** Cascade-only: only the Send button ends a turn (settings PUSH-TO-TALK toggle). */
   pushToTalk?: boolean;
   /**
-   * ElevenLabs-only: an earlier call to continue. While idle its turns fill the
-   * transcript; at CALL its tail goes to the agent as context. The caller arms
-   * it only for the call's own persona on the ElevenLabs row.
+   * ElevenLabs and OPENAI LIVE: an earlier call to continue. While idle its
+   * turns fill the transcript; at CALL it goes to the agent as context. The
+   * caller arms it only for the call's own persona on the transport that
+   * stored it (useResume).
    */
   resume?: ConversationDetail | null;
-  /** ElevenLabs-only: long-term memory (the memory.recall tool). */
+  /** ElevenLabs and OPENAI LIVE: long-term memory (the memory.recall tool). */
   memoryEnabled?: boolean;
 }): SessionApi {
   const engine = provider.engine;
@@ -150,6 +153,10 @@ export function useRealtimeSession({
   // ── Custom real engines (own WebSocket / WebRTC, shared interface) ─────────
   const xai = useXaiSession(engine === "xai", persona, lang);
   const openai = useOpenaiSession(engine === "openai", persona, voiceBargeIn ?? false, lang);
+  const openaiLive = useOpenaiLiveSession(engine === "openai-live", persona, lang, {
+    memoryEnabled,
+    resume: engine === "openai-live" ? resume : null,
+  });
   const gemini = useGeminiSession(engine === "gemini", persona, lang);
   const cascade = useCascadeSession(engine === "cascade", persona, lmModelId, pushToTalk ?? false);
   const fal = useFalSession(engine === "fal", persona);
@@ -160,15 +167,17 @@ export function useRealtimeSession({
       ? xai
       : engine === "openai"
         ? openai
-        : engine === "gemini"
-          ? gemini
-          : engine === "cascade"
-            ? cascade
-            : engine === "fal"
-              ? fal
-              : engine === "moshi"
-                ? moshi
-                : null;
+        : engine === "openai-live"
+          ? openaiLive
+          : engine === "gemini"
+            ? gemini
+            : engine === "cascade"
+              ? cascade
+              : engine === "fal"
+                ? fal
+                : engine === "moshi"
+                  ? moshi
+                  : null;
 
   // The active call state comes from whichever engine owns the session.
   const activeCallState: CallState = custom ? custom.callState : callState;

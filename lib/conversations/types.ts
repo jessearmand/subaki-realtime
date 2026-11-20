@@ -1,17 +1,22 @@
 // Conversation history shapes shared by the /api/conversations routes and the
-// browser. Only ElevenLabs stores calls today, so these mirror what its
-// conversation API can tell us, already mapped to our personas and languages.
+// browser. Two transports store calls: ElevenLabs (on its platform) and OPENAI
+// LIVE (on our Archil disk, lib/conversations/live-store.ts). Both map to these
+// shapes, already resolved to our personas and languages.
 
 import type { Lang } from "@/lib/lang";
 
+/** Where a stored call lives, which is also the transport that can continue it. */
+export type HistorySource = "elevenlabs" | "openai-live";
+
 export interface ConversationSummary {
   id: string;
+  source: HistorySource;
   /** Our persona id, or undefined when the agent isn't one of the mapped personas. */
   personaId?: string;
   lang: Lang;
-  /** ElevenLabs' generated title; may be empty for very short calls. */
+  /** Generated title; an OPENAI LIVE call not yet titled shows its opening line. May be empty. */
   title: string;
-  /** ElevenLabs' generated summary; may be in either language. */
+  /** Generated summary: ElevenLabs' (either language) or ours in the call's language. May be empty. */
   summary: string;
   /** Unix seconds. */
   startedAt: number;

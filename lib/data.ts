@@ -1,7 +1,11 @@
 // Sample data ported from the design bundle (screens.jsx).
 // Single source of truth for personas, providers, tools and the mock transcript.
 
-import { ELEVENLABS_TTS_MODEL, OPENAI_REALTIME_MODEL } from "@/lib/realtime/realtime-model-config";
+import {
+  ELEVENLABS_TTS_MODEL,
+  OPENAI_LIVE_MODEL,
+  OPENAI_REALTIME_MODEL,
+} from "@/lib/realtime/realtime-model-config";
 import type { Lang } from "@/lib/lang";
 
 /** The same manifestation voiced in Japanese — overrides the display fields. */
@@ -15,7 +19,8 @@ export interface PersonaJa {
   rate: string;
   /**
    * The cast native-speaker voice on the dedicated JA agent (ElevenLabs).
-   * Prompt-level transports speak Japanese with the persona's usual voice.
+   * OPENAI LIVE casts its own native voices (config/openai-live-voices.json);
+   * prompt-level transports speak Japanese with the persona's usual voice.
    */
   voice: string;
   /**
@@ -61,13 +66,16 @@ export function resolvePersona(p: Persona, lang: Lang): ResolvedPersona {
  * How a transport speaks Japanese:
  *  - "agent"  — a dedicated JA platform agent per persona (JA prompt + a cast
  *               native-speaker voice). ElevenLabs; the preferred failover target.
+ *  - "voice"  — Japanese through the instructions, like "prompt", but spoken by
+ *               a native Japanese voice cast per persona (OPENAI LIVE: harema,
+ *               shida, or a custom voice; config/openai-live-voices.json).
  *  - "prompt" — the session has no language parameter (xAI, OpenAI, Gemini
  *               native audio); Japanese is set through the instructions and the
  *               opening line, spoken by the persona's usual voice.
  * Absent ⇒ no Japanese path (Mistral's TTS has no Japanese; PersonaPlex is
  * English-only): Japanese fails over, and picking the transport drops to EN.
  */
-export type JaSupport = "agent" | "prompt";
+export type JaSupport = "agent" | "voice" | "prompt";
 
 export interface Provider {
   id: string;
@@ -78,7 +86,7 @@ export interface Provider {
   exec: string;
   note: string;
   // Which real engine drives this row. Absent ⇒ the design's mock lifecycle.
-  engine?: "elevenlabs" | "xai" | "openai" | "gemini" | "cascade" | "fal" | "moshi";
+  engine?: "elevenlabs" | "xai" | "openai" | "openai-live" | "gemini" | "cascade" | "fal" | "moshi";
   /** Japanese support level; absent ⇒ none. */
   ja?: JaSupport;
 }
@@ -261,6 +269,15 @@ export const PROVIDERS: Provider[] = [
     ja: "prompt",
   },
   {
+    id: "openai-live",
+    name: "OPENAI LIVE",
+    model: OPENAI_LIVE_MODEL,
+    exec: "remote",
+    note: "Full-duplex GPT-Live. Native Japanese voices. Stores calls and remembers you.",
+    engine: "openai-live",
+    ja: "voice",
+  },
+  {
     id: "elevenlabs",
     name: "ELEVENLABS",
     // Static EN label; the UI shows the active language's model (providerModelLabel).
@@ -309,7 +326,7 @@ export const TOOLS_DEFAULT: Tool[] = [
   { name: "search.web", label: "Web search · Tavily", on: true, preview: true },
   { name: "screen.capture", label: "Screenshot · screen grab", on: true, preview: true },
   { name: "shell.exec", label: "Shell exec · sandboxed", on: false, preview: true },
-  // Live: mem0 recall + ingest on ElevenLabs calls (lib/memory/). Off skips both.
+  // Live: mem0 recall + ingest on ElevenLabs and OPENAI LIVE calls (lib/memory/). Off skips both.
   { name: "memory.recall", label: "Long-term memory · mem0", on: true },
 ];
 

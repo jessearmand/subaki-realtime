@@ -3,6 +3,7 @@ import { LangSwitch } from "./lang-switch";
 import { useT } from "./i18n-context";
 import { PERSONAS, resolvePersona, type Persona, type Provider } from "@/lib/data";
 import type { Lang } from "@/lib/lang";
+import { resolveLiveVoice } from "@/lib/realtime/openai-live-voices";
 
 /** One persona, shown in the session language. */
 function PersonaCard({
@@ -25,9 +26,17 @@ function PersonaCard({
   const t = useT();
   const r = resolvePersona(p, lang);
   const ja = lang === "ja";
-  // The cast JA voice belongs to the dedicated agent; on a prompt-level
-  // transport the persona's usual voice speaks Japanese.
+  // The cast JA voice belongs to the dedicated agent; OPENAI LIVE casts its own
+  // native voice; on a prompt-level transport the persona's usual voice speaks
+  // Japanese.
   const jaAgent = provider.ja === "agent";
+  const jaVoice = provider.ja === "voice" ? resolveLiveVoice(p.id, "ja").label : null;
+  let jaSupport = t("personas.jaPromptValue");
+  if (jaAgent) jaSupport = `tsubaki-${p.id}-ja`;
+  else if (jaVoice) jaSupport = t("personas.jaVoiceValue", { voice: jaVoice });
+  let footVoice = r.voice;
+  if (ja && jaVoice) footVoice = jaVoice;
+  else if (ja && !jaAgent) footVoice = p.voice;
   return (
     <div className={`tb-persona-card ${on ? "on" : ""}`} onClick={() => onSelect(p)}>
       <div className="tb-persona-top">
@@ -73,13 +82,13 @@ function PersonaCard({
             {t(jaAgent ? "personas.jaAgent" : "personas.jaPrompt")}
           </span>
           <span className="tb-ja-support-v">
-            {provider.name} · {jaAgent ? `tsubaki-${p.id}-ja` : t("personas.jaPromptValue")}
+            {provider.name} · {jaSupport}
           </span>
         </div>
       )}
       <div className="tb-persona-foot">
         <span className="tb-mono-num">{r.rateLabel}</span>
-        <span className="tb-mono-num">{ja && !jaAgent ? p.voice : r.voice}</span>
+        <span className="tb-mono-num">{footVoice}</span>
       </div>
     </div>
   );

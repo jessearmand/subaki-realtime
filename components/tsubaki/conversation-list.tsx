@@ -2,7 +2,7 @@
 
 import { useT } from "./i18n-context";
 import { Btn } from "./primitives";
-import { formatDuration, formatStartedAt, personaName } from "./conversation-format";
+import { SOURCE_LABEL, formatDuration, formatStartedAt, personaName } from "./conversation-format";
 import type { ConversationSummary } from "@/lib/conversations/types";
 import { LANG_LABEL, type Lang } from "@/lib/lang";
 
@@ -46,7 +46,8 @@ export function ConversationList({
           <span className="tb-conv-item-title">{c.title || t("convs.untitled")}</span>
           <span className="tb-conv-item-ft">
             <span>
-              {formatDuration(c.durationSecs)} · {t("transcript.turns", { n: c.messageCount })}
+              {SOURCE_LABEL[c.source]} · {formatDuration(c.durationSecs)} ·{" "}
+              {t("transcript.turns", { n: c.messageCount })}
             </span>
             {c.id === resumingId && <span className="tb-conv-item-armed">{t("convs.armed")}</span>}
           </span>

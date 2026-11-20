@@ -28,7 +28,7 @@ import { useTweaks } from "@/hooks/use-tweaks";
 import { useLmModel } from "@/hooks/use-lm-model";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useNavKeys } from "@/hooks/use-nav-keys";
-import { useResume, useSpendResumeAfterCall } from "@/hooks/use-resume";
+import { SOURCE_ENGINE, useResume, useSpendResumeAfterCall } from "@/hooks/use-resume";
 import type { ConversationDetail } from "@/lib/conversations/types";
 import { isLive } from "@/lib/realtime/types";
 import { providerModelLabel, resolveLmModel } from "@/lib/realtime/lm-config";
@@ -49,7 +49,7 @@ export function AppShell() {
   const isMobile = useMediaQuery("(max-width: 760px)");
   // Bind the C/H/P/V/S section keys the sidebar advertises.
   useNavKeys(setNav);
-  // A stored conversation the next call continues (ElevenLabs, same persona).
+  // A stored conversation the next call continues (its own transport, same persona).
   const resume = useResume(provider, persona);
   const memoryEnabled = tools.find((tool) => tool.name === "memory.recall")?.on ?? true;
 
@@ -71,10 +71,11 @@ export function AppShell() {
   useRestartAfterRoute(session, routing);
   const setLang = (next: Lang) => routing.changeLang(next, session);
   const setProvider = (next: Provider) => routing.changeProvider(next, session);
-  // CONTINUE on a stored call: its persona, on ElevenLabs, in the language it ran in.
+  // CONTINUE on a stored call: its persona, on the transport that stored it, in
+  // the language it ran in.
   const continueConversation = (detail: ConversationDetail) => {
     const target = PERSONAS.find((p) => p.id === detail.personaId);
-    const transport = PROVIDERS.find((p) => p.engine === "elevenlabs");
+    const transport = PROVIDERS.find((p) => p.engine === SOURCE_ENGINE[detail.source]);
     if (!target || !transport || isLive(session.callState)) return;
     setPersona(target);
     routing.routeTo(transport, detail.lang, session);
@@ -173,6 +174,8 @@ export function AppShell() {
                 onBargeInChange={(v) => setTweak("voiceBargeIn", v)}
                 pushToTalk={tweaks.pushToTalk}
                 onPushToTalkChange={(v) => setTweak("pushToTalk", v)}
+                // A call picked for CONTINUE belongs to the previous visitor id.
+                onVisitorIdChange={resume.clear}
               />
             )}
           </main>

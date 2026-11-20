@@ -72,6 +72,7 @@ function summarize(row: ListedConversation): ConversationSummary {
   const mapped = row.agent_id ? agentPersona(row.agent_id) : undefined;
   return {
     id: row.conversation_id,
+    source: "elevenlabs",
     personaId: mapped?.personaId,
     lang: toLang(mapped?.lang, row.main_language),
     title: row.call_summary_title?.trim() ?? "",

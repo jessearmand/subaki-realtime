@@ -1,7 +1,7 @@
-// Conversations: the visitor's stored ElevenLabs calls. Pick one to read it
-// back; CONTINUE arms it so the next CALL picks the thread back up with the
-// same persona (see hooks/use-resume.ts). ElevenLabs is the only transport
-// that stores calls today, so it is the only one that can continue them.
+// Conversations: the visitor's stored calls, from ElevenLabs and OPENAI LIVE in
+// one list. Pick one to read it back; CONTINUE arms it so the next CALL picks
+// the thread back up with the same persona, on the transport that stored it
+// (see hooks/use-resume.ts).
 
 import { useEffect, useRef } from "react";
 import { useT } from "./i18n-context";

@@ -2,7 +2,7 @@
 
 import { useT } from "./i18n-context";
 import { Btn, Hr, Tag } from "./primitives";
-import { formatDuration, formatStartedAt, personaName } from "./conversation-format";
+import { SOURCE_LABEL, formatDuration, formatStartedAt, personaName } from "./conversation-format";
 import type { ConversationDetail as Detail } from "@/lib/conversations/types";
 import { LANG_LABEL, type Lang } from "@/lib/lang";
 
@@ -36,6 +36,7 @@ export function ConversationDetail({
       <Hr label={detail.title || t("convs.untitled")} />
       <div className="tb-conv-tags">
         <Tag mono>{who}</Tag>
+        <Tag mono>{SOURCE_LABEL[detail.source]}</Tag>
         <Tag mono>{LANG_LABEL[detail.lang]}</Tag>
         <Tag mono>{formatStartedAt(detail.startedAt, lang)}</Tag>
         <Tag mono>{formatDuration(detail.durationSecs)}</Tag>
@@ -62,7 +63,10 @@ export function ConversationDetail({
           </Btn>
         )}
         <span className="tb-conv-note">
-          {t(noteKey(!!name, callLive, resuming), { name: who })}
+          {t(noteKey(!!name, callLive, resuming), {
+            name: who,
+            transport: SOURCE_LABEL[detail.source],
+          })}
         </span>
       </div>
 

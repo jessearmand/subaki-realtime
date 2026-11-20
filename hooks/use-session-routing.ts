@@ -4,8 +4,9 @@
 // what happens when either changes.
 //
 // - Japanese support has levels (Provider.ja): "agent" — a dedicated JA agent
-//   per persona (ElevenLabs); "prompt" — Japanese through the instructions
-//   (xAI, OpenAI, Gemini); absent — no Japanese path.
+//   per persona (ElevenLabs); "voice" — Japanese through the instructions,
+//   spoken by a cast native voice (OPENAI LIVE); "prompt" — Japanese through
+//   the instructions in the usual voice (xAI, OpenAI, Gemini); absent — none.
 // - Failover is a transport concern, and a mid-call handover doesn't work
 //   upstream. Any change that re-points the session at a different agent or
 //   prompt (transport OR language) ends a live call and opens a NEW session;
@@ -62,9 +63,16 @@ export interface SessionRouting {
 const RESTART_DELAY_MS = 600;
 const NOTICE_MS = { live: 5600, idle: 4200 };
 
-/** The best available JA transport: a dedicated-agent one first, then prompt-level. */
+// Failover preference: a dedicated agent, then a cast native voice, then prompt-level.
+const JA_PREFERENCE: JaSupport[] = ["agent", "voice", "prompt"];
+
+/** The best available JA transport, by JA_PREFERENCE. */
 export function bestJaProvider(): Provider | undefined {
-  return PROVIDERS.find((p) => p.ja === "agent") ?? PROVIDERS.find((p) => p.ja === "prompt");
+  for (const level of JA_PREFERENCE) {
+    const p = PROVIDERS.find((x) => x.ja === level);
+    if (p) return p;
+  }
+  return undefined;
 }
 
 export function useSessionRouting(): SessionRouting {

@@ -51,9 +51,9 @@ type HeaderWebSocket = new (url: string, init: { headers: Record<string, string>
 function logSafe(text: unknown, max = 300): string {
   if (typeof text !== "string") return "error";
   const flat = text
-    // Line breaks spelled out first: CodeQL's log-injection check recognizes
-    // this form as a sanitizer, not the character ranges below.
-    .replace(/\r|\n/g, " ")
+    // Line breaks dropped first, in the form CodeQL's log-injection check
+    // recognizes as a sanitizer (replaced with ""); then the other controls.
+    .replace(/\r|\n/g, "")
     // oxlint-disable-next-line no-control-regex -- stripping control characters is the point
     .replace(/[\u{0}-\u{1f}\u{7f}-\u{9f}\u{2028}\u{2029}]+/gu, " ")
     .trim();

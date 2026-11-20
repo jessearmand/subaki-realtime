@@ -45,17 +45,21 @@ export interface CaptureOptions {
 type HeaderWebSocket = new (url: string, init: { headers: Record<string, string> }) => WebSocket;
 
 /**
- * Upstream text for one log line: control characters (newlines included)
- * become spaces and the length is capped, so it can't forge or flood entries.
+ * Upstream text for one log line. A raw line break would let the text start a
+ * line of its own that reads like a separate log entry, so line breaks are
+ * shown as the two characters \\r / \\n instead, other control characters
+ * become spaces, and the length is capped.
  */
 function logSafe(text: unknown, max = 300): string {
   if (typeof text !== "string") return "error";
   const flat = text
-    // Line breaks dropped first, in the form CodeQL's log-injection check
-    // recognizes as a sanitizer (replaced with ""); then the other controls.
-    .replace(/\r|\n/g, "")
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
     // oxlint-disable-next-line no-control-regex -- stripping control characters is the point
     .replace(/[\u{0}-\u{1f}\u{7f}-\u{9f}\u{2028}\u{2029}]+/gu, " ")
+    // No line break is left by now. This is the form CodeQL's log-injection
+    // check recognizes as a sanitizer (a replace with ""), kept as a guard.
+    .replace(/\r|\n/g, "")
     .trim();
   return flat.length > max ? `${flat.slice(0, max)}…` : flat || "error";
 }

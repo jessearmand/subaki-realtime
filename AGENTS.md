@@ -18,7 +18,8 @@ This is a **dev environment only; there is no production deployment yet.**
 - `bun install` · `bun run dev` (localhost:3000) · `bun run build`
 - Lint/format are **oxc, not eslint/prettier**: `bun run lint` (oxlint) · `bun run fmt` (oxfmt write) · `bun run fmt:check`
 - Types: `bunx tsc --noEmit`
-- Gates, in order, before declaring done: `bunx tsc --noEmit` → `bun run lint` → `bun run fmt:check` → `bun run build`. In a fresh checkout run `bun install` first; without `node_modules`, tsc fails with hundreds of misleading "cannot find module" errors.
+- Tests: `bun run test` (`bun test lib`, Bun's built-in runner; `@types/bun` types `bun:test`). Tests sit next to their module as `*.test.ts` and fake their stores with `mock.module`, so they run offline without keys. `history.test.ts` walks the merged history list page by page.
+- Gates, in order, before declaring done: `bunx tsc --noEmit` → `bun run test` → `bun run lint` → `bun run fmt:check` → `bun run build`. In a fresh checkout run `bun install` first; without `node_modules`, tsc fails with hundreds of misleading "cannot find module" errors.
 - oxlint ignores `components/ui` and `scripts` (`.oxlintrc.json`); oxfmt ignores `*.md`, YAML, `package.json` and `fnox.toml` (`.oxfmtrc.json`).
 - Phones can open `next dev` through `tailscale serve` (`*.ts.net`) or Bonjour (`*.local`): `allowedDevOrigins` in `next.config.ts` lets those hosts load the dev scripts. Without it the page never hydrates and shows the desktop layout squeezed to phone width. Another host needs adding there, and a config change needs a dev-server restart.
 - One-off CLIs via `bunx` (e.g. `bunx shadcn@latest init -d -y`).

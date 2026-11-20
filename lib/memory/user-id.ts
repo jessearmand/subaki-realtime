@@ -12,6 +12,9 @@ import { MEMORY_USER_ID_PREFIX, isMemoryUserId } from "./ids";
 
 const KEY = "tsubaki.memory-user";
 
+// This page load's id when storage can't hold it (blocked, or a write threw).
+// Once set it wins over storage: otherwise an adopted id that failed to save
+// would lose to the old one still readable there.
 let fallback: string | undefined;
 
 function mint(): string {
@@ -19,6 +22,7 @@ function mint(): string {
 }
 
 export function getMemoryUserId(): string {
+  if (fallback) return fallback;
   try {
     const saved = localStorage.getItem(KEY);
     if (isMemoryUserId(saved)) return saved;
@@ -42,8 +46,11 @@ export function setMemoryUserId(id: string): boolean {
   if (!isMemoryUserId(id)) return false;
   try {
     localStorage.setItem(KEY, id);
+    // Saved: storage is the truth again.
+    fallback = undefined;
   } catch {
-    // Storage blocked: hold it for this page load, as getMemoryUserId does.
+    // Storage blocked or full: hold it for this page load. getMemoryUserId
+    // reads this first, so the old id still in storage can't come back.
     fallback = id;
   }
   return true;
